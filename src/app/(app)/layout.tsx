@@ -1,0 +1,65 @@
+import { BellDot } from "lucide-react"
+
+import { AppSidebar } from "@/components/layout/app-sidebar"
+import { HeaderActions } from "@/components/layout/header-actions"
+import { MobileNav } from "@/components/layout/mobile-nav"
+import { AddTaskProvider } from "@/components/providers/add-task-provider"
+import { Button } from "@/components/ui/button"
+
+function HeaderDate() {
+  const now = new Date()
+  const formatted = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  })
+  return (
+    <time
+      dateTime={now.toISOString().slice(0, 10)}
+      className="hidden text-sm font-semibold text-slate-800 lg:block"
+    >
+      {formatted}
+    </time>
+  )
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AddTaskProvider>
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <div className="mx-auto flex min-h-screen max-w-[1680px]">
+          <AppSidebar />
+
+          <div className="relative flex min-h-screen flex-1 flex-col bg-[#F8FAFC] shadow-[-8px_0_20px_-10px_rgba(15,23,42,0.07)]">
+          <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
+            <div className="flex h-14 items-center gap-4 px-6 md:px-8">
+
+              {/* Left — mobile menu + date */}
+              <div className="flex min-w-0 items-center gap-3">
+                <MobileNav />
+                <HeaderDate />
+              </div>
+
+              {/* Center — actions */}
+              <div className="flex flex-1 items-center justify-center">
+                <HeaderActions />
+              </div>
+
+              {/* Right — bell */}
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="shrink-0 border-slate-100 bg-white shadow-none"
+              >
+                <BellDot className="size-4 text-slate-500" />
+              </Button>
+            </div>
+          </header>
+
+          <main className="flex-1 px-5 py-6 md:px-8">{children}</main>
+          </div>
+        </div>
+      </div>
+    </AddTaskProvider>
+  )
+}

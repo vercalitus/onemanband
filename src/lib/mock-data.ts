@@ -1,0 +1,341 @@
+import type {
+  DocumentRecord,
+  FinanceRecord,
+  NewsArticle,
+  PatientSummary,
+  PulseMetric,
+  ScheduleItem,
+  TodoItem,
+  TreatmentRecord,
+} from "@/types/domain"
+
+export const dashboardMetrics: PulseMetric[] = [
+  { id: "visits", label: "Weekly Visits", value: "84", delta: "+12%", trend: "up" },
+  { id: "retention", label: "Patient Retention", value: "92%", delta: "+4%", trend: "up" },
+  { id: "revenue", label: "Collected Revenue", value: "$18.4k", delta: "+9%", trend: "up" },
+  { id: "debt", label: "Open Debt Balance", value: "$2.1k", delta: "-6%", trend: "down" },
+]
+
+export const todaySchedule: ScheduleItem[] = [
+  {
+    id: "apt-1",
+    patientId: "pt-001",
+    patientName: "Maya Green",
+    dayLabel: "Today",
+    provider: "Dr. Rivera",
+    start: "08:30",
+    end: "09:00",
+    status: "confirmed",
+    treatment: "Cervical spine assessment",
+    appointmentType: "first",
+  },
+  {
+    id: "apt-2",
+    patientId: "pt-002",
+    patientName: "Noah Stone",
+    dayLabel: "Today",
+    provider: "Dr. Rivera",
+    start: "10:15",
+    end: "10:45",
+    status: "scheduled",
+    treatment: "Posture correction follow-up",
+    appointmentType: "adjustments",
+  },
+  {
+    id: "apt-3",
+    patientId: "pt-003",
+    patientName: "Ava Hart",
+    dayLabel: "Today",
+    provider: "Dr. Sloan",
+    start: "14:00",
+    end: "14:30",
+    status: "checked_in",
+    treatment: "Lumbar mobility session",
+    appointmentType: "kupa",
+  },
+  {
+    id: "apt-4",
+    patientId: "pt-004",
+    patientName: "Liam Carter",
+    dayLabel: "Today",
+    provider: "Dr. Sloan",
+    start: "09:05",
+    end: "09:10",
+    status: "scheduled",
+    treatment: "Quick vitals check",
+    appointmentType: "adjustments",
+  },
+]
+
+export const weeklySchedule: ScheduleItem[] = [
+  {
+    id: "week-1",
+    patientId: "pt-004",
+    patientName: "Liam Carter",
+    dayLabel: "Tuesday",
+    provider: "Dr. Sloan",
+    start: "09:00",
+    end: "09:30",
+    status: "scheduled",
+    treatment: "MRI review",
+    appointmentType: "first",
+  },
+  {
+    id: "week-2",
+    patientId: "pt-005",
+    patientName: "Sofia Reed",
+    dayLabel: "Wednesday",
+    provider: "Dr. Rivera",
+    start: "11:00",
+    end: "11:45",
+    status: "confirmed",
+    treatment: "Pelvic alignment",
+    appointmentType: "adjustments",
+  },
+  {
+    id: "week-3",
+    patientId: "pt-006",
+    patientName: "Ethan Blake",
+    dayLabel: "Thursday",
+    provider: "Dr. Rivera",
+    start: "15:30",
+    end: "16:00",
+    status: "scheduled",
+    treatment: "Rehabilitation checkpoint",
+    appointmentType: "kupa",
+  },
+]
+
+export const dashboardTodos: TodoItem[] = [
+  { id: "todo-1", title: "Verify three unsigned consent forms", due: "09:30", priority: "high", overdue: true },
+  { id: "todo-2", title: "Review overdue invoices before billing run", due: "12:00", priority: "medium" },
+  { id: "todo-3", title: "Approve tomorrow's reminder queue", due: "16:00", priority: "low" },
+]
+
+export const patients: PatientSummary[] = [
+  {
+    id: "pt-001",
+    fullName: "Maya Green",
+    status: "active",
+    phone: "+1 (555) 104-2201",
+    email: "maya.green@example.com",
+    lastVisit: "2026-04-02",
+    balance: "$120",
+    tags: ["Cervical Spine", "Insurance"],
+    medicalHistorySummary: "Recurring cervical pain after remote-work strain. No allergies reported.",
+    generalNotes: "Prefers reminder messages by WhatsApp and early morning appointment slots.",
+  },
+  {
+    id: "pt-002",
+    fullName: "Noah Stone",
+    status: "frozen",
+    phone: "+1 (555) 204-1108",
+    email: "noah.stone@example.com",
+    lastVisit: "2026-03-11",
+    balance: "$460",
+    tags: ["Debt Watch", "Lumbar"],
+    medicalHistorySummary: "Intermittent lumbar pain with prior MRI on file. Follow-up paused due to travel.",
+    generalNotes: "Resume care plan once insurance approval clears.",
+  },
+  {
+    id: "pt-003",
+    fullName: "Ava Hart",
+    status: "past",
+    phone: "+1 (555) 338-5099",
+    email: "ava.hart@example.com",
+    lastVisit: "2025-12-18",
+    balance: "$0",
+    tags: ["Discharged"],
+    medicalHistorySummary: "Completed six-session treatment plan with improved range of motion.",
+    generalNotes: "Archive after final document retention review.",
+  },
+  {
+    id: "pt-004",
+    fullName: "Liam Carter",
+    status: "active",
+    phone: "+1 (555) 418-2214",
+    email: "liam.carter@example.com",
+    lastVisit: "2026-04-01",
+    balance: "$180",
+    tags: ["MRI", "Follow-up"],
+    medicalHistorySummary: "Recent MRI review requested for thoracic discomfort with posture-related aggravation.",
+    generalNotes: "Likes concise summaries after visits and midday scheduling windows.",
+  },
+  {
+    id: "pt-005",
+    fullName: "Sofia Reed",
+    status: "active",
+    phone: "+1 (555) 672-8810",
+    email: "sofia.reed@example.com",
+    lastVisit: "2026-03-29",
+    balance: "$90",
+    tags: ["Pelvic Alignment"],
+    medicalHistorySummary: "Ongoing pelvic alignment treatment plan with strong adherence to home exercises.",
+    generalNotes: "Reminder preference is email first, then SMS fallback.",
+  },
+  {
+    id: "pt-006",
+    fullName: "Ethan Blake",
+    status: "frozen",
+    phone: "+1 (555) 800-2331",
+    email: "ethan.blake@example.com",
+    lastVisit: "2026-03-03",
+    balance: "$320",
+    tags: ["Rehab", "Debt Watch"],
+    medicalHistorySummary: "Paused rehabilitation checkpoint sequence while travel schedule is unstable.",
+    generalNotes: "Re-engage when availability stabilizes; prefers WhatsApp check-ins.",
+  },
+]
+
+export const treatmentsByPatient: Record<string, TreatmentRecord[]> = {
+  "pt-001": [
+    {
+      id: "tr-001",
+      recordedAt: "2026-04-02 09:02",
+      practitioner: "Dr. Rivera",
+      title: "Initial cervical assessment",
+      note: "Restricted left rotation, tenderness around C5-C7, home exercise plan prescribed.",
+    },
+    {
+      id: "tr-002",
+      recordedAt: "2026-04-03 08:58",
+      practitioner: "Dr. Rivera",
+      title: "Manual therapy follow-up",
+      note: "Pain reduced from 7/10 to 4/10. Continue ergonomic adjustments and mobility drills.",
+    },
+  ],
+  "pt-002": [
+    {
+      id: "tr-003",
+      recordedAt: "2026-03-11 11:12",
+      practitioner: "Dr. Sloan",
+      title: "Lumbar review",
+      note: "Symptoms stable. Treatment paused pending insurer confirmation.",
+    },
+  ],
+  "pt-003": [
+    {
+      id: "tr-004",
+      recordedAt: "2025-12-18 10:05",
+      practitioner: "Dr. Rivera",
+      title: "Discharge summary",
+      note: "Patient completed treatment plan with sustained mobility improvement.",
+    },
+  ],
+}
+
+export const documentsByPatient: Record<string, DocumentRecord[]> = {
+  "pt-001": [
+    {
+      id: "doc-001",
+      name: "Cervical X-Ray - Apr 2026",
+      type: "xray",
+      uploadedAt: "2026-04-02",
+      source: "Supabase Storage / imaging",
+    },
+    {
+      id: "doc-002",
+      name: "Insurance Authorization",
+      type: "insurance",
+      uploadedAt: "2026-04-01",
+      source: "Supabase Storage / billing",
+    },
+  ],
+  "pt-002": [
+    {
+      id: "doc-003",
+      name: "Lumbar MRI - Feb 2026",
+      type: "mri",
+      uploadedAt: "2026-02-19",
+      source: "Supabase Storage / imaging",
+    },
+  ],
+  "pt-003": [
+    {
+      id: "doc-004",
+      name: "Signed Discharge Note",
+      type: "other",
+      uploadedAt: "2025-12-18",
+      source: "Supabase Storage / records",
+    },
+  ],
+}
+
+export const financesByPatient: Record<string, FinanceRecord[]> = {
+  "pt-001": [
+    {
+      id: "fin-001",
+      issuedAt: "2026-04-02",
+      description: "Visit invoice INV-2402",
+      amount: "$120",
+      invoiceStatus: "issued",
+      paymentStatus: "pending",
+    },
+  ],
+  "pt-002": [
+    {
+      id: "fin-002",
+      issuedAt: "2026-03-11",
+      description: "Care package INV-2390",
+      amount: "$460",
+      invoiceStatus: "overdue",
+      paymentStatus: "partially_paid",
+    },
+  ],
+  "pt-003": [
+    {
+      id: "fin-003",
+      issuedAt: "2025-12-18",
+      description: "Final consultation INV-2281",
+      amount: "$0",
+      invoiceStatus: "paid",
+      paymentStatus: "paid",
+    },
+  ],
+}
+
+export const newsFeed: NewsArticle[] = [
+  {
+    id: "news-1",
+    title: "Cervical Spine Loading Patterns in Hybrid Workflows",
+    source: "Journal of Musculoskeletal Practice",
+    url: "https://example.com/cervical-spine-loading",
+    keyword: "Cervical Spine",
+    publishedAt: "2026-03-28",
+    summary: "A review of how neck positioning habits changed after long-term hybrid work adoption.",
+  },
+  {
+    id: "news-2",
+    title: "Osteopathic Treatment Sequencing for Persistent Lumbar Pain",
+    source: "Clinical Manual Therapy Review",
+    url: "https://example.com/lumbar-sequencing",
+    keyword: "Lumbar",
+    publishedAt: "2026-03-24",
+    summary: "Highlights sequencing strategies that improve patient tolerance across six-week plans.",
+  },
+  {
+    id: "news-3",
+    title: "Insurance Documentation Trends for Imaging Approvals",
+    source: "Practice Operations Digest",
+    url: "https://example.com/imaging-approvals",
+    keyword: "Insurance",
+    publishedAt: "2026-03-20",
+    summary: "Checklist-based submission packages are reducing repeat insurer requests.",
+  },
+]
+
+export const debtorSnapshot = patients
+  .filter((patient) => patient.balance !== "$0")
+  .map((patient) => ({
+    id: patient.id,
+    name: patient.fullName,
+    balance: patient.balance,
+    status: patient.status,
+    lastVisit: patient.lastVisit,
+  }))
+
+export const invoiceArchive = [
+  { id: "INV-2402", patient: "Maya Green", status: "issued", amount: "$120", provider: "Morning" },
+  { id: "INV-2390", patient: "Noah Stone", status: "overdue", amount: "$460", provider: "Invoice4U" },
+  { id: "INV-2281", patient: "Ava Hart", status: "paid", amount: "$0", provider: "Morning" },
+]
