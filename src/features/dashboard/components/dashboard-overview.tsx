@@ -93,7 +93,12 @@ export function DashboardOverview() {
           <CardHeader className={darkCardHeaderClass}>
             <div className="flex items-center gap-2.5">
               <CalendarCheck2 className="size-5 stroke-[1.6] text-sky-400" />
-              <CardTitle className="text-xl font-bold tracking-tight text-white">Today&apos;s Clinic</CardTitle>
+              <div>
+                <CardTitle className="text-xl font-bold tracking-tight text-white">Today&apos;s Clinic</CardTitle>
+                <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-200/95">
+                  5-min grid · First / Adj / Kupa · click block or empty slot
+                </p>
+              </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-medium text-white/85">
               {APPOINTMENT_TYPE_OPTIONS.map((key) => {

@@ -1,0 +1,1 @@
+onemanband calendar UI: 5-minute grid, visit types (First / Adjustments / Kupa), click slot to add / click block to edit. If this file is old, Production is not deploying current Git main.
