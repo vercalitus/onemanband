@@ -1,27 +1,11 @@
 import { BellDot } from "lucide-react"
 
 import { AppSidebar } from "@/components/layout/app-sidebar"
+import { HeaderBarDate } from "@/components/layout/header-bar-date"
 import { HeaderActions } from "@/components/layout/header-actions"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { AddTaskProvider } from "@/components/providers/add-task-provider"
 import { Button } from "@/components/ui/button"
-
-function HeaderDate() {
-  const now = new Date()
-  const formatted = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  })
-  return (
-    <time
-      dateTime={now.toISOString().slice(0, 10)}
-      className="hidden text-sm font-semibold text-slate-800 lg:block"
-    >
-      {formatted}
-    </time>
-  )
-}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -32,12 +16,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="relative flex min-h-screen flex-1 flex-col bg-[#F8FAFC] shadow-[-8px_0_20px_-10px_rgba(15,23,42,0.07)]">
           <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
-            <div className="flex h-14 items-center gap-4 px-6 md:px-8">
+            <div className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 py-2 px-6 md:flex-nowrap md:px-8">
 
               {/* Left — mobile menu + date */}
               <div className="flex min-w-0 items-center gap-3">
                 <MobileNav />
-                <HeaderDate />
+                <HeaderBarDate />
               </div>
 
               {/* Center — actions */}

@@ -210,7 +210,7 @@ export function AppointmentEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="relative gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg"
+        className="relative flex max-h-[min(92dvh,880px)] flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg"
       >
         <DialogDescription className="sr-only">
           {mode === "create" ? "Create a new appointment for today." : "Change visit time or details."}
@@ -230,7 +230,7 @@ export function AppointmentEditDialog({
           <XIcon />
         </DialogClose>
 
-        <div className="relative bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-7 pt-6 text-white">
+        <div className="relative shrink-0 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-6 pt-6 text-white">
           <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
           <DialogHeader className="relative gap-0 space-y-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-200/95">
@@ -254,7 +254,7 @@ export function AppointmentEditDialog({
           </DialogHeader>
         </div>
 
-        <div className="grid gap-5 px-6 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-5">
           {error ? (
             <p
               className="rounded-xl border border-rose-200/90 bg-rose-50 px-3 py-2.5 text-sm text-rose-800"
@@ -435,7 +435,7 @@ export function AppointmentEditDialog({
           </div>
         </div>
 
-        <DialogFooter className="mx-0 mb-0 rounded-none border-t border-slate-200/95 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
+        <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
           <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

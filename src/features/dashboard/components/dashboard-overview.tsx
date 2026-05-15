@@ -14,13 +14,14 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AddTaskLink } from "@/features/dashboard/components/add-task-link"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { appointmentTypeVisual, APPOINTMENT_TYPE_OPTIONS } from "@/lib/appointment-types"
 import { dashboardMetrics, dashboardTodos, todaySchedule } from "@/lib/mock-data"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
 
 const trendIcon = {
@@ -83,35 +84,22 @@ const clinicPulseItems = [
   },
 ] as const
 
-export function DashboardOverview({ scheduleDateCaption }: { scheduleDateCaption: string }) {
+export function DashboardOverview() {
   const [dayAppointments, setDayAppointments] = useState(() => [...todaySchedule])
+
+  useEffect(() => {
+    setDashboardVisitCount(dayAppointments.length)
+  }, [dayAppointments])
 
   return (
     <div>
       <section className="mb-8 mt-4 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
-        <Card
-          className={`min-h-[540px] xl:ring-2 xl:ring-sky-400/55 ${elevatedCardClass} shadow-[0_4px_28px_-8px_rgba(14,165,233,0.22)]`}
-        >
-          <CardHeader className={`${darkCardHeaderClass} relative overflow-hidden`}>
-            <div
-              className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full bg-sky-400/15 blur-2xl"
-              aria-hidden
-            />
-            <div className="relative flex flex-wrap items-start gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-sky-200 ring-1 ring-white/15">
-                <CalendarCheck2 className="size-[1.35rem] stroke-[1.5]" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-200/90">
-                  Today&apos;s practice
-                </p>
-                <CardTitle className="mt-0.5 text-xl font-bold tracking-tight text-white md:text-[1.35rem]">
-                  Clinic day
-                </CardTitle>
-                <p className="mt-1.5 font-mono text-sm font-medium tabular-nums text-sky-100">{scheduleDateCaption}</p>
-                <p className="mt-1 text-[13px] text-white/80">
-                  {dayAppointments.length} {dayAppointments.length === 1 ? "visit" : "visits"}
-                </p>
+        <Card className={`min-h-[540px] ${elevatedCardClass}`}>
+          <CardHeader className={darkCardHeaderClass}>
+            <div className="flex items-center gap-2.5">
+              <CalendarCheck2 className="size-5 stroke-[1.6] text-sky-400" />
+              <div>
+                <CardTitle className="text-xl font-bold tracking-tight text-white">Today&apos;s Clinic</CardTitle>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-medium text-white/85">
