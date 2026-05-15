@@ -210,7 +210,11 @@ export function AppointmentEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="relative flex max-h-[min(92dvh,880px)] flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg"
+        className={cn(
+          "relative flex max-h-[calc(100dvh-2rem)] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg",
+          // Default dialog uses top-1/2 + -translate-y/2; tall popups get clipped. Anchor from top instead.
+          "!top-4 !translate-y-0 left-1/2 -translate-x-1/2 sm:!top-[5vh]",
+        )}
       >
         <DialogDescription className="sr-only">
           {mode === "create" ? "Create a new appointment for today." : "Change visit time or details."}
