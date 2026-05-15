@@ -178,8 +178,7 @@ export default function PatientsPage() {
   }
 
   return (
-    <>
-      <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <Card className={elevatedCardClass}>
         <CardHeader
           className={cn(darkCardHeaderClass, "flex flex-row flex-wrap items-center justify-between gap-3 py-3")}
@@ -189,7 +188,8 @@ export default function PatientsPage() {
             <CardTitle className="text-lg font-bold tracking-tight text-white sm:text-xl">Patients</CardTitle>
           </div>
           <span className="inline-flex shrink-0 items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tabular-nums text-white ring-1 ring-white/20">
-            {rows.length} of {merged.length}
+            {merged.length}&nbsp;
+            <span className="font-medium">{merged.length === 1 ? "patient" : "patients"}</span>
           </span>
         </CardHeader>
 
@@ -311,20 +311,24 @@ export default function PatientsPage() {
               </TableBody>
             </Table>
           </div>
+
+          <div className="flex justify-center border-t border-slate-100 pt-6 pb-1">
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-slate-50/80 px-5 py-2.5 text-sm font-medium text-slate-700 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.12)] transition-colors hover:border-sky-200 hover:bg-white hover:text-slate-900 hover:shadow-[0_4px_16px_-6px_rgba(14,165,233,0.2)]"
+              aria-label="Add new patient"
+            >
+              <span className="flex size-8 items-center justify-center rounded-full bg-emerald-600 text-white shadow-inner ring-1 ring-emerald-500/30">
+                <UserPlus className="size-4 stroke-[2]" aria-hidden />
+              </span>
+              Add patient
+            </button>
+          </div>
         </CardContent>
       </Card>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setAddOpen(true)}
-        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-40 flex size-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-[0_14px_44px_-14px_rgba(5,150,105,0.65)] ring-2 ring-white/90 transition hover:bg-emerald-700 hover:shadow-xl active:scale-[0.98] md:bottom-10 md:right-10 md:size-[3.75rem]"
-        aria-label="Add new patient"
-      >
-        <UserPlus className="size-7 shrink-0 stroke-[1.85] md:size-8" />
-      </button>
 
       <AddPatientDialog open={addOpen} onOpenChange={setAddOpen} onSave={addPatient} />
-    </>
+    </div>
   )
 }
