@@ -95,9 +95,6 @@ export function DashboardOverview() {
               <CalendarCheck2 className="size-5 stroke-[1.6] text-sky-400" />
               <div>
                 <CardTitle className="text-xl font-bold tracking-tight text-white">Today&apos;s Clinic</CardTitle>
-                <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-200/95">
-                  5-min grid · First / Adj / Kupa · click block or empty slot
-                </p>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-medium text-white/85">
@@ -111,9 +108,6 @@ export function DashboardOverview() {
                 )
               })}
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-white/55">
-              Click an empty slot to add. Click a visit to reschedule. Times are in 5-minute steps (5–60 min).
-            </p>
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">
             <DayCalendarView appointments={dayAppointments} onAppointmentsChange={setDayAppointments} />

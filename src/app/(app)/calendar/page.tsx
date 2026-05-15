@@ -15,15 +15,12 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-8">
-      <section className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <section className="mt-6 space-y-3">
         <div className="space-y-3">
           <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
             {navBadgeCaption(nav.description)}
           </Badge>
           <h1 className="text-4xl font-semibold tracking-[-0.05em] text-slate-900">{nav.label}</h1>
-        </div>
-        <div className="inline-flex items-center rounded-xl border border-slate-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.08)]">
-          Google sync ready
         </div>
       </section>
 
@@ -34,9 +31,6 @@ export default function CalendarPage() {
               <Clock3 className="size-5 stroke-[1.6] text-sky-400" />
               <CardTitle className="text-xl font-bold tracking-tight text-white">Integrated Schedule</CardTitle>
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-white/60">
-              Same day grid as the dashboard. 5-minute slots; no overlapping visits.
-            </p>
           </CardHeader>
           <CardContent className={`${elevatedCardBodyClass} pb-5`}>
             <DayCalendarView appointments={dayAppointments} onAppointmentsChange={setDayAppointments} />

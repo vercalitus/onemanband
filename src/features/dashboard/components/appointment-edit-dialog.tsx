@@ -198,8 +198,8 @@ export function AppointmentEditDialog({
       <DialogContent className="gap-4 sm:max-w-md" showCloseButton>
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "New appointment" : "Reschedule appointment"}</DialogTitle>
-          <DialogDescription>
-            Start and duration use {APPOINTMENT_SLOT_MINUTES}-minute steps. Overlapping times are not allowed.
+          <DialogDescription className="sr-only">
+            {mode === "create" ? "Create a new appointment for the clinic day." : "Change time or details."}
           </DialogDescription>
         </DialogHeader>
 
