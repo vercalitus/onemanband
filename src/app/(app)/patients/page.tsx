@@ -316,11 +316,11 @@ export default function PatientsPage() {
             <button
               type="button"
               onClick={() => setAddOpen(true)}
-              className="inline-flex min-w-[11rem] items-center justify-between gap-3 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
+              className="inline-flex items-center gap-1.5 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
               aria-label="Add new patient"
             >
               <span>Add patient</span>
-              <UserPlus className="size-5 shrink-0 stroke-[2] text-sky-600" aria-hidden />
+              <UserPlus className="size-4 shrink-0 stroke-[2] text-sky-600" aria-hidden />
             </button>
           </div>
         </CardContent>

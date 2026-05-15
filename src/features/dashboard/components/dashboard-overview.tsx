@@ -11,28 +11,18 @@ import {
   Plus,
   TrendingUp,
   Wallet,
-  XIcon,
 } from "lucide-react"
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo } from "react"
 
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAddTask } from "@/components/providers/add-task-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
+import { useTodos } from "@/components/providers/todos-provider"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
-import { dashboardMetrics, dashboardTodos } from "@/lib/mock-data"
+import { dashboardMetrics } from "@/lib/mock-data"
 import type { TodoItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
@@ -86,14 +76,6 @@ const clinicPulseItems = [
   },
 ] as const
 
-function normalizeTodos(seed: TodoItem[]): TodoItem[] {
-  return seed.map((t) => ({
-    ...t,
-    kind: t.kind ?? "reactive",
-    completed: t.completed ?? false,
-  }))
-}
-
 /** Single row in the dashboard todo board — checkbox drives completed without persistence (demo UX). */
 function TodoRow({
   item,
@@ -143,10 +125,8 @@ function TodoRow({
 
 export function DashboardOverview() {
   const { appointments: dayAppointments, setAppointments: setDayAppointments } = useScheduleDay()
-  const [todos, setTodos] = useState<TodoItem[]>(() => normalizeTodos(dashboardTodos))
-  const [addOpen, setAddOpen] = useState(false)
-  const [newTitle, setNewTitle] = useState("")
-  const [newDue, setNewDue] = useState("")
+  const { todos, toggleComplete } = useTodos()
+  const { openAddTask } = useAddTask()
 
   useEffect(() => {
     setDashboardVisitCount(dayAppointments.length)
@@ -158,39 +138,6 @@ export function DashboardOverview() {
     const completed = todos.filter((t) => t.completed)
     return { reactive, active, completed }
   }, [todos])
-
-  function toggleComplete(id: string) {
-    setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
-    )
-  }
-
-  function handleAddTask(e: FormEvent) {
-    e.preventDefault()
-    const title = newTitle.trim()
-    if (!title) return
-
-    const due = newDue.trim()
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? `todo-${crypto.randomUUID().slice(0, 10)}`
-        : `todo-${Date.now()}`
-
-    setTodos((prev) => [
-      ...prev,
-      {
-        id,
-        title,
-        due,
-        priority: "medium",
-        kind: "active",
-        completed: false,
-      },
-    ])
-    setNewTitle("")
-    setNewDue("")
-    setAddOpen(false)
-  }
 
   return (
     <div>
@@ -244,12 +191,12 @@ export function DashboardOverview() {
             <div className="flex justify-center border-t border-slate-100 pt-5 pb-1">
               <button
                 type="button"
-                onClick={() => setAddOpen(true)}
-                className="inline-flex min-w-[11rem] items-center justify-between gap-3 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
+                onClick={openAddTask}
+                className="inline-flex items-center gap-1.5 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
                 aria-label="Add task"
               >
                 <span>Add task</span>
-                <Plus className="size-5 shrink-0 stroke-[2] text-sky-600" aria-hidden />
+                <Plus className="size-4 shrink-0 stroke-[2] text-sky-600" aria-hidden />
               </button>
             </div>
 
@@ -266,88 +213,6 @@ export function DashboardOverview() {
           </CardContent>
         </Card>
       </section>
-
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className={cn(
-            "flex max-h-[min(90dvh,calc(100dvh-2rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg",
-          )}
-        >
-          <DialogDescription className="sr-only">Add a new task to your active list.</DialogDescription>
-
-          <DialogClose
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="absolute top-5 right-5 z-20 rounded-xl text-white hover:bg-white/15"
-                aria-label="Close"
-              />
-            }
-          >
-            <XIcon />
-          </DialogClose>
-
-          <div className="relative shrink-0 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-3 pt-4 text-white">
-            <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
-            <DialogHeader className="relative gap-0 space-y-0">
-              <DialogTitle className="font-heading pr-12 text-xl font-semibold tracking-tight text-white">
-                Add active task
-              </DialogTitle>
-            </DialogHeader>
-          </div>
-
-          <form
-            className="flex min-h-0 flex-1 flex-col"
-            onSubmit={handleAddTask}
-          >
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-3">
-              <div className="grid gap-3">
-                <div className="grid gap-1.5">
-                  <label htmlFor="todo-title" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Title
-                  </label>
-                  <Input
-                    id="todo-title"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="e.g. Call insurer about claim"
-                    required
-                    autoFocus
-                    className="h-11 rounded-xl border-slate-200"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <label htmlFor="todo-due" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Due time (optional)
-                  </label>
-                  <Input
-                    id="todo-due"
-                    value={newDue}
-                    onChange={(e) => setNewDue(e.target.value)}
-                    placeholder="14:00"
-                    className="h-11 rounded-xl border-slate-200 font-mono tabular-nums"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-3 sm:flex-row sm:justify-end sm:gap-3">
-              <Button type="button" variant="outline" className="h-11 rounded-xl min-w-[6.5rem]" onClick={() => setAddOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="h-11 min-w-[7.5rem] rounded-xl bg-sky-600 px-6 font-semibold text-white hover:bg-sky-700"
-              >
-                Save task
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <div className="mt-12 border-t border-slate-200/75 pt-8">
         <h2 className="mb-5 text-center text-[1.625rem] font-bold leading-snug tracking-tight text-slate-900">Pulse</h2>

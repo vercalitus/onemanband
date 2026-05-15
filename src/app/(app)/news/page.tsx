@@ -10,12 +10,6 @@ import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@
 export default function ClinicalFeedPage() {
   return (
     <div className="space-y-5 sm:space-y-6">
-      <div className="flex justify-end">
-        <div className="inline-flex items-center rounded-xl border border-slate-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.08)]">
-          Curated clinical updates
-        </div>
-      </div>
-
       <Card className={elevatedCardClass}>
         <CardHeader className={darkCardHeaderClass}>
           <div className="flex items-center gap-2.5">

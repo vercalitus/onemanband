@@ -16,12 +16,6 @@ import { debtorSnapshot, invoiceArchive } from "@/lib/mock-data"
 export default function BillingPage() {
   return (
     <div className="space-y-5 sm:space-y-6">
-      <div className="flex justify-end">
-        <div className="inline-flex shrink-0 items-center rounded-xl border border-slate-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.08)]">
-          Reconciliation surface
-        </div>
-      </div>
-
       <div className="grid gap-5 xl:grid-cols-2">
         <Card className={elevatedCardClass}>
           <CardHeader className={darkCardHeaderClass}>
