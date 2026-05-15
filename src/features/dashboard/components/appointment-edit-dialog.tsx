@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { Clock3, XIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -12,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
 import type { AppointmentStatus, AppointmentType, ScheduleItem } from "@/types/domain"
 import {
   MAX_APPOINTMENT_MINUTES,
@@ -50,6 +53,11 @@ const HOUR_OPTIONS = Array.from(
 
 const DURATION_QUICK = [5, 10, 15, 30, 45, 60] as const
 
+const LABEL = "text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
+
+const CONTROL =
+  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] outline-none transition-[border-color,box-shadow] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-200"
+
 export type AppointmentEditorMode = "create" | "edit"
 
 export function AppointmentEditDialog({
@@ -72,7 +80,6 @@ export function AppointmentEditDialog({
   const [error, setError] = useState<string | null>(null)
   const [patientName, setPatientName] = useState("")
   const [treatment, setTreatment] = useState("")
-  const [provider, setProvider] = useState("")
   const [startHour, setStartHour] = useState(CALENDAR_HOUR_START)
   const [startMinute, setStartMinute] = useState(0)
   const [durationMin, setDurationMin] = useState(15)
@@ -90,7 +97,6 @@ export function AppointmentEditDialog({
       setDurationMin(em - sm)
       setPatientName(appointment.patientName)
       setTreatment(appointment.treatment)
-      setProvider(appointment.provider)
       setStatus(appointment.status)
       setApptType(appointment.appointmentType)
       return
@@ -105,7 +111,6 @@ export function AppointmentEditDialog({
       setDurationMin(dur)
       setPatientName("")
       setTreatment("")
-      setProvider("Dr. Rivera")
       setStatus("scheduled")
       setApptType("adjustments")
     }
@@ -114,16 +119,22 @@ export function AppointmentEditDialog({
   const preview = useMemo(() => {
     const startMin = startHour * 60 + startMinute
     const endMin = startMin + durationMin
-    return `${hhmmFromMinutes(startMin)} – ${hhmmFromMinutes(endMin)} (${durationMin} min)`
+    return {
+      line: `${hhmmFromMinutes(startMin)} · ${hhmmFromMinutes(endMin)}`,
+      subtitle: `${durationMin} minute visit`,
+      startMin,
+      endMin,
+    }
   }, [startHour, startMinute, durationMin])
 
   const adjustDuration = (delta: number) => {
     setDurationMin((d) => clampDurationMinutes(d + delta))
   }
 
+  /** Solo practice — no practitioner field; persisted `provider` stays empty / legacy untouched in spread. */
   const handleSave = () => {
-    const startMin = startHour * 60 + startMinute
-    const endMin = startMin + durationMin
+    const startMin = preview.startMin
+    const endMin = preview.endMin
 
     if (startMinute % APPOINTMENT_SLOT_MINUTES !== 0) {
       setError(`Minutes must be in ${APPOINTMENT_SLOT_MINUTES}-minute steps.`)
@@ -170,7 +181,7 @@ export function AppointmentEditDialog({
             ...appointment,
             patientName: name,
             treatment: treatment.trim() || appointment.treatment,
-            provider: provider.trim() || appointment.provider,
+            provider: "",
             start: hhmmFromMinutes(startMin),
             end: hhmmFromMinutes(endMin),
             status,
@@ -181,7 +192,7 @@ export function AppointmentEditDialog({
             patientId: `pt-new-${crypto.randomUUID().slice(0, 8)}`,
             patientName: name,
             dayLabel: "Today",
-            provider: provider.trim() || "Dr. Rivera",
+            provider: "",
             start: hhmmFromMinutes(startMin),
             end: hhmmFromMinutes(endMin),
             status,
@@ -193,170 +204,242 @@ export function AppointmentEditDialog({
     onOpenChange(false)
   }
 
+  const typeChip = appointmentTypeVisual[apptType].chip
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-4 sm:max-w-md" showCloseButton>
-        <DialogHeader>
-          <DialogTitle>{mode === "create" ? "New appointment" : "Reschedule appointment"}</DialogTitle>
-          <DialogDescription className="sr-only">
-            {mode === "create" ? "Create a new appointment for the clinic day." : "Change time or details."}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        className="relative gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg"
+      >
+        <DialogDescription className="sr-only">
+          {mode === "create" ? "Create a new appointment for today." : "Change visit time or details."}
+        </DialogDescription>
 
-        <div className="grid gap-3">
-          {error && (
+        <DialogClose
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="absolute top-5 right-5 z-10 rounded-xl text-white hover:bg-white/15"
+              aria-label="Close"
+            />
+          }
+        >
+          <XIcon />
+        </DialogClose>
+
+        <div className="relative bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-7 pt-6 text-white">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
+          <DialogHeader className="relative gap-0 space-y-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-200/95">
+              {mode === "create" ? "New booking" : "Edit visit"}
+            </p>
+            <DialogTitle className="font-heading mt-2 pr-12 text-xl font-semibold tracking-tight text-white">
+              {mode === "create" ? "Schedule a slot" : "Update appointment"}
+            </DialogTitle>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${typeChip}`}>
+                {appointmentTypeVisual[apptType].label}
+              </span>
+              <div className="flex items-center gap-2 font-mono text-sm tabular-nums text-sky-100">
+                <Clock3 className="size-4 shrink-0 text-sky-300" aria-hidden />
+                <span>{preview.line}</span>
+              </div>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-sky-50 ring-1 ring-white/15">
+                {preview.subtitle}
+              </span>
+            </div>
+          </DialogHeader>
+        </div>
+
+        <div className="grid gap-5 px-6 py-5">
+          {error ? (
             <p
-              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+              className="rounded-xl border border-rose-200/90 bg-rose-50 px-3 py-2.5 text-sm text-rose-800"
               role="alert"
             >
               {error}
             </p>
-          )}
+          ) : null}
 
-          <div className="grid gap-1.5">
-            <span className="text-xs font-medium text-slate-600">Patient</span>
-            <Input value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder="Full name" />
-          </div>
-
-          <div className="grid gap-1.5">
-            <span className="text-xs font-medium text-slate-600">Treatment note</span>
-            <Input value={treatment} onChange={(e) => setTreatment(e.target.value)} placeholder="Reason / note" />
-          </div>
-
-          <div className="grid gap-1.5">
-            <span className="text-xs font-medium text-slate-600">Provider</span>
-            <Input value={provider} onChange={(e) => setProvider(e.target.value)} placeholder="Provider name" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <span className="text-xs font-medium text-slate-600">Start hour</span>
-              <select
-                className={cn(
-                  "h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm shadow-xs outline-none",
-                  "focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-200",
-                )}
-                value={startHour}
-                onChange={(e) => {
-                  const h = Number(e.target.value)
-                  setStartHour(h)
-                  const startMin = h * 60 + startMinute
-                  const next = clampStartForDuration(startMin, durationMin)
-                  setStartHour(Math.floor(next / 60))
-                  setStartMinute(next % 60)
-                }}
-              >
-                {HOUR_OPTIONS.map((h) => (
-                  <option key={h} value={h}>
-                    {String(h).padStart(2, "0")}:00 hour
-                  </option>
-                ))}
-              </select>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-2 sm:col-span-2">
+              <label className={LABEL} htmlFor="appt-patient">
+                Patient
+              </label>
+              <Input
+                id="appt-patient"
+                value={patientName}
+                onChange={(e) => setPatientName(e.target.value)}
+                placeholder="Full name"
+                className="h-11 rounded-xl border-slate-200 text-base"
+              />
             </div>
-            <div className="grid gap-1.5">
-              <span className="text-xs font-medium text-slate-600">Start minutes</span>
-              <select
-                className={cn(
-                  "h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm shadow-xs outline-none",
-                  "focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-200",
-                )}
-                value={startMinute}
-                onChange={(e) => {
-                  const m = Number(e.target.value)
-                  const startMin = startHour * 60 + m
-                  const next = clampStartForDuration(startMin, durationMin)
-                  setStartHour(Math.floor(next / 60))
-                  setStartMinute(next % 60)
-                }}
-              >
-                {MINUTE_OPTIONS.map((m) => (
-                  <option key={m} value={m}>
-                    :{String(m).padStart(2, "0")}
-                  </option>
-                ))}
-              </select>
+            <div className="grid gap-2 sm:col-span-2">
+              <label className={LABEL} htmlFor="appt-notes">
+                Note
+              </label>
+              <Input
+                id="appt-notes"
+                value={treatment}
+                onChange={(e) => setTreatment(e.target.value)}
+                placeholder="Brief reason / focus area"
+                className="h-11 rounded-xl border-slate-200"
+              />
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <span className="text-xs font-medium text-slate-600">Duration</span>
-            <div className="flex flex-wrap gap-1.5">
-              {DURATION_QUICK.map((d) => (
-                <Button
-                  key={d}
-                  type="button"
-                  size="sm"
-                  variant={durationMin === d ? "default" : "outline"}
-                  className="h-8 rounded-full px-3 text-xs"
-                  onClick={() => {
-                    const nextDur = clampDurationMinutes(d)
-                    setDurationMin(nextDur)
-                    const startMin = startHour * 60 + startMinute
-                    const nextStart = clampStartForDuration(startMin, nextDur)
-                    setStartHour(Math.floor(nextStart / 60))
-                    setStartMinute(nextStart % 60)
+          <Separator />
+
+          <div className="grid gap-5">
+            <p className={LABEL}>Start time</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-slate-500" htmlFor="appt-hour">
+                  Hour
+                </label>
+                <select
+                  id="appt-hour"
+                  className={CONTROL}
+                  value={startHour}
+                  onChange={(e) => {
+                    const h = Number(e.target.value)
+                    setStartHour(h)
+                    const startMin = h * 60 + startMinute
+                    const next = clampStartForDuration(startMin, durationMin)
+                    setStartHour(Math.floor(next / 60))
+                    setStartMinute(next % 60)
                   }}
                 >
-                  {d}m
+                  {HOUR_OPTIONS.map((h) => (
+                    <option key={h} value={h}>
+                      {String(h).padStart(2, "0")}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-slate-500" htmlFor="appt-min">
+                  Minutes
+                </label>
+                <select
+                  id="appt-min"
+                  className={CONTROL}
+                  value={startMinute}
+                  onChange={(e) => {
+                    const m = Number(e.target.value)
+                    const startMin = startHour * 60 + m
+                    const next = clampStartForDuration(startMin, durationMin)
+                    setStartHour(Math.floor(next / 60))
+                    setStartMinute(next % 60)
+                  }}
+                >
+                  {MINUTE_OPTIONS.map((m) => (
+                    <option key={m} value={m}>
+                      :{String(m).padStart(2, "0")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <p className={LABEL}>Duration</p>
+              <div className="flex flex-wrap gap-2">
+                {DURATION_QUICK.map((d) => (
+                  <Button
+                    key={d}
+                    type="button"
+                    size="sm"
+                    variant={durationMin === d ? "default" : "outline"}
+                    className={cn(
+                      "h-9 rounded-full px-4 text-xs font-semibold",
+                      durationMin === d && "bg-emerald-600 text-white hover:bg-emerald-600",
+                    )}
+                    onClick={() => {
+                      const nextDur = clampDurationMinutes(d)
+                      setDurationMin(nextDur)
+                      const startMin = startHour * 60 + startMinute
+                      const nextStart = clampStartForDuration(startMin, nextDur)
+                      setStartHour(Math.floor(nextStart / 60))
+                      setStartMinute(nextStart % 60)
+                    }}
+                  >
+                    {d}m
+                  </Button>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 rounded-xl border-slate-200"
+                  onClick={() => adjustDuration(-APPOINTMENT_SLOT_MINUTES)}
+                >
+                  −{APPOINTMENT_SLOT_MINUTES}m
                 </Button>
-              ))}
+                <span className="rounded-xl bg-slate-100 px-4 py-2 font-mono text-sm font-semibold text-slate-800 tabular-nums">
+                  {durationMin} min
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 rounded-xl border-slate-200"
+                  onClick={() => adjustDuration(APPOINTMENT_SLOT_MINUTES)}
+                >
+                  +{APPOINTMENT_SLOT_MINUTES}m
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => adjustDuration(-APPOINTMENT_SLOT_MINUTES)}>
-                −{APPOINTMENT_SLOT_MINUTES}m
-              </Button>
-              <span className="font-mono text-sm text-slate-700 tabular-nums">{durationMin} min</span>
-              <Button type="button" variant="outline" size="sm" onClick={() => adjustDuration(APPOINTMENT_SLOT_MINUTES)}>
-                +{APPOINTMENT_SLOT_MINUTES}m
-              </Button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <label className={LABEL} htmlFor="appt-type">
+                  Visit type
+                </label>
+                <select
+                  id="appt-type"
+                  className={CONTROL}
+                  value={apptType}
+                  onChange={(e) => setApptType(e.target.value as AppointmentType)}
+                >
+                  {APPOINTMENT_TYPE_OPTIONS.map((t) => (
+                    <option key={t} value={t}>
+                      {appointmentTypeVisual[t].label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <label className={LABEL} htmlFor="appt-status">
+                  Status
+                </label>
+                <select
+                  id="appt-status"
+                  className={CONTROL}
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as AppointmentStatus)}
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <span className="text-xs font-medium text-slate-600">Visit type</span>
-              <select
-                className={cn(
-                  "h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm shadow-xs outline-none",
-                  "focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-200",
-                )}
-                value={apptType}
-                onChange={(e) => setApptType(e.target.value as AppointmentType)}
-              >
-                {APPOINTMENT_TYPE_OPTIONS.map((t) => (
-                  <option key={t} value={t}>
-                    {appointmentTypeVisual[t].label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid gap-1.5">
-              <span className="text-xs font-medium text-slate-600">Status</span>
-              <select
-                className={cn(
-                  "h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm shadow-xs outline-none",
-                  "focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-200",
-                )}
-                value={status}
-                onChange={(e) => setStatus(e.target.value as AppointmentStatus)}
-              >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s.replace("_", " ")}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-600 tabular-nums">{preview}</p>
         </div>
 
-        <DialogFooter className="flex-row justify-end gap-2 sm:space-x-0">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="mx-0 mb-0 rounded-none border-t border-slate-200/95 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
+          <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleSave}>
+          <Button type="button" className="h-11 rounded-xl bg-emerald-700 px-6 font-semibold hover:bg-emerald-800" onClick={handleSave}>
             Save
           </Button>
         </DialogFooter>

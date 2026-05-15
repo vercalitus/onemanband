@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { FolderOpen, Stethoscope } from "lucide-react"
+import { FolderOpen } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import type { AppointmentStatus, ScheduleItem } from "@/types/domain"
@@ -161,13 +161,6 @@ export function AppointmentCard({
               {formatStatus(status)}
             </Badge>
           </Button>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2 pl-9 text-xs text-slate-500">
-          <span className="inline-flex items-center gap-1 rounded-full bg-[rgb(249,246,241)] px-2.5 py-1">
-            <Stethoscope className="size-3.5 stroke-[1.8]" />
-            {appointment.provider}
-          </span>
         </div>
       </div>
     </div>

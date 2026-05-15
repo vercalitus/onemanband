@@ -1,14 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import {
-  BarChart2,
-  Plus,
-  Search,
-  CalendarPlus,
-  UserPlus,
-  ClipboardList,
-} from "lucide-react"
+import { Plus, Search, CalendarPlus, UserPlus, ClipboardList } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -68,17 +61,6 @@ export function HeaderActions() {
           <Plus className="size-4 shrink-0" />
           Add
         </button>
-
-        <span className="h-5 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-
-        <Link
-          href="/finances"
-          className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-800"
-          aria-label="Reports"
-        >
-          <BarChart2 className="size-4" />
-          View
-        </Link>
       </div>
 
       <Dialog
