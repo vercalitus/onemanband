@@ -508,3 +508,53 @@ export const invoiceArchive = [
   { id: "INV-2390", patient: "Noah Stone", status: "overdue", amount: "$460", provider: "Invoice4U" },
   { id: "INV-2281", patient: "Ava Hart", status: "paid", amount: "$0", provider: "Morning" },
 ]
+
+/**
+ * Patients waiting to be slotted into an opening. Visible in the scheduler
+ * sidebar; future iteration will support drag-and-drop onto the grid.
+ */
+export interface WaitlistEntry {
+  id: string
+  patientId: string
+  patientName: string
+  reason: string
+  /** Patient-supplied availability window, free text for now. */
+  availability: string
+  /** Soft priority used to order/sort and tint the row. */
+  priority: "high" | "medium" | "low"
+}
+
+export const waitlistEntries: WaitlistEntry[] = [
+  {
+    id: "wl-001",
+    patientId: "pt-002",
+    patientName: "Noah Stone",
+    reason: "Lumbar follow-up",
+    availability: "Mon–Wed mornings",
+    priority: "high",
+  },
+  {
+    id: "wl-002",
+    patientId: "pt-005",
+    patientName: "Sofia Reed",
+    reason: "Pelvic alignment recheck",
+    availability: "Any weekday afternoon",
+    priority: "medium",
+  },
+  {
+    id: "wl-003",
+    patientId: "pt-004",
+    patientName: "Liam Carter",
+    reason: "Thoracic adjustments",
+    availability: "Thu evenings",
+    priority: "medium",
+  },
+  {
+    id: "wl-004",
+    patientId: "pt-006",
+    patientName: "Ethan Blake",
+    reason: "Rehab re-engagement",
+    availability: "Open availability",
+    priority: "low",
+  },
+]
