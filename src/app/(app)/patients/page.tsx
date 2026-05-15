@@ -17,11 +17,11 @@ import {
 } from "@/components/ui/table"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { patients, todaySchedule, weeklySchedule } from "@/lib/mock-data"
+import type { PatientSummary } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
 type FilterKey = "frozen" | "past" | "active" | "relevant"
 
-/** Patient IDs that have any appointment in today's or the week's schedule — treated as having a future visit. */
 const patientsWithFutureVisit = new Set<string>([
   ...todaySchedule.map((a) => a.patientId),
   ...weeklySchedule.map((a) => a.patientId),
@@ -29,14 +29,12 @@ const patientsWithFutureVisit = new Set<string>([
 
 const TODAY = new Date()
 
-/** Days elapsed between an ISO date and today, floored. Negative if the date is in the future. */
 function daysSince(iso: string): number {
   const then = new Date(iso)
   const ms = TODAY.getTime() - then.getTime()
   return Math.floor(ms / (1000 * 60 * 60 * 24))
 }
 
-/** Human-readable relative label kept short to fit the table row. */
 function relativeLabel(days: number): string {
   if (days <= 0) return "today"
   if (days === 1) return "1 day ago"
@@ -47,7 +45,6 @@ function relativeLabel(days: number): string {
   return years === 1 ? "1 year ago" : `${years} years ago`
 }
 
-/** Short visit date like "2 Apr 2026". */
 function formatVisitDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -56,7 +53,6 @@ function formatVisitDate(iso: string): string {
   })
 }
 
-/** Parse "$120" / "$0" / "$1,250" strings to a number for sorting and badge state. */
 function parseBalance(value: string): number {
   const digits = value.replace(/[^0-9.-]/g, "")
   const n = Number.parseFloat(digits)
@@ -76,9 +72,57 @@ const STATUS_LABEL: Record<string, string> = {
   past: "Past",
 }
 
+function statusBadgeClasses(status: PatientSummary["status"]) {
+  return cn(
+    "border-slate-200 bg-slate-50 text-slate-600",
+    status === "active" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+    status === "frozen" && "border-sky-200 bg-sky-50 text-sky-700",
+    status === "past" && "border-slate-200 bg-slate-50 text-slate-500",
+  )
+}
+
+function PatientMobileCard({
+  patient,
+  days,
+  balance,
+}: {
+  patient: PatientSummary
+  days: number
+  balance: number
+}) {
+  const isSettled = balance === 0
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_28px_-14px_rgba(15,23,42,0.12)]">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <Link
+          href={`/patients/${patient.id}`}
+          className="min-w-0 flex-1 text-[15px] font-semibold tracking-tight text-slate-900 transition-colors hover:text-sky-700"
+        >
+          {patient.fullName}
+        </Link>
+        <Badge variant="outline" className={cn("shrink-0", statusBadgeClasses(patient.status))}>
+          {STATUS_LABEL[patient.status] ?? patient.status}
+        </Badge>
+      </div>
+      <p className="mt-3 font-mono text-xs tabular-nums text-slate-700">
+        {formatVisitDate(patient.lastVisit)}{" "}
+        <span className="font-sans text-slate-400">({relativeLabel(days)})</span>
+      </p>
+      <div className="mt-2">
+        {isSettled ? (
+          <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">Settled</Badge>
+        ) : (
+          <Badge className="border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-rose-100">Debt: {patient.balance}</Badge>
+        )}
+      </div>
+      <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-slate-500">{patient.medicalHistorySummary}</p>
+    </div>
+  )
+}
+
 export default function PatientsPage() {
   const [query, setQuery] = useState("")
-  const [active, setActive] = useState<Set<FilterKey>>(new Set())
+  const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set())
 
   const rows = useMemo(() => {
     const decorated = patients.map((p) => {
@@ -98,11 +142,11 @@ export default function PatientsPage() {
       query.trim().length === 0 || name.toLowerCase().includes(query.trim().toLowerCase())
 
     const matchesFilters = (r: (typeof decorated)[number]) => {
-      if (active.size === 0) return true
-      if (active.has("frozen") && r.patient.status === "frozen") return true
-      if (active.has("past") && r.patient.status === "past") return true
-      if (active.has("active") && r.patient.status === "active" && r.hasFuture) return true
-      if (active.has("relevant") && r.isRelevant) return true
+      if (activeFilters.size === 0) return true
+      if (activeFilters.has("frozen") && r.patient.status === "frozen") return true
+      if (activeFilters.has("past") && r.patient.status === "past") return true
+      if (activeFilters.has("active") && r.patient.status === "active" && r.hasFuture) return true
+      if (activeFilters.has("relevant") && r.isRelevant) return true
       return false
     }
 
@@ -117,10 +161,10 @@ export default function PatientsPage() {
         if (futureA !== futureB) return futureB - futureA
         return b.days < a.days ? 1 : -1
       })
-  }, [query, active])
+  }, [query, activeFilters])
 
   const toggleFilter = (id: FilterKey) => {
-    setActive((prev) => {
+    setActiveFilters((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -129,21 +173,23 @@ export default function PatientsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <Card className={elevatedCardClass}>
-        <CardHeader className={cn(darkCardHeaderClass, "flex flex-row items-center justify-between gap-3 py-3")}>
-          <div className="flex items-center gap-2.5">
-            <Activity className="size-5 stroke-[1.6] text-sky-400" />
-            <CardTitle className="text-xl font-bold tracking-tight text-white">Patients</CardTitle>
+        <CardHeader
+          className={cn(darkCardHeaderClass, "flex flex-row flex-wrap items-center justify-between gap-3 py-3")}
+        >
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Activity className="size-5 shrink-0 stroke-[1.6] text-sky-400" />
+            <CardTitle className="text-lg font-bold tracking-tight text-white sm:text-xl">Patients</CardTitle>
           </div>
-          <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium tabular-nums text-sky-100 ring-1 ring-white/15">
+          <span className="inline-flex shrink-0 items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tabular-nums text-white ring-1 ring-white/20">
             {rows.length} of {patients.length}
           </span>
         </CardHeader>
 
         <CardContent className={`${elevatedCardBodyClass} space-y-5`}>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative w-full lg:max-w-md">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+            <div className="relative w-full min-w-0 lg:max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <Input
                 value={query}
@@ -152,9 +198,9 @@ export default function PatientsPage() {
                 className="pl-9"
               />
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-w-0 flex-wrap gap-2">
               {FILTERS.map((f) => {
-                const on = active.has(f.id)
+                const on = activeFilters.has(f.id)
                 return (
                   <button
                     key={f.id}
@@ -162,7 +208,7 @@ export default function PatientsPage() {
                     onClick={() => toggleFilter(f.id)}
                     aria-pressed={on}
                     className={cn(
-                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                       on
                         ? "border-slate-900 bg-slate-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
                         : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
@@ -175,87 +221,90 @@ export default function PatientsPage() {
             </div>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-slate-200 hover:bg-transparent">
-                <TableHead className="w-[22%]">Patient</TableHead>
-                <TableHead className="w-[12%]">Status</TableHead>
-                <TableHead className="w-[22%]">Last visit</TableHead>
-                <TableHead className="w-[16%]">Balance</TableHead>
-                <TableHead className="w-[28%]">Note</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="py-12 text-center text-sm text-slate-400">
-                    No patients match the current filters.
-                  </TableCell>
+          <div className="space-y-3 lg:hidden">
+            {rows.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
+                No patients match the current filters.
+              </p>
+            ) : (
+              rows.map(({ patient, days, balance }) => (
+                <PatientMobileCard key={patient.id} patient={patient} days={days} balance={balance} />
+              ))
+            )}
+          </div>
+
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-slate-200 hover:bg-transparent">
+                  <TableHead className="min-w-[9rem]">Patient</TableHead>
+                  <TableHead className="min-w-[6rem]">Status</TableHead>
+                  <TableHead className="min-w-[11rem]">Last visit</TableHead>
+                  <TableHead className="min-w-[7rem]">Balance</TableHead>
+                  <TableHead className="min-w-[14rem] max-w-[min(28rem,28vw)]">Note</TableHead>
                 </TableRow>
-              ) : (
-                rows.map(({ patient, days, balance }) => {
-                  const isSettled = balance === 0
-                  return (
-                    <TableRow
-                      key={patient.id}
-                      className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70"
-                    >
-                      <TableCell className="py-5 align-middle">
-                        <Link
-                          href={`/patients/${patient.id}`}
-                          className="rounded-md text-left text-[15px] font-medium tracking-tight text-slate-900 transition-colors hover:text-sky-700"
-                        >
-                          {patient.fullName}
-                        </Link>
-                      </TableCell>
+              </TableHeader>
+              <TableBody>
+                {rows.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={5} className="py-12 text-center text-sm text-slate-400">
+                      No patients match the current filters.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map(({ patient, days, balance }) => {
+                    const isSettled = balance === 0
+                    return (
+                      <TableRow
+                        key={patient.id}
+                        className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70"
+                      >
+                        <TableCell className="py-5 align-middle">
+                          <Link
+                            href={`/patients/${patient.id}`}
+                            className="block rounded-md text-left text-[15px] font-medium tracking-tight text-slate-900 transition-colors hover:text-sky-700"
+                          >
+                            {patient.fullName}
+                          </Link>
+                        </TableCell>
 
-                      <TableCell className="py-5 align-middle">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "border-slate-200 bg-slate-50 text-slate-600",
-                            patient.status === "active" && "border-emerald-200 bg-emerald-50 text-emerald-700",
-                            patient.status === "frozen" && "border-sky-200 bg-sky-50 text-sky-700",
-                            patient.status === "past" && "border-slate-200 bg-slate-50 text-slate-500",
+                        <TableCell className="py-5 align-middle">
+                          <Badge variant="outline" className={statusBadgeClasses(patient.status)}>
+                            {STATUS_LABEL[patient.status] ?? patient.status}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="py-5 align-middle">
+                          <span className="font-mono text-sm tabular-nums text-slate-800">{formatVisitDate(patient.lastVisit)}</span>
+                          <span className="mt-1 block text-xs text-slate-400 sm:mt-0 sm:ml-2 sm:inline">
+                            ({relativeLabel(days)})
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="py-5 align-middle">
+                          {isSettled ? (
+                            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                              Settled
+                            </Badge>
+                          ) : (
+                            <Badge className="border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-rose-100">
+                              Debt: {patient.balance}
+                            </Badge>
                           )}
-                        >
-                          {STATUS_LABEL[patient.status] ?? patient.status}
-                        </Badge>
-                      </TableCell>
+                        </TableCell>
 
-                      <TableCell className="py-5 align-middle">
-                        <span className="font-mono text-sm tabular-nums text-slate-800">
-                          {formatVisitDate(patient.lastVisit)}
-                        </span>
-                        <span className="ml-2 text-xs text-slate-400">({relativeLabel(days)})</span>
-                      </TableCell>
-
-                      <TableCell className="py-5 align-middle">
-                        {isSettled ? (
-                          <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
-                            Settled
-                          </Badge>
-                        ) : (
-                          <Badge className="border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-rose-100">
-                            Debt: {patient.balance}
-                          </Badge>
-                        )}
-                      </TableCell>
-
-                      <TableCell className="py-5 align-middle">
-                        <p
-                          className="truncate text-sm text-slate-500"
-                          title={patient.medicalHistorySummary}
-                        >
-                          {patient.medicalHistorySummary}
-                        </p>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+                        <TableCell className="max-w-[min(28rem,26vw)] py-5 align-middle whitespace-nowrap">
+                          <p className="truncate text-sm text-slate-500" title={patient.medicalHistorySummary}>
+                            {patient.medicalHistorySummary}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -18,15 +18,15 @@ export default function BillingPage() {
   const nav = getNavItemByHref("/finances")!
 
   return (
-    <div className="space-y-8">
-      <section className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-3">
+    <div className="space-y-6 sm:space-y-8">
+      <section className="mt-4 flex flex-col gap-4 sm:mt-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 space-y-3">
           <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
             {navBadgeCaption(nav.description)}
           </Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.05em] text-slate-900">{nav.label}</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
         </div>
-        <div className="inline-flex items-center rounded-xl border border-slate-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.08)]">
+        <div className="inline-flex shrink-0 items-center rounded-xl border border-slate-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.08)]">
           Reconciliation surface
         </div>
       </section>
@@ -64,12 +64,15 @@ export default function BillingPage() {
           </CardHeader>
           <CardContent className={`${elevatedCardBodyClass} space-y-3`}>
             {debtorSnapshot.map((debtor) => (
-              <div key={debtor.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-4">
+              <div
+                key={debtor.id}
+                className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div>
                   <p className="font-medium text-slate-900">{debtor.name}</p>
                   <p className="mt-1 text-xs text-slate-400">Last visit {debtor.lastVisit}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                   <Badge variant="outline">{debtor.status}</Badge>
                   <span className="font-mono text-sm font-medium tabular-nums text-slate-900">{debtor.balance}</span>
                 </div>
@@ -100,13 +103,13 @@ export default function BillingPage() {
             <TableBody>
               {invoiceArchive.map((invoice) => (
                 <TableRow key={invoice.id}>
-                  <TableCell className="font-medium text-slate-900">{invoice.id}</TableCell>
+                  <TableCell className="whitespace-nowrap font-medium text-slate-900">{invoice.id}</TableCell>
                   <TableCell>{invoice.patient}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{invoice.status}</Badge>
                   </TableCell>
                   <TableCell>{invoice.provider}</TableCell>
-                  <TableCell className="font-mono tabular-nums text-slate-900">{invoice.amount}</TableCell>
+                  <TableCell className="whitespace-nowrap font-mono tabular-nums text-slate-900">{invoice.amount}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

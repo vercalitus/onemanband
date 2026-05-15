@@ -12,13 +12,13 @@ export default function ClinicalFeedPage() {
   const nav = getNavItemByHref("/news")!
 
   return (
-    <div className="space-y-8">
-      <section className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-3">
+    <div className="space-y-6 sm:space-y-8">
+      <section className="mt-4 flex flex-col gap-4 sm:mt-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 space-y-3">
           <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
             {navBadgeCaption(nav.description)}
           </Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.05em] text-slate-900">{nav.label}</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
         </div>
         <div className="inline-flex items-center rounded-xl border border-slate-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.08)]">
           Curated clinical updates
@@ -47,7 +47,7 @@ export default function ClinicalFeedPage() {
               </Badge>
             </div>
           </div>
-          <div className="grid gap-4 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {newsFeed.map((article) => (
               <Card key={article.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/40 shadow-none">
                 <CardHeader>

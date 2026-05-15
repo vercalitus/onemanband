@@ -16,7 +16,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Clinic Management & EMR",
   description: "Secure clinic operations, patient records, scheduling, and billing workspace.",
-};
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+}
 
 export default function RootLayout({
   children,

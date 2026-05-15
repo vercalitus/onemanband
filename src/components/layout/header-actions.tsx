@@ -37,29 +37,29 @@ export function HeaderActions() {
 
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex shrink-0 items-center">
         <button
           type="button"
           onClick={() => setModal("search")}
-          className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-800"
+          className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 sm:gap-2 sm:px-4 md:px-5"
           aria-label="Search"
         >
-          <Search className="size-4" />
-          Search
+          <Search className="size-4 shrink-0" />
+          <span className="hidden sm:inline">Search</span>
         </button>
 
-        <span className="h-5 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+        <span className="mx-1 h-5 w-px shrink-0 bg-slate-200" aria-hidden="true" />
 
         <button
           type="button"
           onClick={() => setModal("add")}
-          className="flex cursor-pointer items-center gap-2 border-0 bg-transparent px-5 py-2 text-sm font-medium text-slate-500 outline-none transition-colors hover:text-slate-800"
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent px-2 py-2 text-sm font-medium text-slate-500 outline-none transition-colors hover:bg-slate-50 hover:text-slate-800 sm:gap-2 sm:px-4 md:px-5"
           aria-label="Add new"
           aria-haspopup="dialog"
           aria-expanded={modal === "add"}
         >
           <Plus className="size-4 shrink-0" />
-          Add
+          <span className="hidden sm:inline">Add</span>
         </button>
       </div>
 

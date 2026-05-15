@@ -37,11 +37,11 @@ export default async function PatientDetailPage({
   const activeTab = ["records", "documents", "finances", "notes"].includes(tab ?? "") ? tab! : "records"
 
   return (
-    <div className="space-y-8">
-      <Card className={`mt-6 ${elevatedCardClass}`}>
+    <div className="space-y-6 sm:space-y-8">
+      <Card className={`mt-4 sm:mt-6 ${elevatedCardClass}`}>
         <CardHeader className={darkCardHeaderClass}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-3">
+          <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1 space-y-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                 <Link
                   href="/patients"
@@ -62,7 +62,7 @@ export default async function PatientDetailPage({
               <p className="max-w-3xl text-sm leading-6 text-slate-300">{patient.medicalHistorySummary}</p>
             </div>
 
-            <div className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+            <div className="w-full shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm lg:max-w-[280px]">
               <p className="font-medium text-white">Contact</p>
               <p className="mt-1 text-slate-300">{patient.phone}</p>
               <p className="text-slate-300">{patient.email}</p>

@@ -58,7 +58,7 @@ export function HeaderBarDate() {
   }
 
   return (
-    <time dateTime={isoDate} className={`${datePillClass} hidden lg:block`}>
+    <time dateTime={isoDate} className={`${datePillClass} hidden md:block`}>
       {fullDate}
     </time>
   )

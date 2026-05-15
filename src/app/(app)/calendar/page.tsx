@@ -15,12 +15,12 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-8">
-      <section className="mt-6 space-y-3">
-        <div className="space-y-3">
+      <section className="mt-4 space-y-3 sm:mt-6">
+        <div className="min-w-0 space-y-3">
           <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
             {navBadgeCaption(nav.description)}
           </Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.05em] text-slate-900">{nav.label}</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
         </div>
       </section>
 

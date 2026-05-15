@@ -192,7 +192,7 @@ export function DashboardOverview() {
   return (
     <div>
       <section className="mt-4 mb-0 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
-        <Card className={`min-h-[540px] ${elevatedCardClass}`}>
+        <Card className={`min-h-0 xl:min-h-[540px] ${elevatedCardClass}`}>
           <CardHeader className={cn(darkCardHeaderClass, "py-3")}>
             <div className="flex items-center gap-2.5">
               <CalendarCheck2 className="size-5 stroke-[1.6] text-sky-400" />
@@ -348,7 +348,7 @@ export function DashboardOverview() {
 
       <div className="mt-16 border-t border-slate-200/75 pt-12">
         <h2 className="mb-5 text-center text-[1.625rem] font-bold leading-snug tracking-tight text-slate-900">Pulse</h2>
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {dashboardMetrics.map((metric) => {
             const TrendIcon = trendIcon[metric.trend]
             const accent = metricAccent[metric.id as keyof typeof metricAccent]
@@ -398,7 +398,7 @@ export function DashboardOverview() {
             </span>
             <h3 className="text-lg font-bold tracking-tight text-slate-900">Clinic Pulse</h3>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {clinicPulseItems.map((item) => (
               <div
                 key={item.title}
