@@ -36,11 +36,9 @@ function SidebarNavLink({
         secondary ? "py-2.5" : "py-3.5",
         isActive
           ? cn(
-              "z-0 bg-white/[0.11] shadow-[inset_4px_0_0_0_rgb(56_189_248),inset_0_1px_0_rgba(255,255,255,0.06)]",
-              secondary
-                ? "before:inset-y-2 before:shadow-[0_0_12px_6px_rgba(56,189,248,0.26)]"
-                : "before:inset-y-2.5 before:shadow-[0_0_14px_8px_rgba(56,189,248,0.3)]",
-              "before:pointer-events-none before:absolute before:left-0 before:z-10 before:w-[3px] before:rounded-full before:bg-sky-400 before:opacity-95 before:content-['']",
+              "z-0 bg-sky-400/18",
+              /* Inset sky bar + soft glow to the left (no ::before — works reliably across builds). */
+              "shadow-[inset_5px_0_0_0_rgb(56_189_248),inset_0_1px_0_rgba(255,255,255,0.07),-6px_0_22px_-10px_rgba(56,189,248,0.42)]",
             )
           : "hover:bg-white/[0.06]",
       )}
@@ -57,7 +55,7 @@ function SidebarNavLink({
           className={cn(
             "tracking-[0.01em]",
             secondary
-              ? "text-xs font-medium leading-snug text-white/75"
+              ? "text-[11px] font-normal leading-snug tracking-wide text-white/55"
               : "text-sm font-semibold text-white",
           )}
         >

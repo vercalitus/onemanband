@@ -3,7 +3,6 @@
 import { Stethoscope } from "lucide-react"
 
 import { SidebarNavList } from "@/components/layout/sidebar-nav-list"
-import { Separator } from "@/components/ui/separator"
 
 function SidebarMark() {
   return (
@@ -30,11 +29,9 @@ export function AppSidebar() {
         </div>
       </div>
 
-      <nav className="mt-6 -mx-5 flex flex-col gap-1">
+      <nav className="mt-6 -mx-5 mb-8 flex flex-col gap-1">
         <SidebarNavList />
       </nav>
-
-      <Separator className="my-6 bg-white/10" />
 
       <div className="mt-auto w-full opacity-[0.72]">
         <SidebarMark />

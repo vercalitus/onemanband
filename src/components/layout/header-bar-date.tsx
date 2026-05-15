@@ -39,20 +39,20 @@ export function HeaderBarDate() {
 
   const isoDate = new Date().toISOString().slice(0, 10)
 
-  /** Shared emerald chrome for date + visits pills (radii applied per pill). */
-  const emeraldSurfaceClass =
-    "border border-emerald-200/90 bg-emerald-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] ring-1 ring-emerald-100/90"
+  /** One shared token set so date + visits read as matched chips (same fill + type color). */
+  const emeraldChipClass =
+    "border border-emerald-200 bg-emerald-100/85 text-emerald-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] ring-1 ring-emerald-200/80"
 
   return (
     <div className="flex min-w-0 flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-3 md:gap-4">
       <time
         dateTime={isoDate}
-        className={`max-w-[min(100%,28rem)] rounded-xl px-3 py-1.5 ${emeraldSurfaceClass} text-sm font-bold leading-snug tracking-tight text-emerald-950`}
+        className={`max-w-[min(100%,28rem)] rounded-xl px-3 py-1.5 ${emeraldChipClass} text-sm font-bold leading-snug tracking-tight`}
       >
         {fullDate}
       </time>
       <span
-        className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 ${emeraldSurfaceClass} text-xs font-bold tabular-nums tracking-tight text-emerald-900`}
+        className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 ${emeraldChipClass} text-xs font-bold tabular-nums tracking-tight`}
       >
         {visitCount}&nbsp;
         <span className="font-semibold">{visitCount === 1 ? "visit" : "visits"}</span>
