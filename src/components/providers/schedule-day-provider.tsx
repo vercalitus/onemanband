@@ -19,7 +19,8 @@ import {
   minutesFromHHMM,
   snapMinutesToSlotNearest,
 } from "@/lib/appointment-time"
-import { todaySchedule } from "@/lib/mock-data"
+import { toISODate } from "@/lib/date-helpers"
+import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
 import type { ScheduleItem } from "@/types/domain"
 
 function sortByStart(list: ScheduleItem[]) {
@@ -29,7 +30,11 @@ function sortByStart(list: ScheduleItem[]) {
 type ScheduleDayContextValue = {
   appointments: ScheduleItem[]
   setAppointments: Dispatch<SetStateAction<ScheduleItem[]>>
-  openCreateAppointment: () => void
+  /**
+   * Opens the "New Appointment" dialog. Accepts an optional ISO date so callers
+   * (e.g. the calendar's mini-calendar) can pre-select the day the user clicked.
+   */
+  openCreateAppointment: (defaultDate?: string) => void
 }
 
 const ScheduleDayContext = createContext<ScheduleDayContextValue | null>(null)
@@ -42,13 +47,19 @@ export function useScheduleDay(): ScheduleDayContextValue {
   return ctx
 }
 
-/** Shared day-board appointments + header-triggered “create appointment” dialog (no route change). */
+/** Shared schedule store + globally-triggered "create appointment" dialog (no route change). */
 export function ScheduleDayProvider({ children }: { children: ReactNode }) {
-  const [appointments, setAppointments] = useState<ScheduleItem[]>(() => [...todaySchedule])
+  // Seed with today + a few illustrative future visits so the week/month views
+  // surface data outside today on first load.
+  const [appointments, setAppointments] = useState<ScheduleItem[]>(() => [
+    ...todaySchedule,
+    ...weeklySchedule,
+  ])
   const [headerCreateOpen, setHeaderCreateOpen] = useState(false)
   const [headerDefaultStart, setHeaderDefaultStart] = useState<number | undefined>(undefined)
+  const [headerDefaultDate, setHeaderDefaultDate] = useState<string | undefined>(undefined)
 
-  const openCreateAppointment = useCallback(() => {
+  const openCreateAppointment = useCallback((defaultDate?: string) => {
     const now = new Date()
     const currentMinutes = now.getHours() * 60 + now.getMinutes()
     const dayStartMin = CALENDAR_HOUR_START * 60
@@ -60,6 +71,7 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
     }
     const clamped = clampStartForDuration(snapped, defaultDuration)
     setHeaderDefaultStart(clamped)
+    setHeaderDefaultDate(defaultDate ?? toISODate(new Date()))
     setHeaderCreateOpen(true)
   }, [])
 
@@ -81,6 +93,7 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
         mode="create"
         appointment={null}
         defaultStartMinutes={headerDefaultStart}
+        defaultDate={headerDefaultDate}
         allAppointments={appointments}
         onSave={(item, { isNew }) => {
           if (isNew) setAppointments((prev) => sortByStart([...prev, item]))

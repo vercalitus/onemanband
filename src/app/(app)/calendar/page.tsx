@@ -19,6 +19,7 @@ import {
   elevatedCardBodyClass,
   elevatedCardClass,
 } from "@/lib/clinic-card-styles"
+import { toISODate, fromISODate } from "@/lib/date-helpers"
 import { cn } from "@/lib/utils"
 
 /**
@@ -54,9 +55,19 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState<Date>(() => new Date())
   const [showCanceled, setShowCanceled] = useState(false)
 
-  // Dates that should show a dot in the mini-calendar (today only for now,
-  // since mock appointments aren't dated). Cheap to memoize defensively.
-  const highlightDates = useMemo(() => [new Date()], [])
+  // Days that have at least one appointment — used to render a small dot under
+  // the matching day cell in the mini-calendar so the user can see at a glance
+  // which days are busy.
+  const highlightDates = useMemo(() => {
+    const seen = new Set<string>()
+    const out: Date[] = []
+    for (const a of appointments) {
+      if (!a.date || seen.has(a.date)) continue
+      seen.add(a.date)
+      out.push(fromISODate(a.date))
+    }
+    return out
+  }, [appointments])
 
   const goPrev = () => {
     const next = new Date(selected)
@@ -134,6 +145,7 @@ export default function CalendarPage() {
             <DayCalendarView
               appointments={appointments}
               onAppointmentsChange={setAppointments}
+              selectedDate={selected}
               showCanceled={showCanceled}
               showAddButton={false}
               heightClassName="h-[min(70vh,560px)] md:h-[560px]"
@@ -160,17 +172,20 @@ export default function CalendarPage() {
 
       <aside className="flex flex-col gap-5">
         <Card className={elevatedCardClass}>
-          <CardContent className={cn(elevatedCardBodyClass, "space-y-4 py-5")}>
-            <button
-              type="button"
-              onClick={openCreateAppointment}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
-            >
-              <CalendarPlus className="size-4 shrink-0" aria-hidden />
-              New Appointment
-            </button>
-
+          <CardContent className={cn(elevatedCardBodyClass, "space-y-3 py-5")}>
             <MiniCalendar value={selected} onChange={setSelected} highlightDates={highlightDates} />
+
+            <div className="flex justify-center border-t border-slate-100 pt-4 pb-1">
+              <button
+                type="button"
+                onClick={() => openCreateAppointment(toISODate(selected))}
+                className="inline-flex items-center gap-1.5 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
+                aria-label="New appointment"
+              >
+                <span>New appointment</span>
+                <CalendarPlus className="size-4 shrink-0 stroke-[2] text-sky-600" aria-hidden />
+              </button>
+            </div>
           </CardContent>
         </Card>
 

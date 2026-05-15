@@ -4,6 +4,7 @@ import { useMemo } from "react"
 
 import { appointmentTypeVisual } from "@/lib/appointment-types"
 import { minutesFromHHMM } from "@/lib/appointment-time"
+import { toISODate } from "@/lib/date-helpers"
 import { cn } from "@/lib/utils"
 import type { ScheduleItem } from "@/types/domain"
 
@@ -61,7 +62,17 @@ export function MonthView({
     [appointments, showCanceled],
   )
 
-  const todayAppointments = useMemo(() => sortByStart(filtered), [filtered])
+  // Bucket appointments by their ISO date so each cell shows only its own day.
+  const byDate = useMemo(() => {
+    const map = new Map<string, ScheduleItem[]>()
+    for (const a of filtered) {
+      const list = map.get(a.date) ?? []
+      list.push(a)
+      map.set(a.date, list)
+    }
+    for (const [k, v] of map) map.set(k, sortByStart(v))
+    return map
+  }, [filtered])
 
   return (
     <div className="overflow-hidden rounded-lg">
@@ -81,7 +92,7 @@ export function MonthView({
           const inMonth = d.getMonth() === monthStart.getMonth()
           const isSelected = isSameDay(d, value)
           const isToday = isSameDay(d, today)
-          const dayList = isSameDay(d, today) ? todayAppointments : []
+          const dayList = byDate.get(toISODate(d)) ?? []
           const preview = dayList.slice(0, 2)
           const overflow = dayList.length - preview.length
 

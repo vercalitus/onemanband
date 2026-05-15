@@ -22,11 +22,34 @@ export const dashboardMetrics: PulseMetric[] = [
   { id: "debt", label: "Open Debt (month)", value: "$8.9k", delta: "-6%", trend: "down" },
 ]
 
+/**
+ * Local-time ISO date for "today". We freeze it at module import so every mock
+ * appointment that says "today" lines up with the same calendar day across the
+ * app (avoids edge cases when tabs are open past midnight).
+ */
+const TODAY_ISO = (() => {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const dd = String(d.getDate()).padStart(2, "0")
+  return `${yyyy}-${mm}-${dd}`
+})()
+
+const TOMORROW_ISO = (() => {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const dd = String(d.getDate()).padStart(2, "0")
+  return `${yyyy}-${mm}-${dd}`
+})()
+
 export const todaySchedule: ScheduleItem[] = [
   {
     id: "apt-1",
     patientId: "pt-001",
     patientName: "Maya Green",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "08:00",
@@ -39,6 +62,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-2",
     patientId: "pt-002",
     patientName: "Noah Stone",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "08:40",
@@ -51,6 +75,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-3",
     patientId: "pt-003",
     patientName: "Ava Hart",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "08:50",
@@ -63,6 +88,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-4",
     patientId: "pt-004",
     patientName: "Liam Carter",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "09:10",
@@ -75,6 +101,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-5",
     patientId: "pt-005",
     patientName: "Sofia Reed",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "09:45",
@@ -87,6 +114,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-6",
     patientId: "pt-006",
     patientName: "Ethan Blake",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "10:00",
@@ -99,6 +127,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-7",
     patientId: "pt-001",
     patientName: "Maya Green",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "10:10",
@@ -111,6 +140,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-8",
     patientId: "pt-003",
     patientName: "Ava Hart",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "10:40",
@@ -123,6 +153,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-9",
     patientId: "pt-004",
     patientName: "Liam Carter",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "11:40",
@@ -135,6 +166,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-10",
     patientId: "pt-002",
     patientName: "Noah Stone",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "12:00",
@@ -147,6 +179,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-11",
     patientId: "pt-005",
     patientName: "Sofia Reed",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "12:10",
@@ -159,6 +192,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-12",
     patientId: "pt-006",
     patientName: "Ethan Blake",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "12:30",
@@ -171,6 +205,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-13",
     patientId: "pt-004",
     patientName: "Liam Carter",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "13:35",
@@ -183,6 +218,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-14",
     patientId: "pt-001",
     patientName: "Maya Green",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "14:10",
@@ -195,6 +231,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-15",
     patientId: "pt-003",
     patientName: "Ava Hart",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "15:00",
@@ -207,6 +244,7 @@ export const todaySchedule: ScheduleItem[] = [
     id: "apt-16",
     patientId: "pt-005",
     patientName: "Sofia Reed",
+    date: TODAY_ISO,
     dayLabel: "Today",
     provider: "",
     start: "15:10",
@@ -217,12 +255,15 @@ export const todaySchedule: ScheduleItem[] = [
   },
 ]
 
+/** A few illustrative visits scheduled on the next working day so the week/month
+ * views show data outside today. Mock-only — production swaps for real data. */
 export const weeklySchedule: ScheduleItem[] = [
   {
     id: "week-1",
     patientId: "pt-004",
     patientName: "Liam Carter",
-    dayLabel: "Tuesday",
+    date: TOMORROW_ISO,
+    dayLabel: "Tomorrow",
     provider: "",
     start: "09:00",
     end: "09:30",
@@ -234,7 +275,8 @@ export const weeklySchedule: ScheduleItem[] = [
     id: "week-2",
     patientId: "pt-005",
     patientName: "Sofia Reed",
-    dayLabel: "Wednesday",
+    date: TOMORROW_ISO,
+    dayLabel: "Tomorrow",
     provider: "",
     start: "11:00",
     end: "11:45",
@@ -246,7 +288,8 @@ export const weeklySchedule: ScheduleItem[] = [
     id: "week-3",
     patientId: "pt-006",
     patientName: "Ethan Blake",
-    dayLabel: "Thursday",
+    date: TOMORROW_ISO,
+    dayLabel: "Tomorrow",
     provider: "",
     start: "15:30",
     end: "16:00",

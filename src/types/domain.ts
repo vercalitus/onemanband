@@ -45,6 +45,8 @@ export interface ScheduleItem {
   id: string
   patientId: string
   patientName: string
+  /** ISO calendar date (YYYY-MM-DD) the visit belongs to. Drives day/week/month filtering. */
+  date: string
   dayLabel: string
   provider: string
   start: string

@@ -17,6 +17,7 @@ import {
   minutesFromHHMM,
   snapMinutesToSlotNearest,
 } from "@/lib/appointment-time"
+import { toISODate } from "@/lib/date-helpers"
 import { cn } from "@/lib/utils"
 
 const DAY_START_MIN = CALENDAR_HOUR_START * 60
@@ -69,12 +70,15 @@ function HourDivider({ hour }: { hour: number }) {
 export function DayCalendarView({
   appointments,
   onAppointmentsChange,
+  selectedDate,
   showCanceled = true,
   showAddButton = true,
   heightClassName = "h-[min(70vh,520px)] md:h-[500px]",
 }: {
   appointments: ScheduleItem[]
   onAppointmentsChange: (next: ScheduleItem[]) => void
+  /** Calendar day to render. Falls back to "today" so existing callers (dashboard) behave as before. */
+  selectedDate?: Date
   /** When false, cancelled appointments are filtered out of the list (used by /calendar). */
   showCanceled?: boolean
   /** Hide the trailing "Add appointment" CTA when an external button already exists. */
@@ -82,34 +86,45 @@ export function DayCalendarView({
   /** Override scroll-area height — calendar page wants a taller viewport than the dashboard widget. */
   heightClassName?: string
 }) {
+  const effectiveISO = useMemo(() => toISODate(selectedDate ?? new Date()), [selectedDate])
+  const todayISO = toISODate(new Date())
+  const isViewingToday = effectiveISO === todayISO
+
   const visible = useMemo(() => {
-    const list = showCanceled ? appointments : appointments.filter((a) => a.status !== "cancelled")
+    const sameDay = appointments.filter((a) => a.date === effectiveISO)
+    const list = showCanceled ? sameDay : sameDay.filter((a) => a.status !== "cancelled")
     return sortByStart(list)
-  }, [appointments, showCanceled])
+  }, [appointments, effectiveISO, showCanceled])
 
   const now = new Date()
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
-  const showNowLine = currentMinutes >= DAY_START_MIN && currentMinutes < DAY_END_MIN
+  // The "Now" divider only makes sense when the user is looking at today's column.
+  const showNowLine = isViewingToday && currentMinutes >= DAY_START_MIN && currentMinutes < DAY_END_MIN
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("edit")
   const [activeAppointment, setActiveAppointment] = useState<ScheduleItem | null>(null)
   const [defaultStartMinutes, setDefaultStartMinutes] = useState<number | undefined>(undefined)
+  const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined)
 
   const openEdit = (apt: ScheduleItem) => {
     setDialogMode("edit")
     setActiveAppointment(apt)
     setDefaultStartMinutes(undefined)
+    setDefaultDate(undefined)
     setDialogOpen(true)
   }
 
   const openCreateDefault = () => {
     const defaultDuration = 15
-    const snapped = snapMinutesToSlotNearest(currentMinutes)
+    // If looking at a non-today date, use the day's start; otherwise snap from "now".
+    const baseMinutes = isViewingToday ? currentMinutes : DAY_START_MIN + 60
+    const snapped = snapMinutesToSlotNearest(baseMinutes)
     const clamped = clampStartForDuration(snapped, defaultDuration)
     setDialogMode("create")
     setActiveAppointment(null)
     setDefaultStartMinutes(clamped)
+    setDefaultDate(effectiveISO)
     setDialogOpen(true)
   }
 
@@ -263,6 +278,7 @@ export function DayCalendarView({
         mode={dialogMode}
         appointment={activeAppointment}
         defaultStartMinutes={defaultStartMinutes}
+        defaultDate={defaultDate}
         allAppointments={appointments}
         onSave={(item, { isNew }) => {
           if (isNew) onAppointmentsChange(sortByStart([...appointments, item]))

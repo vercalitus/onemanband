@@ -7,6 +7,7 @@ import { AppointmentEditDialog } from "@/features/dashboard/components/appointme
 import { appointmentTypeVisual } from "@/lib/appointment-types"
 import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
 import { minutesFromHHMM } from "@/lib/appointment-time"
+import { toISODate } from "@/lib/date-helpers"
 import { cn } from "@/lib/utils"
 import type { AppointmentStatus, ScheduleItem } from "@/types/domain"
 
@@ -74,15 +75,15 @@ export function WeekView({
     [appointments, showCanceled],
   )
 
-  // Mock data has no date — bucket all into today's column for now.
+  // Bucket appointments into their calendar day using each item's ISO `date`.
   const cellsByDay = useMemo(() => {
     const map = new Map<string, ScheduleItem[]>()
     for (const d of days) {
-      const key = d.toDateString()
-      map.set(key, isSameDay(d, today) ? sortByStart(filtered) : [])
+      const iso = toISODate(d)
+      map.set(d.toDateString(), sortByStart(filtered.filter((a) => a.date === iso)))
     }
     return map
-  }, [days, filtered, today])
+  }, [days, filtered])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [activeAppointment, setActiveAppointment] = useState<ScheduleItem | null>(null)

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Clock3, XIcon } from "lucide-react"
+import { CalendarDays, Clock3, XIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -33,6 +33,7 @@ import {
   minutesFromHHMM,
   snapMinutesToSlotNearest,
 } from "@/lib/appointment-time"
+import { fromISODate, toISODate } from "@/lib/date-helpers"
 import { cn } from "@/lib/utils"
 
 const STATUS_OPTIONS: AppointmentStatus[] = [
@@ -66,6 +67,7 @@ export function AppointmentEditDialog({
   mode,
   appointment,
   defaultStartMinutes,
+  defaultDate,
   allAppointments,
   onSave,
 }: {
@@ -74,6 +76,8 @@ export function AppointmentEditDialog({
   mode: AppointmentEditorMode
   appointment: ScheduleItem | null
   defaultStartMinutes?: number
+  /** ISO YYYY-MM-DD. Used in create mode to pre-fill the date (e.g. the day picked in the calendar). */
+  defaultDate?: string
   allAppointments: ScheduleItem[]
   onSave: (item: ScheduleItem, meta: { isNew: boolean }) => void
 }) {
@@ -85,6 +89,9 @@ export function AppointmentEditDialog({
   const [durationMin, setDurationMin] = useState(15)
   const [status, setStatus] = useState<AppointmentStatus>("scheduled")
   const [apptType, setApptType] = useState<AppointmentType>("adjustments")
+  // The appointment's calendar date. Edit-mode prefills with the existing date;
+  // create-mode prefills with the date the caller passed (mini-calendar selection).
+  const [date, setDate] = useState<string>(() => toISODate(new Date()))
 
   useEffect(() => {
     if (!open) return
@@ -99,6 +106,7 @@ export function AppointmentEditDialog({
       setTreatment(appointment.treatment)
       setStatus(appointment.status)
       setApptType(appointment.appointmentType)
+      setDate(appointment.date ?? toISODate(new Date()))
       return
     }
     if (mode === "create") {
@@ -113,19 +121,32 @@ export function AppointmentEditDialog({
       setTreatment("")
       setStatus("scheduled")
       setApptType("adjustments")
+      setDate(defaultDate ?? toISODate(new Date()))
     }
-  }, [open, mode, appointment, defaultStartMinutes])
+  }, [open, mode, appointment, defaultStartMinutes, defaultDate])
 
   const preview = useMemo(() => {
     const startMin = startHour * 60 + startMinute
     const endMin = startMin + durationMin
+    const dateLabel = (() => {
+      try {
+        return new Intl.DateTimeFormat(undefined, {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        }).format(fromISODate(date))
+      } catch {
+        return date
+      }
+    })()
     return {
       line: `${hhmmFromMinutes(startMin)} · ${hhmmFromMinutes(endMin)}`,
       subtitle: `${durationMin} minute visit`,
+      dateLabel,
       startMin,
       endMin,
     }
-  }, [startHour, startMinute, durationMin])
+  }, [startHour, startMinute, durationMin, date])
 
   const adjustDuration = (delta: number) => {
     setDurationMin((d) => clampDurationMinutes(d + delta))
@@ -162,8 +183,10 @@ export function AppointmentEditDialog({
       return
     }
 
+    // Only consider conflicts on the same calendar day as the appointment being saved.
+    const sameDayAppointments = allAppointments.filter((a) => a.date === date)
     const conflict = findOverlappingAppointment(
-      allAppointments,
+      sameDayAppointments,
       startMin,
       endMin,
       mode === "edit" ? appointment?.id : undefined,
@@ -175,6 +198,17 @@ export function AppointmentEditDialog({
       return
     }
 
+    // Compute a friendly day label so the table-style views keep reading naturally.
+    const dayLabel = (() => {
+      const today = toISODate(new Date())
+      if (date === today) return "Today"
+      try {
+        return new Intl.DateTimeFormat(undefined, { weekday: "long" }).format(fromISODate(date))
+      } catch {
+        return date
+      }
+    })()
+
     const item: ScheduleItem =
       mode === "edit" && appointment
         ? {
@@ -182,6 +216,8 @@ export function AppointmentEditDialog({
             patientName: name,
             treatment: treatment.trim() || appointment.treatment,
             provider: "",
+            date,
+            dayLabel,
             start: hhmmFromMinutes(startMin),
             end: hhmmFromMinutes(endMin),
             status,
@@ -191,7 +227,8 @@ export function AppointmentEditDialog({
             id: crypto.randomUUID(),
             patientId: `pt-new-${crypto.randomUUID().slice(0, 8)}`,
             patientName: name,
-            dayLabel: "Today",
+            date,
+            dayLabel,
             provider: "",
             start: hhmmFromMinutes(startMin),
             end: hhmmFromMinutes(endMin),
@@ -243,6 +280,10 @@ export function AppointmentEditDialog({
               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${typeChip}`}>
                 {appointmentTypeVisual[apptType].label}
               </span>
+              <div className="flex items-center gap-2 text-sm text-sky-100">
+                <CalendarDays className="size-4 shrink-0 text-sky-300" aria-hidden />
+                <span className="font-medium">{preview.dateLabel}</span>
+              </div>
               <div className="flex items-center gap-2 font-mono text-sm tabular-nums text-sky-100">
                 <Clock3 className="size-4 shrink-0 text-sky-300" aria-hidden />
                 <span>{preview.line}</span>
@@ -301,6 +342,24 @@ export function AppointmentEditDialog({
             <Separator className="my-3 shrink-0" />
 
             <div className="grid gap-3">
+              <div className="grid gap-1.5">
+                <label className={LABEL} htmlFor="appt-date">
+                  Date
+                </label>
+                <input
+                  id="appt-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value || toISODate(new Date()))}
+                  className={CONTROL}
+                />
+                <p className="text-[11px] text-slate-400">
+                  {mode === "edit"
+                    ? "Change the date to move this appointment to another day."
+                    : "Select the day for the new appointment."}
+                </p>
+              </div>
+
               <div className="space-y-1.5">
                 <p className={LABEL}>Start time</p>
                 <div className="grid grid-cols-2 gap-2">
