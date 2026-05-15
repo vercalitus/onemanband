@@ -1,0 +1,12 @@
+---
+description: Ship every requested change to GitHub/Vercel; never leave fixes local-only.
+alwaysApply: true
+---
+
+# Deploy sync (onemanband → Vercel)
+
+- Production UI is **https://onemanband.vercel.app/** — it only updates after **`git push` to `origin/main`** (or the branch Vercel tracks).
+- When the user asks for **any implementation change**, finish with **`git commit` + `git push origin main`** for all touched files that belong to that request—unless they explicitly say not to push or not to commit.
+- **Never** stop after editing files without pushing if the goal was for them to see it live; uncommitted work breaks their workflow (they verify on Vercel).
+- Before declaring done: **`git status`** must be clean for those changes (or explain blocking errors).
+- Prefer minimal chatter in replies; execute workflow reliably instead of long summaries.
