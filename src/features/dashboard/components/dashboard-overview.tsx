@@ -4,15 +4,14 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarCheck2,
-  Circle,
   CircleCheckBig,
   Coins,
-  Flag,
   Gauge,
   ListTodo,
   Plus,
   TrendingUp,
   Wallet,
+  XIcon,
 } from "lucide-react"
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 
@@ -21,6 +20,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -34,24 +34,13 @@ import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
 import { dashboardMetrics, dashboardTodos, todaySchedule } from "@/lib/mock-data"
 import type { TodoItem } from "@/types/domain"
+import { cn } from "@/lib/utils"
 
 const trendIcon = {
   up: ArrowUpRight,
   down: ArrowDownRight,
   steady: CircleCheckBig,
 }
-
-const priorityTone = {
-  low: "bg-[rgb(150,182,197,0.18)] text-[rgb(91,123,138)]",
-  medium: "bg-[rgb(120,157,138,0.16)] text-[rgb(92,123,110)]",
-  high: "bg-[rgb(248,228,214)] text-[rgb(171,119,93)]",
-} as const
-
-const priorityIcon = {
-  low: Circle,
-  medium: Circle,
-  high: Flag,
-} as const
 
 const metricAccent = {
   visits: {
@@ -112,7 +101,7 @@ function TodoRow({
   onToggleComplete: (id: string) => void
 }) {
   const done = Boolean(item.completed)
-  const PriorityGlyph = priorityIcon[item.priority]
+  const dueTrimmed = item.due.trim()
 
   return (
     <div
@@ -133,15 +122,12 @@ function TodoRow({
           aria-label={done ? `Mark "${item.title}" not done` : `Mark "${item.title}" done`}
         />
       </label>
-      <span
-        className={`inline-flex size-9 items-center justify-center rounded-full ${priorityTone[item.priority]} ${done ? "opacity-50" : ""}`}
-      >
-        <PriorityGlyph className="size-4 stroke-[1.8]" />
-      </span>
       <div className="min-w-0 flex-1">
         <p className={`font-medium ${done ? "text-slate-400 line-through" : "text-slate-900"}`}>{item.title}</p>
         <p className={`text-xs ${done ? "text-slate-400" : "text-slate-500"}`}>
-          {item.overdue && !done ? "Overdue" : "Due"} {item.due}
+          {dueTrimmed
+            ? `${item.overdue && !done ? "Overdue" : "Due"} ${dueTrimmed}`
+            : "No due time"}
         </p>
       </div>
       {item.overdue && !done && (
@@ -159,7 +145,6 @@ export function DashboardOverview() {
   const [addOpen, setAddOpen] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const [newDue, setNewDue] = useState("")
-  const [newPriority, setNewPriority] = useState<TodoItem["priority"]>("medium")
 
   useEffect(() => {
     setDashboardVisitCount(dayAppointments.length)
@@ -183,7 +168,7 @@ export function DashboardOverview() {
     const title = newTitle.trim()
     if (!title) return
 
-    const due = newDue.trim() || "—"
+    const due = newDue.trim()
     const id =
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? `todo-${crypto.randomUUID().slice(0, 10)}`
@@ -195,14 +180,13 @@ export function DashboardOverview() {
         id,
         title,
         due,
-        priority: newPriority,
+        priority: "medium",
         kind: "active",
         completed: false,
       },
     ])
     setNewTitle("")
     setNewDue("")
-    setNewPriority("medium")
     setAddOpen(false)
   }
 
@@ -268,17 +252,6 @@ export function DashboardOverview() {
               </div>
             </div>
 
-            {completed.length > 0 && (
-              <div className="border-t border-slate-100 pt-5">
-                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">Completed</p>
-                <div className="mt-2 space-y-3">
-                  {completed.map((item) => (
-                    <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="flex justify-center border-t border-slate-100 pt-4">
               <button
                 type="button"
@@ -289,55 +262,99 @@ export function DashboardOverview() {
                 <Plus className="size-4 shrink-0" />
               </button>
             </div>
+
+            {completed.length > 0 && (
+              <div className="border-t border-slate-100 pt-5">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">Completed</p>
+                <div className="mt-2 space-y-3">
+                  {completed.map((item) => (
+                    <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md" showCloseButton>
-          <DialogHeader>
-            <DialogTitle>Add active task</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAddTask} className="grid gap-3">
-            <div className="grid gap-1.5">
-              <label htmlFor="todo-title" className="text-xs font-medium text-slate-600">
-                Title
-              </label>
-              <Input
-                id="todo-title"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="e.g. Call insurer about claim"
-                required
-                autoFocus
+        <DialogContent
+          showCloseButton={false}
+          className={cn(
+            "flex max-h-[min(90dvh,calc(100dvh-2rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg",
+          )}
+        >
+          <DialogDescription className="sr-only">Add a new task to your active list.</DialogDescription>
+
+          <DialogClose
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute top-5 right-5 z-20 rounded-xl text-white hover:bg-white/15"
+                aria-label="Close"
               />
-            </div>
-            <div className="grid gap-1.5">
-              <label htmlFor="todo-due" className="text-xs font-medium text-slate-600">
-                Due time (optional)
-              </label>
-              <Input id="todo-due" value={newDue} onChange={(e) => setNewDue(e.target.value)} placeholder="14:00" />
-            </div>
-            <div className="grid gap-1.5">
-              <span className="text-xs font-medium text-slate-600">Priority</span>
-              <div className="flex flex-wrap gap-2">
-                {(["low", "medium", "high"] as const).map((p) => (
-                  <label key={p} className="inline-flex cursor-pointer items-center gap-1.5 text-xs">
-                    <input
-                      type="radio"
-                      name="priority"
-                      checked={newPriority === p}
-                      onChange={() => setNewPriority(p)}
-                      className="text-sky-600 focus:ring-sky-500/30"
-                    />
-                    <span className="capitalize text-slate-700">{p}</span>
+            }
+          >
+            <XIcon />
+          </DialogClose>
+
+          <div className="relative shrink-0 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-4 pt-5 text-white">
+            <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
+            <DialogHeader className="relative gap-0 space-y-0">
+              <DialogTitle className="font-heading pr-12 text-xl font-semibold tracking-tight text-white">
+                Add active task
+              </DialogTitle>
+              <p className="mt-2 text-sm text-sky-100/90">Appears under Active on this board (not saved to the server).</p>
+            </DialogHeader>
+          </div>
+
+          <form
+            className="flex min-h-0 flex-1 flex-col"
+            onSubmit={handleAddTask}
+          >
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-4">
+              <div className="grid gap-4">
+                <div className="grid gap-1.5">
+                  <label htmlFor="todo-title" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Title
                   </label>
-                ))}
+                  <Input
+                    id="todo-title"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="e.g. Call insurer about claim"
+                    required
+                    autoFocus
+                    className="h-11 rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <label htmlFor="todo-due" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Due time (optional)
+                  </label>
+                  <Input
+                    id="todo-due"
+                    value={newDue}
+                    onChange={(e) => setNewDue(e.target.value)}
+                    placeholder="14:00"
+                    className="h-11 rounded-xl border-slate-200 font-mono tabular-nums"
+                  />
+                </div>
               </div>
             </div>
-            <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
-              <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
-              <Button type="submit">Save task</Button>
+
+            <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
+              <Button type="button" variant="outline" className="h-11 rounded-xl min-w-[6.5rem]" onClick={() => setAddOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="h-11 min-w-[7.5rem] rounded-xl bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800"
+              >
+                Save task
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

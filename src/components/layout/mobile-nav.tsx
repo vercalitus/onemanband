@@ -46,14 +46,14 @@ export function MobileNav() {
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[min(100vw-2rem,18rem)] flex-col border-r border-[#E0F2FE] bg-[#F0F9FF] px-5 py-6 text-sidebar-foreground shadow-xl">
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[min(100vw-2rem,18rem)] flex-col border-r border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-5 py-6 text-slate-200 shadow-xl">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl border border-sky-200 bg-white text-sky-500">
+              <div className="flex size-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-sky-400">
                 <Stethoscope className="size-4.5" />
               </div>
               <div>
-                <p className="text-sm font-semibold tracking-[0.01em] text-sky-900">Serene Spine Clinic</p>
-                <p className="text-xs text-sky-400">Medical OS</p>
+                <p className="text-sm font-semibold tracking-[0.01em] text-white">Serene Spine Clinic</p>
+                <p className="text-xs text-sky-300/90">Medical OS</p>
               </div>
             </div>
 
