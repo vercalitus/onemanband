@@ -196,7 +196,7 @@ export default function PatientsPage() {
         <CardContent className={`${elevatedCardBodyClass} space-y-5`}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
             <div className="relative w-full min-w-0 lg:max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-sky-500" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -319,7 +319,7 @@ export default function PatientsPage() {
               className="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-slate-50/80 px-5 py-2.5 text-sm font-medium text-slate-700 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.12)] transition-colors hover:border-sky-200 hover:bg-white hover:text-slate-900 hover:shadow-[0_4px_16px_-6px_rgba(14,165,233,0.2)]"
               aria-label="Add new patient"
             >
-              <span className="flex size-8 items-center justify-center rounded-full bg-emerald-600 text-white shadow-inner ring-1 ring-emerald-500/30">
+              <span className="flex size-8 items-center justify-center rounded-full bg-sky-600 text-white shadow-inner ring-1 ring-sky-500/40">
                 <UserPlus className="size-4 stroke-[2]" aria-hidden />
               </span>
               Add patient

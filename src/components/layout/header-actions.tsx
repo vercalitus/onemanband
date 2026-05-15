@@ -41,7 +41,7 @@ export function HeaderActions() {
         <button
           type="button"
           onClick={() => setModal("search")}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 sm:gap-2 sm:px-4 md:px-5"
+          className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-50 hover:text-sky-900 sm:gap-2 sm:px-4 md:px-5"
           aria-label="Search"
         >
           <Search className="size-4 shrink-0" />
@@ -53,7 +53,7 @@ export function HeaderActions() {
         <button
           type="button"
           onClick={() => setModal("add")}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent px-2 py-2 text-sm font-medium text-slate-500 outline-none transition-colors hover:bg-slate-50 hover:text-slate-800 sm:gap-2 sm:px-4 md:px-5"
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent px-2 py-2 text-sm font-medium text-sky-700 outline-none transition-colors hover:bg-sky-50 hover:text-sky-900 sm:gap-2 sm:px-4 md:px-5"
           aria-label="Add new"
           aria-haspopup="dialog"
           aria-expanded={modal === "add"}
@@ -85,7 +85,7 @@ export function HeaderActions() {
           {modal === "search" && (
             <>
               <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
-                <Search className="size-4 shrink-0 text-slate-400" />
+                <Search className="size-4 shrink-0 text-sky-500" />
                 <input
                   autoFocus
                   value={query}
@@ -124,13 +124,13 @@ export function HeaderActions() {
             <div className="flex flex-col gap-2 p-4 pt-5">
               <button
                 type="button"
-                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-emerald-200 hover:bg-emerald-50/40"
+                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-sky-200 hover:bg-sky-50/50"
                 onClick={() => {
                   closeModal()
                   router.push("/patients?new=1")
                 }}
               >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
                   <UserPlus className="size-6 stroke-[1.6]" />
                 </span>
                 <span className="min-w-0">
@@ -156,13 +156,13 @@ export function HeaderActions() {
               </button>
               <button
                 type="button"
-                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-amber-200 hover:bg-amber-50/40"
+                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-sky-200 hover:bg-sky-50/50"
                 onClick={() => {
                   closeModal()
                   openAddTask()
                 }}
               >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
                   <ClipboardList className="size-6 stroke-[1.6]" />
                 </span>
                 <span className="min-w-0">

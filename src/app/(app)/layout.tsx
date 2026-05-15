@@ -34,7 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   className="shrink-0 border-slate-100 bg-white shadow-none"
                   aria-label="Notifications"
                 >
-                  <BellDot className="size-4 text-slate-500" />
+                  <BellDot className="size-4 text-sky-600" />
                 </Button>
               </div>
             </div>

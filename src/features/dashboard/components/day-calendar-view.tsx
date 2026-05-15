@@ -186,7 +186,7 @@ export function DayCalendarView({
               <p className="truncate text-[15px] font-semibold text-slate-900">{apt.patientName}</p>
               <Link
                 href={`/patients/${apt.patientId}?tab=records`}
-                className="shrink-0 text-slate-400 hover:text-slate-700"
+                className="shrink-0 text-slate-400 transition-colors hover:text-sky-600"
                 title="Medical records"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -218,7 +218,7 @@ export function DayCalendarView({
             type="button"
             variant="outline"
             size="sm"
-            className="mt-1 mb-10 w-full border-dashed border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="mt-1 mb-10 w-full border-dashed border-slate-200 text-sky-700 hover:bg-sky-50/60"
             onClick={openCreateDefault}
           >
             <Plus className="mr-2 size-4 shrink-0" aria-hidden />

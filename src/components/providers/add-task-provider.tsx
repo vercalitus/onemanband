@@ -106,7 +106,7 @@ export function AddTaskProvider({ children }: { children: ReactNode }) {
           <DialogTitle className="sr-only">Add task</DialogTitle>
           <div className="flex flex-col gap-4 p-5 pt-6">
             <div className="flex items-center gap-4">
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
                 <ClipboardList className="size-6 stroke-[1.6]" />
               </span>
               <div className="min-w-0">

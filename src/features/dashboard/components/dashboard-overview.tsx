@@ -41,28 +41,30 @@ const trendIcon = {
   steady: CircleCheckBig,
 }
 
+const pulseIconChrome = "bg-sky-100 text-sky-600"
+
 const metricAccent = {
   visits: {
     icon: CalendarCheck2,
-    iconClass: "bg-sky-100 text-sky-500",
+    iconClass: pulseIconChrome,
     cardClass: "border-slate-100 bg-white",
     shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
   },
   capacity: {
     icon: Gauge,
-    iconClass: "bg-indigo-100 text-indigo-500",
+    iconClass: pulseIconChrome,
     cardClass: "border-slate-100 bg-white",
     shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
   },
   revenue: {
     icon: Coins,
-    iconClass: "bg-emerald-100 text-emerald-500",
+    iconClass: pulseIconChrome,
     cardClass: "border-slate-100 bg-white",
     shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
   },
   debt: {
     icon: Wallet,
-    iconClass: "bg-orange-100 text-orange-400",
+    iconClass: pulseIconChrome,
     cardClass: "border-slate-100 bg-white",
     shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
   },
@@ -207,7 +209,7 @@ export function DashboardOverview() {
         <Card className={elevatedCardClass}>
           <CardHeader className={darkCardHeaderClass}>
             <div className="flex items-center gap-2.5">
-              <ListTodo className="size-5 stroke-[1.6] text-amber-400" />
+              <ListTodo className="size-5 stroke-[1.6] text-sky-400" />
               <CardTitle className="text-xl font-bold tracking-tight text-white">To Do List</CardTitle>
             </div>
           </CardHeader>
@@ -241,7 +243,7 @@ export function DashboardOverview() {
             <div className="flex justify-center border-t border-slate-100 pt-4">
               <button
                 type="button"
-                className="inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-slate-500 outline-none transition-colors hover:text-slate-800"
+                className="inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-sky-600 outline-none transition-colors hover:text-sky-800"
                 aria-label="Add task"
                 onClick={() => setAddOpen(true)}
               >
@@ -337,7 +339,7 @@ export function DashboardOverview() {
               </Button>
               <Button
                 type="submit"
-                className="h-11 min-w-[7.5rem] rounded-xl bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800"
+                className="h-11 min-w-[7.5rem] rounded-xl bg-sky-600 px-6 font-semibold text-white hover:bg-sky-700"
               >
                 Save task
               </Button>
@@ -355,10 +357,8 @@ export function DashboardOverview() {
             const AccentIcon = accent.icon
             const trendTone =
               metric.trend === "down"
-                ? "bg-[rgb(248,228,214)] text-[rgb(171,119,93)]"
-                : metric.id === "visits" || metric.id === "capacity"
-                  ? "bg-[rgb(233,242,248)] text-[rgb(91,123,138)]"
-                  : "bg-[rgb(232,242,238)] text-[rgb(92,123,110)]"
+                ? "border border-sky-200/80 bg-sky-100/90 text-sky-900"
+                : "border border-sky-100 bg-sky-50 text-sky-800"
 
             return (
               <Card

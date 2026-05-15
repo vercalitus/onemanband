@@ -129,7 +129,7 @@ export function AppointmentCard({
                   </p>
                   <Link
                     href={`/patients/${appointment.patientId}?tab=records`}
-                    className="rounded-xl border border-slate-100 p-1.5 text-slate-400 transition-colors duration-200 hover:bg-[rgb(249,246,241)] hover:text-slate-700"
+                    className="rounded-xl border border-slate-100 p-1.5 text-slate-400 transition-colors duration-200 hover:border-sky-200/80 hover:bg-sky-50/50 hover:text-sky-600"
                     aria-label={`Open medical records for ${appointment.patientName}`}
                   >
                     <FolderOpen className="size-4 stroke-[1.8]" />

@@ -29,7 +29,7 @@ export function MobileNav() {
         type="button"
         variant="outline"
         size="icon-sm"
-        className="shrink-0 border-slate-200 shadow-none lg:hidden"
+        className="shrink-0 border-slate-200 text-sky-700 shadow-none lg:hidden"
         aria-label="Open menu"
         aria-expanded={open}
         aria-controls="mobile-app-nav"

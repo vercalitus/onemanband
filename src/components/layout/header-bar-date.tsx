@@ -8,7 +8,10 @@ import {
   subscribeDashboardVisitCount,
 } from "@/lib/dashboard-visit-count"
 
-/** Full date + today’s visit count pill on every app route (count synced from dashboard calendar when present). */
+/**
+ * Dashboard visit count stays in sync when the day calendar edits; typography only (no pills).
+ * Example: Friday, 15 May 2026 | 16 visits today
+ */
 export function HeaderBarDate() {
   const pathname = usePathname()
   const [fullDate, setFullDate] = useState(() =>
@@ -38,25 +41,18 @@ export function HeaderBarDate() {
   )
 
   const isoDate = new Date().toISOString().slice(0, 10)
-
-  /** One shared token set so date + visits read as matched chips (same fill + type color). */
-  const emeraldChipClass =
-    "border border-emerald-200 bg-emerald-100/85 text-emerald-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] ring-1 ring-emerald-200/80"
+  const visitsLabel =
+    visitCount === 1 ? `${visitCount} visit today` : `${visitCount} visits today`
 
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-3 md:gap-4">
-      <time
-        dateTime={isoDate}
-        className={`max-w-[min(100%,28rem)] rounded-xl px-3 py-1.5 ${emeraldChipClass} text-sm font-bold leading-snug tracking-tight`}
-      >
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <time dateTime={isoDate} className="text-sm font-medium tracking-tight text-sky-700">
         {fullDate}
       </time>
-      <span
-        className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 ${emeraldChipClass} text-xs font-bold tabular-nums tracking-tight`}
-      >
-        {visitCount}&nbsp;
-        <span className="font-semibold">{visitCount === 1 ? "visit" : "visits"}</span>
+      <span className="select-none text-sky-300" aria-hidden>
+        |
       </span>
+      <span className="text-xs font-medium tabular-nums tracking-tight text-slate-500">{visitsLabel}</span>
     </div>
   )
 }
