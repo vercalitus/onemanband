@@ -6,10 +6,12 @@ import { HeaderActions } from "@/components/layout/header-actions"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { AddTaskProvider } from "@/components/providers/add-task-provider"
 import { Button } from "@/components/ui/button"
+import { PatientExtrasProvider } from "@/components/providers/patient-extras-provider"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AddTaskProvider>
+      <PatientExtrasProvider>
       <div className="min-h-screen bg-[#F8FAFC]">
         <div className="mx-auto flex min-h-screen min-w-0 max-w-[1680px]">
           <AppSidebar />
@@ -42,6 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
+      </PatientExtrasProvider>
     </AddTaskProvider>
   )
 }

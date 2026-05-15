@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { Activity, Search } from "lucide-react"
+import { Activity, Search, UserPlus } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import { useMergedPatients, usePatientExtras } from "@/components/providers/patient-extras-provider"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,7 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
-import { patients, todaySchedule, weeklySchedule } from "@/lib/mock-data"
+import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
+import { AddPatientDialog } from "@/features/patients/components/add-patient-dialog"
 import type { PatientSummary } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
@@ -121,11 +123,14 @@ function PatientMobileCard({
 }
 
 export default function PatientsPage() {
+  const merged = useMergedPatients()
+  const { addPatient } = usePatientExtras()
   const [query, setQuery] = useState("")
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set())
+  const [addOpen, setAddOpen] = useState(false)
 
   const rows = useMemo(() => {
-    const decorated = patients.map((p) => {
+    const decorated = merged.map((p) => {
       const days = daysSince(p.lastVisit)
       const balance = parseBalance(p.balance)
       const hasFuture = patientsWithFutureVisit.has(p.id)
@@ -161,7 +166,7 @@ export default function PatientsPage() {
         if (futureA !== futureB) return futureB - futureA
         return b.days < a.days ? 1 : -1
       })
-  }, [query, activeFilters])
+  }, [query, activeFilters, merged])
 
   const toggleFilter = (id: FilterKey) => {
     setActiveFilters((prev) => {
@@ -173,7 +178,8 @@ export default function PatientsPage() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <>
+      <div className="space-y-6 sm:space-y-8">
       <Card className={elevatedCardClass}>
         <CardHeader
           className={cn(darkCardHeaderClass, "flex flex-row flex-wrap items-center justify-between gap-3 py-3")}
@@ -183,7 +189,7 @@ export default function PatientsPage() {
             <CardTitle className="text-lg font-bold tracking-tight text-white sm:text-xl">Patients</CardTitle>
           </div>
           <span className="inline-flex shrink-0 items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tabular-nums text-white ring-1 ring-white/20">
-            {rows.length} of {patients.length}
+            {rows.length} of {merged.length}
           </span>
         </CardHeader>
 
@@ -307,6 +313,18 @@ export default function PatientsPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setAddOpen(true)}
+        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-40 flex size-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-[0_14px_44px_-14px_rgba(5,150,105,0.65)] ring-2 ring-white/90 transition hover:bg-emerald-700 hover:shadow-xl active:scale-[0.98] md:bottom-10 md:right-10 md:size-[3.75rem]"
+        aria-label="Add new patient"
+      >
+        <UserPlus className="size-7 shrink-0 stroke-[1.85] md:size-8" />
+      </button>
+
+      <AddPatientDialog open={addOpen} onOpenChange={setAddOpen} onSave={addPatient} />
+    </>
   )
 }

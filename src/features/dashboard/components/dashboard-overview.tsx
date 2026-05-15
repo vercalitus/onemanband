@@ -396,7 +396,7 @@ export function DashboardOverview() {
             <span className="flex size-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
               <TrendingUp className="size-5 stroke-[1.6]" />
             </span>
-            <h3 className="text-lg font-bold tracking-tight text-slate-900">Clinic Pulse</h3>
+            <h3 className="text-lg font-bold tracking-tight text-slate-900">Observations</h3>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {clinicPulseItems.map((item) => (
