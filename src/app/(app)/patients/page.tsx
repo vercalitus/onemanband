@@ -178,7 +178,7 @@ export default function PatientsPage() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-5 sm:space-y-6">
       <Card className={elevatedCardClass}>
         <CardHeader
           className={cn(darkCardHeaderClass, "flex flex-row flex-wrap items-center justify-between gap-3 py-3")}
@@ -312,17 +312,15 @@ export default function PatientsPage() {
             </Table>
           </div>
 
-          <div className="flex justify-center border-t border-slate-100 pt-6 pb-1">
+          <div className="flex justify-center border-t border-slate-100 pt-5 pb-1">
             <button
               type="button"
               onClick={() => setAddOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-slate-50/80 px-5 py-2.5 text-sm font-medium text-slate-700 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.12)] transition-colors hover:border-sky-200 hover:bg-white hover:text-slate-900 hover:shadow-[0_4px_16px_-6px_rgba(14,165,233,0.2)]"
+              className="inline-flex min-w-[11rem] items-center justify-between gap-3 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
               aria-label="Add new patient"
             >
-              <span className="flex size-8 items-center justify-center rounded-full bg-sky-600 text-white shadow-inner ring-1 ring-sky-500/40">
-                <UserPlus className="size-4 stroke-[2]" aria-hidden />
-              </span>
-              Add patient
+              <span>Add patient</span>
+              <UserPlus className="size-5 shrink-0 stroke-[2] text-sky-600" aria-hidden />
             </button>
           </div>
         </CardContent>

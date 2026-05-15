@@ -32,7 +32,6 @@ import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
-import { getNavItemByHref } from "@/lib/navigation"
 import { dashboardMetrics, dashboardTodos } from "@/lib/mock-data"
 import type { TodoItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
@@ -143,7 +142,6 @@ function TodoRow({
 }
 
 export function DashboardOverview() {
-  const nav = getNavItemByHref("/dashboard")!
   const { appointments: dayAppointments, setAppointments: setDayAppointments } = useScheduleDay()
   const [todos, setTodos] = useState<TodoItem[]>(() => normalizeTodos(dashboardTodos))
   const [addOpen, setAddOpen] = useState(false)
@@ -196,11 +194,7 @@ export function DashboardOverview() {
 
   return (
     <div>
-      <section className="mb-4">
-        <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
-      </section>
-
-      <section className="mb-0 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+      <section className="grid gap-5 xl:grid-cols-[1.45fr_1fr]">
         <Card className={`min-h-0 xl:min-h-[540px] ${elevatedCardClass}`}>
           <CardHeader className={cn(darkCardHeaderClass, "py-3")}>
             <div className="flex items-center gap-2.5">
@@ -251,13 +245,11 @@ export function DashboardOverview() {
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-slate-50/80 px-5 py-2.5 text-sm font-medium text-slate-700 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.12)] transition-colors hover:border-sky-200 hover:bg-white hover:text-slate-900 hover:shadow-[0_4px_16px_-6px_rgba(14,165,233,0.2)]"
+                className="inline-flex min-w-[11rem] items-center justify-between gap-3 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
                 aria-label="Add task"
               >
-                <span className="flex size-8 items-center justify-center rounded-full bg-sky-600 text-white shadow-inner ring-1 ring-sky-500/40">
-                  <Plus className="size-4 stroke-[2]" aria-hidden />
-                </span>
-                Add task
+                <span>Add task</span>
+                <Plus className="size-5 shrink-0 stroke-[2] text-sky-600" aria-hidden />
               </button>
             </div>
 

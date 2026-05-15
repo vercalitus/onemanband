@@ -6,21 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
-import { getNavItemByHref } from "@/lib/navigation"
 
 export default function ClinicalFeedPage() {
-  const nav = getNavItemByHref("/news")!
-
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <section className="mb-1 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
-        </div>
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex justify-end">
         <div className="inline-flex items-center rounded-xl border border-slate-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.08)]">
           Curated clinical updates
         </div>
-      </section>
+      </div>
 
       <Card className={elevatedCardClass}>
         <CardHeader className={darkCardHeaderClass}>

@@ -44,7 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </header>
 
-                  <main className="flex-1 min-w-0 max-w-full px-4 py-4 sm:px-6 md:px-8">{children}</main>
+                  <main className="flex-1 min-w-0 max-w-full px-4 py-3 sm:px-6 md:px-8">{children}</main>
                 </div>
               </div>
             </div>
