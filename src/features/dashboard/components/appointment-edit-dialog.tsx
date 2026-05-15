@@ -211,9 +211,8 @@ export function AppointmentEditDialog({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "relative flex max-h-[calc(100dvh-2rem)] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg",
-          // Default dialog uses top-1/2 + -translate-y/2; tall popups get clipped. Anchor from top instead.
-          "!top-4 !translate-y-0 left-1/2 -translate-x-1/2 sm:!top-[5vh]",
+          // Do not use `relative` here — tailwind-merge would override Base `fixed` and break viewport centering.
+          "flex max-h-[min(90dvh,calc(100dvh-2rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg",
         )}
       >
         <DialogDescription className="sr-only">
@@ -226,7 +225,7 @@ export function AppointmentEditDialog({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="absolute top-5 right-5 z-10 rounded-xl text-white hover:bg-white/15"
+              className="absolute top-5 right-5 z-20 rounded-xl text-white hover:bg-white/15"
               aria-label="Close"
             />
           }
