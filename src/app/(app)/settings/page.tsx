@@ -1,22 +1,16 @@
 import { Settings2 } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
-import { getNavItemByHref, navBadgeCaption } from "@/lib/navigation"
+import { getNavItemByHref } from "@/lib/navigation"
 
 export default function SettingsPage() {
   const nav = getNavItemByHref("/settings")!
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <section className="mt-4 flex flex-col gap-4 sm:mt-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0 space-y-3">
-          <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
-            {navBadgeCaption(nav.description)}
-          </Badge>
-          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
-        </div>
+      <section className="mb-1">
+        <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
       </section>
 
       <Card className={elevatedCardClass}>

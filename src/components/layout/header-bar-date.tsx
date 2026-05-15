@@ -46,13 +46,13 @@ export function HeaderBarDate() {
 
   return (
     <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <time dateTime={isoDate} className="text-sm font-medium tracking-tight text-sky-700">
+      <time dateTime={isoDate} className="text-sm font-semibold tracking-tight text-sky-700">
         {fullDate}
       </time>
-      <span className="select-none text-sky-300" aria-hidden>
+      <span className="select-none font-semibold text-sky-400" aria-hidden>
         |
       </span>
-      <span className="text-xs font-medium tabular-nums tracking-tight text-slate-500">{visitsLabel}</span>
+      <span className="text-sm font-semibold tabular-nums tracking-tight text-sky-700">{visitsLabel}</span>
     </div>
   )
 }

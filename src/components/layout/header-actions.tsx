@@ -1,12 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Search, CalendarPlus, UserPlus, ClipboardList } from "lucide-react"
+import { CalendarPlus, ClipboardList, Plus, Search, UserPlus } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useAddTask } from "@/components/providers/add-task-provider"
+import { useGlobalAddPatient } from "@/components/providers/global-add-patient-provider"
+import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 
 const MOCK_RESULTS = [
   { type: "Patient", label: "Maya Green", href: "/patients/p1" },
@@ -20,8 +21,9 @@ const MOCK_RESULTS = [
 type HeaderModal = null | "search" | "add"
 
 export function HeaderActions() {
-  const router = useRouter()
   const { openAddTask } = useAddTask()
+  const { openGlobalAddPatient } = useGlobalAddPatient()
+  const { openCreateAppointment } = useScheduleDay()
   const [modal, setModal] = useState<HeaderModal>(null)
   const [query, setQuery] = useState("")
 
@@ -116,7 +118,6 @@ export function HeaderActions() {
                   ))
                 )}
               </div>
-
             </>
           )}
 
@@ -127,7 +128,7 @@ export function HeaderActions() {
                 className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-sky-200 hover:bg-sky-50/50"
                 onClick={() => {
                   closeModal()
-                  router.push("/patients?new=1")
+                  openGlobalAddPatient()
                 }}
               >
                 <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
@@ -143,7 +144,7 @@ export function HeaderActions() {
                 className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-sky-200 hover:bg-sky-50/50"
                 onClick={() => {
                   closeModal()
-                  router.push("/calendar?new=1")
+                  openCreateAppointment()
                 }}
               >
                 <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">

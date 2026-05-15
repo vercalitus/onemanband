@@ -28,10 +28,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
-import { dashboardMetrics, dashboardTodos, todaySchedule } from "@/lib/mock-data"
+import { getNavItemByHref } from "@/lib/navigation"
+import { dashboardMetrics, dashboardTodos } from "@/lib/mock-data"
 import type { TodoItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
@@ -141,7 +143,8 @@ function TodoRow({
 }
 
 export function DashboardOverview() {
-  const [dayAppointments, setDayAppointments] = useState(() => [...todaySchedule])
+  const nav = getNavItemByHref("/dashboard")!
+  const { appointments: dayAppointments, setAppointments: setDayAppointments } = useScheduleDay()
   const [todos, setTodos] = useState<TodoItem[]>(() => normalizeTodos(dashboardTodos))
   const [addOpen, setAddOpen] = useState(false)
   const [newTitle, setNewTitle] = useState("")
@@ -193,7 +196,11 @@ export function DashboardOverview() {
 
   return (
     <div>
-      <section className="mt-4 mb-0 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+      <section className="mb-4">
+        <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
+      </section>
+
+      <section className="mb-0 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
         <Card className={`min-h-0 xl:min-h-[540px] ${elevatedCardClass}`}>
           <CardHeader className={cn(darkCardHeaderClass, "py-3")}>
             <div className="flex items-center gap-2.5">
@@ -240,14 +247,17 @@ export function DashboardOverview() {
               </div>
             </div>
 
-            <div className="flex justify-center border-t border-slate-100 pt-4">
+            <div className="flex justify-center border-t border-slate-100 pt-5 pb-1">
               <button
                 type="button"
-                className="inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-sky-600 outline-none transition-colors hover:text-sky-800"
-                aria-label="Add task"
                 onClick={() => setAddOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-slate-50/80 px-5 py-2.5 text-sm font-medium text-slate-700 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.12)] transition-colors hover:border-sky-200 hover:bg-white hover:text-slate-900 hover:shadow-[0_4px_16px_-6px_rgba(14,165,233,0.2)]"
+                aria-label="Add task"
               >
-                <Plus className="size-4 shrink-0" />
+                <span className="flex size-8 items-center justify-center rounded-full bg-sky-600 text-white shadow-inner ring-1 ring-sky-500/40">
+                  <Plus className="size-4 stroke-[2]" aria-hidden />
+                </span>
+                Add task
               </button>
             </div>
 
@@ -288,13 +298,12 @@ export function DashboardOverview() {
             <XIcon />
           </DialogClose>
 
-          <div className="relative shrink-0 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-4 pt-5 text-white">
+          <div className="relative shrink-0 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-3 pt-4 text-white">
             <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
             <DialogHeader className="relative gap-0 space-y-0">
               <DialogTitle className="font-heading pr-12 text-xl font-semibold tracking-tight text-white">
                 Add active task
               </DialogTitle>
-              <p className="mt-2 text-sm text-sky-100/90">Appears under Active on this board (not saved to the server).</p>
             </DialogHeader>
           </div>
 
@@ -302,8 +311,8 @@ export function DashboardOverview() {
             className="flex min-h-0 flex-1 flex-col"
             onSubmit={handleAddTask}
           >
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-4">
-              <div className="grid gap-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-3">
+              <div className="grid gap-3">
                 <div className="grid gap-1.5">
                   <label htmlFor="todo-title" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                     Title
@@ -333,7 +342,7 @@ export function DashboardOverview() {
               </div>
             </div>
 
-            <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
+            <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-3 sm:flex-row sm:justify-end sm:gap-3">
               <Button type="button" variant="outline" className="h-11 rounded-xl min-w-[6.5rem]" onClick={() => setAddOpen(false)}>
                 Cancel
               </Button>
@@ -348,7 +357,7 @@ export function DashboardOverview() {
         </DialogContent>
       </Dialog>
 
-      <div className="mt-16 border-t border-slate-200/75 pt-12">
+      <div className="mt-12 border-t border-slate-200/75 pt-8">
         <h2 className="mb-5 text-center text-[1.625rem] font-bold leading-snug tracking-tight text-slate-900">Pulse</h2>
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {dashboardMetrics.map((metric) => {

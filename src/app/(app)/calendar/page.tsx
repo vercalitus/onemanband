@@ -1,27 +1,20 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
+import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
-import { getNavItemByHref, navBadgeCaption } from "@/lib/navigation"
-import { todaySchedule } from "@/lib/mock-data"
+import { getNavItemByHref } from "@/lib/navigation"
 import { CalendarSync, Clock3, MessageSquareText } from "lucide-react"
-import { useState } from "react"
 
 export default function CalendarPage() {
   const nav = getNavItemByHref("/calendar")!
-  const [dayAppointments, setDayAppointments] = useState(() => [...todaySchedule])
+  const { appointments: dayAppointments, setAppointments: setDayAppointments } = useScheduleDay()
 
   return (
-    <div className="space-y-8">
-      <section className="mt-4 space-y-3 sm:mt-6">
-        <div className="min-w-0 space-y-3">
-          <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
-            {navBadgeCaption(nav.description)}
-          </Badge>
-          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
-        </div>
+    <div className="space-y-6">
+      <section className="mb-1">
+        <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-900 sm:text-4xl">{nav.label}</h1>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
