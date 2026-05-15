@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, LayoutDashboard, Newspaper, Wallet } from "lucide-react"
+import { Activity, CalendarDays, LayoutDashboard, Newspaper, Settings2, Wallet } from "lucide-react"
 
 import type { LucideIcon } from "lucide-react"
 
@@ -35,6 +35,12 @@ export const navigationItems: NavItem[] = [
     icon: "Newspaper",
     description: "Professional updates and keywords",
   },
+  {
+    href: "/settings",
+    label: "My Settings",
+    icon: "Settings2",
+    description: "Practice profile and integrations — coming soon",
+  },
 ]
 
 export const navigationIcons: Record<string, LucideIcon> = {
@@ -43,6 +49,7 @@ export const navigationIcons: Record<string, LucideIcon> = {
   CalendarDays,
   Wallet,
   Newspaper,
+  Settings2,
 }
 
 export function getNavItemByHref(href: string) {

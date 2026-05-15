@@ -10,10 +10,16 @@ import type {
 } from "@/types/domain"
 
 export const dashboardMetrics: PulseMetric[] = [
-  { id: "visits", label: "Weekly Visits", value: "84", delta: "+12%", trend: "up" },
-  { id: "retention", label: "Patient Retention", value: "92%", delta: "+4%", trend: "up" },
-  { id: "revenue", label: "Collected Revenue", value: "$18.4k", delta: "+9%", trend: "up" },
-  { id: "debt", label: "Open Debt Balance", value: "$2.1k", delta: "-6%", trend: "down" },
+  { id: "visits", label: "Monthly Visits", value: "342", delta: "+11%", trend: "up" },
+  {
+    id: "capacity",
+    label: "Treatment Capacity",
+    value: "78%",
+    delta: "+4 pp MoM",
+    trend: "up",
+  },
+  { id: "revenue", label: "Monthly Revenue", value: "$74.2k", delta: "+9%", trend: "up" },
+  { id: "debt", label: "Open Debt (month)", value: "$8.9k", delta: "-6%", trend: "down" },
 ]
 
 export const todaySchedule: ScheduleItem[] = [
@@ -251,9 +257,28 @@ export const weeklySchedule: ScheduleItem[] = [
 ]
 
 export const dashboardTodos: TodoItem[] = [
-  { id: "todo-1", title: "Verify three unsigned consent forms", due: "09:30", priority: "high", overdue: true },
-  { id: "todo-2", title: "Review overdue invoices before billing run", due: "12:00", priority: "medium" },
-  { id: "todo-3", title: "Approve tomorrow's reminder queue", due: "16:00", priority: "low" },
+  {
+    id: "todo-1",
+    title: "Verify three unsigned consent forms",
+    due: "09:30",
+    priority: "high",
+    overdue: true,
+    kind: "reactive",
+  },
+  {
+    id: "todo-2",
+    title: "Review overdue invoices before billing run",
+    due: "12:00",
+    priority: "medium",
+    kind: "reactive",
+  },
+  {
+    id: "todo-3",
+    title: "Approve tomorrow's reminder queue",
+    due: "16:00",
+    priority: "low",
+    kind: "reactive",
+  },
 ]
 
 export const patients: PatientSummary[] = [

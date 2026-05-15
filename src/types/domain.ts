@@ -54,12 +54,17 @@ export interface ScheduleItem {
   appointmentType: AppointmentType
 }
 
+/** Reactive = surfaced by account/system signals; Active = clinician-created on this board. */
+export type TodoKind = "reactive" | "active"
+
 export interface TodoItem {
   id: string
   title: string
   due: string
   priority: "low" | "medium" | "high"
   overdue?: boolean
+  kind?: TodoKind
+  completed?: boolean
 }
 
 export interface PulseMetric {

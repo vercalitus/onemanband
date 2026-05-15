@@ -1,9 +1,8 @@
 "use client"
 
-import { Bell, Stethoscope } from "lucide-react"
+import { Stethoscope } from "lucide-react"
 
 import { SidebarNavList } from "@/components/layout/sidebar-nav-list"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 
 function SidebarMark() {
@@ -37,20 +36,8 @@ export function AppSidebar() {
 
       <Separator className="my-6 bg-sky-100" />
 
-      <div className="w-full">
+      <div className="mt-auto w-full">
         <SidebarMark />
-      </div>
-
-      <div className="mt-auto rounded-2xl border border-sky-100 bg-white/60 p-4">
-        <div className="flex items-center justify-between text-sm font-medium text-sky-900">
-          <div className="inline-flex items-center gap-2">
-            <Bell className="size-4 text-sky-400" />
-            Automations
-          </div>
-          <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-600">
-            Queue 3
-          </Badge>
-        </div>
       </div>
     </aside>
   )
