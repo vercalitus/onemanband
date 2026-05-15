@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { getNavItemByHref, navBadgeCaption } from "@/lib/navigation"
 
-export default function NewsPage() {
+export default function ClinicalFeedPage() {
   const nav = getNavItemByHref("/news")!
 
   return (

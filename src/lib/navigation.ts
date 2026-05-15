@@ -25,15 +25,15 @@ export const navigationItems: NavItem[] = [
   },
   {
     href: "/finances",
-    label: "Finances",
+    label: "Billing",
     icon: "Wallet",
-    description: "Revenue, debtors, and invoices",
+    description: "Invoices, debtors, and revenue",
   },
   {
     href: "/news",
-    label: "News",
+    label: "Clinical Feed",
     icon: "Newspaper",
-    description: "Professional updates and keywords",
+    description: "Clinical headlines and curated keywords",
   },
   {
     href: "/settings",

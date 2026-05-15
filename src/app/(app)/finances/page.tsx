@@ -14,7 +14,7 @@ import {
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { getNavItemByHref, navBadgeCaption } from "@/lib/navigation"
 
-export default function FinancesPage() {
+export default function BillingPage() {
   const nav = getNavItemByHref("/finances")!
 
   return (

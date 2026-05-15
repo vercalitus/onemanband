@@ -13,7 +13,7 @@ const MOCK_RESULTS = [
   { type: "Patient", label: "Noah Stone", href: "/patients/p2" },
   { type: "Appointment", label: "Today 08:30 — Maya Green", href: "/calendar" },
   { type: "Appointment", label: "Today 10:15 — Noah Stone", href: "/calendar" },
-  { type: "Finance", label: "Invoice #1042 — $340", href: "/finances" },
+  { type: "Billing", label: "Invoice #1042 — $340", href: "/finances" },
 ]
 
 /** One dialog root only — avoids Base UI / focus issues from nested multiple modals */
