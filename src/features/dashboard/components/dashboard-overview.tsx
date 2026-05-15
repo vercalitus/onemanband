@@ -29,7 +29,6 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
-import { appointmentTypeVisual, APPOINTMENT_TYPE_OPTIONS } from "@/lib/appointment-types"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
 import { dashboardMetrics, dashboardTodos, todaySchedule } from "@/lib/mock-data"
@@ -194,23 +193,10 @@ export function DashboardOverview() {
     <div>
       <section className="mt-4 mb-0 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
         <Card className={`min-h-[540px] ${elevatedCardClass}`}>
-          <CardHeader className={darkCardHeaderClass}>
+          <CardHeader className={cn(darkCardHeaderClass, "py-3")}>
             <div className="flex items-center gap-2.5">
               <CalendarCheck2 className="size-5 stroke-[1.6] text-sky-400" />
-              <div>
-                <CardTitle className="text-xl font-bold tracking-tight text-white">Today&apos;s Clinic</CardTitle>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-medium text-white/85">
-              {APPOINTMENT_TYPE_OPTIONS.map((key) => {
-                const v = appointmentTypeVisual[key]
-                return (
-                  <span key={key} className="inline-flex items-center gap-1.5">
-                    <span className={`h-2.5 w-2.5 shrink-0 rounded-sm ${v.chip}`} aria-hidden />
-                    {v.label}
-                  </span>
-                )
-              })}
+              <CardTitle className="text-xl font-bold tracking-tight text-white">Today&apos;s Clinic</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">

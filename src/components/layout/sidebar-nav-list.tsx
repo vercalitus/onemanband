@@ -28,25 +28,20 @@ export function SidebarNavList({ onItemClick }: SidebarNavListProps) {
             className={cn(
               "flex w-full items-start gap-3 px-5 py-3.5 transition-colors duration-200",
               isActive
-                ? "bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-white/15"
-                : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+                ? "bg-white/[0.14] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-white/15"
+                : "hover:bg-white/[0.06]",
             )}
           >
-            <Icon className={cn("mt-0.5 size-4 shrink-0", isActive ? "text-sky-400" : "text-slate-500")} />
+            <Icon
+              className={cn("mt-0.5 size-4 shrink-0 text-white", isActive ? "text-sky-400" : "text-white/85")}
+            />
             <div className="min-w-0 flex-1">
-              <p
-                className={cn(
-                  "text-sm font-semibold tracking-[0.01em]",
-                  isActive ? "text-white" : "text-inherit"
-                )}
-              >
-                {item.label}
-              </p>
+              <p className="text-sm font-semibold tracking-[0.01em] text-white">{item.label}</p>
             </div>
             <ChevronRight
               className={cn(
-                "ml-auto mt-0.5 size-3.5 shrink-0 transition-transform",
-                isActive ? "translate-x-0.5 text-sky-400" : "text-slate-600"
+                "ml-auto mt-0.5 size-3.5 shrink-0 transition-transform text-white/50",
+                isActive ? "translate-x-0.5 text-sky-400" : "",
               )}
             />
           </Link>

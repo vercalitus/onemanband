@@ -16,27 +16,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="relative flex min-h-screen flex-1 flex-col bg-[#F8FAFC] shadow-[-8px_0_20px_-10px_rgba(15,23,42,0.07)]">
           <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
-            <div className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 py-2 px-6 md:flex-nowrap md:px-8">
-
+            <div className="flex min-h-14 w-full flex-wrap items-center gap-x-4 gap-y-2 py-2 px-6 md:flex-nowrap md:px-8">
               {/* Left — mobile menu + date */}
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <MobileNav />
                 <HeaderBarDate />
               </div>
 
-              {/* Center — actions */}
-              <div className="flex flex-1 items-center justify-center">
+              {/* Right — search/add + alerts */}
+              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                 <HeaderActions />
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  className="shrink-0 border-slate-100 bg-white shadow-none"
+                  aria-label="Notifications"
+                >
+                  <BellDot className="size-4 text-slate-500" />
+                </Button>
               </div>
-
-              {/* Right — bell */}
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className="shrink-0 border-slate-100 bg-white shadow-none"
-              >
-                <BellDot className="size-4 text-slate-500" />
-              </Button>
             </div>
           </header>
 
