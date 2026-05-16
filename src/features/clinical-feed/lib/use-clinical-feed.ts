@@ -25,6 +25,8 @@ export type ClinicalFeedFilter = string | null
 export function useClinicalFeed() {
   const [customSources, setCustomSources] = useState<ClinicalSource[]>([])
   const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set())
+  /** When true, feed shows bookmarked articles only (ignores sidebar source picker). */
+  const [showSavedOnly, setShowSavedOnly] = useState(false)
   const [selectedSourceId, setSelectedSourceId] = useState<ClinicalFeedFilter>(null)
   const [query, setQuery] = useState("")
 
@@ -76,7 +78,8 @@ export function useClinicalFeed() {
   const filteredArticles = useMemo<NewsArticle[]>(() => {
     const q = query.trim().toLowerCase()
     return newsFeed.filter((a) => {
-      if (selectedSourceId && a.sourceId !== selectedSourceId) return false
+      if (showSavedOnly && !savedIds.has(a.id)) return false
+      if (!showSavedOnly && selectedSourceId && a.sourceId !== selectedSourceId) return false
       if (!q) return true
       return (
         a.title.toLowerCase().includes(q) ||
@@ -85,7 +88,9 @@ export function useClinicalFeed() {
         a.keyword.toLowerCase().includes(q)
       )
     })
-  }, [query, selectedSourceId])
+  }, [query, selectedSourceId, showSavedOnly, savedIds])
+
+  const savedCount = savedIds.size
 
   const addSource = useCallback((input: { name: string; url?: string }) => {
     const name = input.name.trim()
@@ -105,6 +110,21 @@ export function useClinicalFeed() {
     setSelectedSourceId((prev) => (prev === id ? null : prev))
   }, [])
 
+  const selectSavedOnly = useCallback(() => {
+    setShowSavedOnly(true)
+    setSelectedSourceId(null)
+  }, [])
+
+  const selectAllSources = useCallback(() => {
+    setShowSavedOnly(false)
+    setSelectedSourceId(null)
+  }, [])
+
+  const selectSource = useCallback((id: string) => {
+    setShowSavedOnly(false)
+    setSelectedSourceId(id)
+  }, [])
+
   const toggleSaved = useCallback((articleId: string) => {
     setSavedIds((prev) => {
       const next = new Set(prev)
@@ -121,7 +141,10 @@ export function useClinicalFeed() {
     articleCountBySource,
     filteredArticles,
     selectedSourceId,
-    setSelectedSourceId,
+    showSavedOnly,
+    selectSavedOnly,
+    selectAllSources,
+    selectSource,
     query,
     setQuery,
     addSource,
@@ -129,5 +152,6 @@ export function useClinicalFeed() {
     toggleSaved,
     isSaved,
     totalCount: newsFeed.length,
+    savedCount,
   }
 }

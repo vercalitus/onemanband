@@ -1,46 +1,63 @@
 "use client"
 
-import { BookOpen, Library, Trash2 } from "lucide-react"
+import { BookOpen, BookmarkCheck, Library, Trash2 } from "lucide-react"
 import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
 import type { ClinicalSource } from "@/types/domain"
 
 /**
- * Vertical list of sources powering the sidebar filter. Clicking a row scopes
- * the feed to that source; the "All sources" pseudo-row clears the filter.
- * Active row uses a dark brand background so the current selection is
- * unmistakable even with many sources visible.
+ * Vertical list powering the sidebar: Saved → All sources → per-source rows.
+ * Clicking Saved scopes the feed to bookmarked articles; All sources restores
+ * the full feed before optional per-source narrowing.
  */
 export function SourceList({
   sources,
   articleCountBySource,
   totalCount,
   selectedSourceId,
-  onSelect,
+  showSavedOnly,
+  savedCount,
+  onSelectSaved,
+  onSelectAllSources,
+  onSelectSource,
   onRemoveCustom,
 }: {
   sources: ClinicalSource[]
   articleCountBySource: Map<string, number>
   totalCount: number
   selectedSourceId: string | null
-  onSelect: (id: string | null) => void
+  showSavedOnly: boolean
+  savedCount: number
+  onSelectSaved: () => void
+  onSelectAllSources: () => void
+  onSelectSource: (id: string) => void
   onRemoveCustom: (id: string) => void
 }) {
   return (
     <ul className="flex flex-col gap-0.5" role="list">
       <SourceRow
+        label="Saved"
+        count={savedCount}
+        active={showSavedOnly}
+        onClick={onSelectSaved}
+        leading={<BookmarkCheck className="size-4 stroke-[1.8]" aria-hidden />}
+      />
+
+      <li className="my-1 h-px bg-slate-100" aria-hidden />
+
+      <SourceRow
         label="All sources"
         count={totalCount}
-        active={selectedSourceId === null}
-        onClick={() => onSelect(null)}
+        active={!showSavedOnly && selectedSourceId === null}
+        onClick={onSelectAllSources}
         leading={<Library className="size-4 stroke-[1.8]" aria-hidden />}
       />
 
       <li className="my-1 h-px bg-slate-100" aria-hidden />
 
       {sources.map((s) => {
-        const active = selectedSourceId === s.id
+        const active = !showSavedOnly && selectedSourceId === s.id
         const count = articleCountBySource.get(s.id) ?? 0
         return (
           <SourceRow
@@ -49,7 +66,7 @@ export function SourceList({
             sublabel={s.url ? s.url.replace(/^https?:\/\//, "") : undefined}
             count={count}
             active={active}
-            onClick={() => onSelect(s.id)}
+            onClick={() => onSelectSource(s.id)}
             leading={<BookOpen className="size-4 stroke-[1.8]" aria-hidden />}
             trailing={
               s.custom ? (
