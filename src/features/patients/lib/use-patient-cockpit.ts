@@ -24,7 +24,7 @@ export interface PatientContactOverrides {
 }
 
 const DEFAULT_CLINICAL_STATUS =
-  "שיפור הדרגתי בטווח תנועה צווארי, דגש על יציבה בעבודה"
+  "Gradual improvement in cervical range of motion, focus on workplace posture"
 
 const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
   first: "First Visit",
