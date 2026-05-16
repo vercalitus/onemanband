@@ -5,40 +5,35 @@ import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
 
-export type KpiTone = "neutral" | "warning" | "success"
-
-const TONE_STYLES: Record<KpiTone, { iconBg: string; iconFg: string }> = {
-  neutral: { iconBg: "bg-sky-50", iconFg: "text-sky-600" },
-  warning: { iconBg: "bg-amber-50", iconFg: "text-amber-600" },
-  success: { iconBg: "bg-emerald-50", iconFg: "text-emerald-600" },
-}
+/** Site-wide: KPI header icons stay sky blue (matches global accent). */
+const KPI_ICON_BADGE = { iconBg: "bg-sky-50", iconFg: "text-sky-600" } as const
 
 /**
  * Big-number KPI card used at the top of the Financial OS page. Hierarchy:
- * eyebrow → giant mono number → optional trend / context line. Tone tints
- * only the small icon, never the number itself — keeps the card calm.
+ * eyebrow → giant mono number → optional trend / context line. Icons match
+ * the global accent (sky), not semantic warning/success colors.
  */
 export function KpiCard({
   label,
   value,
   icon: Icon,
-  tone = "neutral",
   delta,
   context,
   footer,
+  contextMonospace = false,
 }: {
   label: string
   value: string
   icon: LucideIcon
-  tone?: KpiTone
   /** Percentage change vs. the previous period; positive = up arrow. */
   delta?: number | null
   /** Short context line under the value (e.g. "vs $1,180 last month"). */
   context?: string
   /** Optional element rendered at the bottom of the card (e.g. a progress bar). */
   footer?: ReactNode
+  /** When true, context line uses tabular mono (currency comparisons). */
+  contextMonospace?: boolean
 }) {
-  const tones = TONE_STYLES[tone]
   const hasDelta = typeof delta === "number"
   const positive = hasDelta && delta! >= 0
 
@@ -51,8 +46,8 @@ export function KpiCard({
         <span
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-xl",
-            tones.iconBg,
-            tones.iconFg,
+            KPI_ICON_BADGE.iconBg,
+            KPI_ICON_BADGE.iconFg,
           )}
           aria-hidden
         >
@@ -84,7 +79,13 @@ export function KpiCard({
                 {delta}%
               </span>
             ) : null}
-            {context ? <span className="text-slate-500">{context}</span> : null}
+            {context ? (
+              <span
+                className={cn("text-slate-500", contextMonospace && "font-mono tabular-nums")}
+              >
+                {context}
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>

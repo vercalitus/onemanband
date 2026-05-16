@@ -4,6 +4,7 @@ import type {
   BillingInvoice,
   BillingPatientSnapshot,
   BillingTreatmentType,
+  ProjectedCalendarVisit,
 } from "@/types/domain"
 
 const PATIENT_INDEX = (() => {
@@ -64,6 +65,11 @@ export function computeCollectionRate(invoices: BillingInvoice[]): number | null
 export function computeMonthlyDeltaPct(currentMonth: number): number | null {
   if (PREVIOUS_MONTH_REVENUE === 0) return null
   return Math.round(((currentMonth - PREVIOUS_MONTH_REVENUE) / PREVIOUS_MONTH_REVENUE) * 100)
+}
+
+/** Sum of estimated fees for visits already scheduled in the mock calendar window. */
+export function sumProjectedRevenue(visits: ProjectedCalendarVisit[]): number {
+  return visits.reduce((acc, v) => acc + v.estimatedAmount, 0)
 }
 
 /**

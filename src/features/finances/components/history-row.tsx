@@ -1,7 +1,8 @@
 import { CheckCircle2, Slash } from "lucide-react"
 
-import { cn } from "@/lib/utils"
 import { BalanceBadge } from "@/features/finances/components/balance-badge"
+import { PatientNameLink } from "@/features/finances/components/patient-name-link"
+import { cn } from "@/lib/utils"
 import type { BillingInvoice } from "@/types/domain"
 
 const TREATMENT_LABEL: Record<string, string> = {
@@ -53,7 +54,12 @@ export function HistoryRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <p className="truncate text-sm font-bold text-slate-900">{invoice.patientName}</p>
+          <PatientNameLink
+            patientId={invoice.patientId}
+            className="truncate text-sm font-bold no-underline hover:underline"
+          >
+            {invoice.patientName}
+          </PatientNameLink>
           <BalanceBadge balance={patientBalance} />
         </div>
         <p className="mt-0.5 truncate text-xs text-slate-500">

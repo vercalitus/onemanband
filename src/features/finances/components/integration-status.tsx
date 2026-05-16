@@ -2,8 +2,9 @@
 
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCcw } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { PatientNameLink } from "@/features/finances/components/patient-name-link"
 import { formatRelative } from "@/features/finances/lib/derive-billing"
+import { cn } from "@/lib/utils"
 import type { BillingInvoice, ProviderIntegration } from "@/types/domain"
 
 /**
@@ -22,8 +23,8 @@ export function IntegrationStatus({
   onRetrySync: (invoiceId: string) => void
 }) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-2xl bg-white p-5 shadow-[0_2px_10px_-4px_rgba(15,23,42,0.08)] ring-1 ring-slate-100">
+    <div className="flex flex-col gap-3">
+      <div className="rounded-2xl bg-white p-4 shadow-[0_2px_10px_-4px_rgba(15,23,42,0.08)] ring-1 ring-slate-100">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -50,20 +51,20 @@ export function IntegrationStatus({
           </span>
         </div>
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
+        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
           <div>
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 leading-none">
               Last sync
             </dt>
-            <dd className="mt-0.5 font-medium text-slate-700">
+            <dd className="mt-0.5 font-medium leading-tight text-slate-700">
               {formatRelative(integration.lastSyncAt)}
             </dd>
           </div>
           <div>
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 leading-none">
               Auto sync
             </dt>
-            <dd className="mt-0.5 font-medium text-slate-700">
+            <dd className="mt-0.5 font-medium leading-tight text-slate-700">
               Every {integration.autoSyncMinutes} min
             </dd>
           </div>
@@ -99,7 +100,11 @@ export function IntegrationStatus({
                   <span className="mx-1.5 text-slate-300" aria-hidden>
                     ·
                   </span>
-                  <span className="text-slate-600">{inv.patientName}</span>
+                  <span className="text-slate-600">
+                    <PatientNameLink patientId={inv.patientId} className="font-medium no-underline hover:underline">
+                      {inv.patientName}
+                    </PatientNameLink>
+                  </span>
                 </div>
                 <button
                   type="button"

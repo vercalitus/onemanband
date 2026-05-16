@@ -4,6 +4,8 @@ import { useMemo, useState } from "react"
 import {
   BarChart3,
   CircleDollarSign,
+  FileDown,
+  FileText,
   Percent,
   Plug,
   Receipt,
@@ -15,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { SidePanel } from "@/components/ui/side-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { BillingToast } from "@/features/finances/components/billing-toast"
 import { HistoryRow } from "@/features/finances/components/history-row"
 import { InsightsPanel } from "@/features/finances/components/insights-panel"
 import { IntegrationStatus } from "@/features/finances/components/integration-status"
@@ -30,6 +33,7 @@ import {
   computeOutstanding,
   computePatientSnapshots,
 } from "@/features/finances/lib/derive-billing"
+import { downloadHistoryCsv, printHistoryForPdf } from "@/features/finances/lib/export-history"
 import { useBilling } from "@/features/finances/lib/use-billing"
 import {
   darkCardHeaderClass,
@@ -55,6 +59,9 @@ export default function BillingPage() {
 
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [historyQuery, setHistoryQuery] = useState("")
+  const [pendingQuery, setPendingQuery] = useState("")
+  const [billingToastOpen, setBillingToastOpen] = useState(false)
+  const [billingToastMessage, setBillingToastMessage] = useState("")
 
   const outstanding = useMemo(() => computeOutstanding(invoices), [invoices])
   const monthlyRevenue = useMemo(() => computeMonthlyRevenue(invoices), [invoices])
@@ -81,7 +88,32 @@ export default function BillingPage() {
     })
   }, [historyInvoices, historyQuery])
 
+  const filteredPendingVisits = useMemo(() => {
+    const q = pendingQuery.trim().toLowerCase()
+    if (!q) return uninvoicedVisits
+    return uninvoicedVisits.filter((v) => {
+      return (
+        v.patientName.toLowerCase().includes(q) ||
+        v.id.toLowerCase().includes(q) ||
+        v.visitDate.toLowerCase().includes(q)
+      )
+    })
+  }, [uninvoicedVisits, pendingQuery])
+
+  const filteredPendingInvoices = useMemo(() => {
+    const q = pendingQuery.trim().toLowerCase()
+    if (!q) return pendingInvoices
+    return pendingInvoices.filter((inv) => {
+      return (
+        inv.patientName.toLowerCase().includes(q) ||
+        inv.id.toLowerCase().includes(q) ||
+        (inv.issuedAt ?? "").toLowerCase().includes(q)
+      )
+    })
+  }, [pendingInvoices, pendingQuery])
+
   const pendingCount = uninvoicedVisits.length + pendingInvoices.length
+  const filteredPendingCount = filteredPendingVisits.length + filteredPendingInvoices.length
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -91,22 +123,20 @@ export default function BillingPage() {
           label="Outstanding balance"
           value={formatCurrency(outstanding)}
           icon={Wallet}
-          tone="warning"
           context={`${pendingInvoices.length} invoice${pendingInvoices.length === 1 ? "" : "s"} awaiting payment`}
         />
         <KpiCard
           label="Monthly revenue"
           value={formatCurrency(monthlyRevenue)}
           icon={CircleDollarSign}
-          tone="success"
           delta={monthlyDelta}
           context={`vs ${formatCurrency(PREVIOUS_MONTH_REVENUE)} last month`}
+          contextMonospace
         />
         <KpiCard
           label="Collection rate"
           value={collectionRate === null ? "—" : `${collectionRate}%`}
           icon={Percent}
-          tone="neutral"
           context="Paid / collectible"
           footer={
             collectionRate === null ? null : (
@@ -166,45 +196,99 @@ export default function BillingPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="pending" className="space-y-2.5">
-                {uninvoicedVisits.map((visit) => (
-                  <PendingVisitRow
-                    key={visit.id}
-                    visit={visit}
-                    patientBalance={balanceByPatient.get(visit.patientId) ?? 0}
-                    onGenerate={() => generateInvoice(visit.id)}
-                  />
-                ))}
-                {pendingInvoices.map((inv) => (
-                  <PendingInvoiceRow
-                    key={inv.id}
-                    invoice={inv}
-                    patientBalance={balanceByPatient.get(inv.patientId) ?? 0}
-                    onSendReminder={() => sendReminder(inv.id)}
-                    onMarkPaid={() => markInvoicePaid(inv.id)}
-                  />
-                ))}
-                {pendingCount === 0 && (
-                  <EmptyState
-                    title="Nothing pending"
-                    body="All visits are invoiced and every issued invoice has been paid."
-                  />
-                )}
-              </TabsContent>
-
-              <TabsContent value="history" className="space-y-3">
+              <TabsContent value="pending" className="space-y-3">
                 <div className="relative max-w-md">
                   <Search
                     className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
                     aria-hidden
                   />
                   <Input
-                    value={historyQuery}
-                    onChange={(e) => setHistoryQuery(e.target.value)}
-                    placeholder="Search by patient, invoice ID, or date"
+                    value={pendingQuery}
+                    onChange={(e) => setPendingQuery(e.target.value)}
+                    placeholder="Search pending by patient or invoice ID"
                     className="h-10 rounded-xl border-slate-200 bg-white pl-9 text-sm"
-                    aria-label="Search invoice history"
+                    aria-label="Search pending invoices and visits"
                   />
+                </div>
+
+                <div className="space-y-2.5">
+                  {filteredPendingVisits.map((visit) => (
+                    <PendingVisitRow
+                      key={visit.id}
+                      visit={visit}
+                      patientBalance={balanceByPatient.get(visit.patientId) ?? 0}
+                      onGenerate={() => generateInvoice(visit.id)}
+                    />
+                  ))}
+                  {filteredPendingInvoices.map((inv) => (
+                    <PendingInvoiceRow
+                      key={inv.id}
+                      invoice={inv}
+                      patientBalance={balanceByPatient.get(inv.patientId) ?? 0}
+                      onSendReminder={() => sendReminder(inv.id)}
+                      onMarkPaid={() => {
+                        markInvoicePaid(inv.id)
+                        setBillingToastMessage(
+                          `Marked paid — invoice archived to history (${inv.patientName}).`,
+                        )
+                        setBillingToastOpen(true)
+                      }}
+                    />
+                  ))}
+                  {pendingCount === 0 && (
+                    <EmptyState
+                      title="All caught up!"
+                      body="No pending invoices."
+                    />
+                  )}
+                  {pendingCount > 0 && filteredPendingCount === 0 && (
+                    <EmptyState
+                      title="No matches"
+                      body={`Nothing in pending matches "${pendingQuery.trim()}".`}
+                    />
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="history" className="space-y-3">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+                  <div className="relative min-w-0 max-w-md flex-1">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                      aria-hidden
+                    />
+                    <Input
+                      value={historyQuery}
+                      onChange={(e) => setHistoryQuery(e.target.value)}
+                      placeholder="Search by patient, invoice ID, or date"
+                      className="h-10 rounded-xl border-slate-200 bg-white pl-9 text-sm"
+                      aria-label="Search invoice history"
+                    />
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => downloadHistoryCsv(filteredHistory)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2",
+                        "text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50",
+                      )}
+                    >
+                      <FileDown className="size-3.5 stroke-[2]" aria-hidden />
+                      Export CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => printHistoryForPdf(filteredHistory)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2",
+                        "text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50",
+                      )}
+                    >
+                      <FileText className="size-3.5 stroke-[2]" aria-hidden />
+                      Export PDF
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2.5">
@@ -257,10 +341,16 @@ export default function BillingPage() {
         open={insightsOpen}
         onOpenChange={setInsightsOpen}
         title="Advanced Insights"
-        description="Revenue breakdown and trends across treatment types."
+        description="Paid revenue split, projected collections from the calendar, and trends."
       >
         <InsightsPanel invoices={invoices} />
       </SidePanel>
+
+      <BillingToast
+        open={billingToastOpen}
+        message={billingToastMessage}
+        onOpenChange={setBillingToastOpen}
+      />
     </div>
   )
 }

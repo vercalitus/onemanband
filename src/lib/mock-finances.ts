@@ -1,5 +1,6 @@
 import type {
   BillingInvoice,
+  ProjectedCalendarVisit,
   ProviderIntegration,
   UninvoicedVisit,
 } from "@/types/domain"
@@ -245,3 +246,92 @@ export const seedIntegration: ProviderIntegration = {
  * fabricate a second month of invoices.
  */
 export const PREVIOUS_MONTH_REVENUE: number = 1180
+
+/**
+ * Mock appointments for the next 7 rolling days — mirrors the kind of
+ * throughput you'd get from `todaySchedule` + a few extra days. Summed in
+ * Insights as "Projected Revenue" to show expected collections from work
+ * already on the calendar.
+ */
+export const projectedCalendarWeek: ProjectedCalendarVisit[] = [
+  {
+    id: "cal-d0-1",
+    date: daysAhead(0),
+    patientId: "pt-001",
+    patientName: "Maya Green",
+    treatmentType: "adjustments",
+    estimatedAmount: 120,
+  },
+  {
+    id: "cal-d0-2",
+    date: daysAhead(0),
+    patientId: "pt-003",
+    patientName: "Ava Hart",
+    treatmentType: "kupa",
+    estimatedAmount: 75,
+  },
+  {
+    id: "cal-d1-1",
+    date: daysAhead(1),
+    patientId: "pt-004",
+    patientName: "Liam Carter",
+    treatmentType: "first",
+    estimatedAmount: 220,
+  },
+  {
+    id: "cal-d1-2",
+    date: daysAhead(1),
+    patientId: "pt-005",
+    patientName: "Sofia Reed",
+    treatmentType: "adjustments",
+    estimatedAmount: 130,
+  },
+  {
+    id: "cal-d2-1",
+    date: daysAhead(2),
+    patientId: "pt-002",
+    patientName: "Noah Stone",
+    treatmentType: "kupa",
+    estimatedAmount: 85,
+  },
+  {
+    id: "cal-d2-2",
+    date: daysAhead(2),
+    patientId: "pt-006",
+    patientName: "Ethan Blake",
+    treatmentType: "adjustments",
+    estimatedAmount: 145,
+  },
+  {
+    id: "cal-d3-1",
+    date: daysAhead(3),
+    patientId: "pt-001",
+    patientName: "Maya Green",
+    treatmentType: "first",
+    estimatedAmount: 195,
+  },
+  {
+    id: "cal-d4-1",
+    date: daysAhead(4),
+    patientId: "pt-005",
+    patientName: "Sofia Reed",
+    treatmentType: "kupa",
+    estimatedAmount: 70,
+  },
+  {
+    id: "cal-d5-1",
+    date: daysAhead(5),
+    patientId: "pt-004",
+    patientName: "Liam Carter",
+    treatmentType: "adjustments",
+    estimatedAmount: 115,
+  },
+  {
+    id: "cal-d6-1",
+    date: daysAhead(6),
+    patientId: "pt-003",
+    patientName: "Ava Hart",
+    treatmentType: "adjustments",
+    estimatedAmount: 125,
+  },
+]

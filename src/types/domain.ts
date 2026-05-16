@@ -189,6 +189,19 @@ export interface ProviderIntegration {
   autoSyncMinutes: number
 }
 
+/**
+ * Scheduled visit in the next 7 days — used to estimate projected revenue
+ * from the calendar mock (Financial OS → Advanced Insights).
+ */
+export interface ProjectedCalendarVisit {
+  id: string
+  date: string
+  patientId: string
+  patientName: string
+  treatmentType: BillingTreatmentType
+  estimatedAmount: number
+}
+
 export interface NewsArticle {
   id: string
   title: string

@@ -2,9 +2,10 @@
 
 import { AlertTriangle, BellRing, FilePlus, RefreshCcw } from "lucide-react"
 
-import { cn } from "@/lib/utils"
-import { formatRelative } from "@/features/finances/lib/derive-billing"
 import { BalanceBadge } from "@/features/finances/components/balance-badge"
+import { PatientNameLink } from "@/features/finances/components/patient-name-link"
+import { formatRelative } from "@/features/finances/lib/derive-billing"
+import { cn } from "@/lib/utils"
 import type { BillingInvoice, UninvoicedVisit } from "@/types/domain"
 
 const TREATMENT_LABEL: Record<string, string> = {
@@ -32,7 +33,8 @@ export function PendingVisitRow({
   return (
     <Row
       tone="action"
-      title={visit.patientName}
+      patientId={visit.patientId}
+      patientName={visit.patientName}
       subtitle={`${TREATMENT_LABEL[visit.treatmentType]} · Visit ${formatVisitDate(visit.visitDate)}`}
       amountLabel="Suggested"
       amount={visit.suggestedDisplayAmount}
@@ -70,7 +72,8 @@ export function PendingInvoiceRow({
   return (
     <Row
       tone={overdue ? "warning" : "neutral"}
-      title={invoice.patientName}
+      patientId={invoice.patientId}
+      patientName={invoice.patientName}
       subtitle={`${invoice.id} · ${TREATMENT_LABEL[invoice.treatmentType]} · Issued ${formatRelative(toIso(invoice.issuedAt))}`}
       amountLabel={overdue ? "Overdue" : "Pending"}
       amount={invoice.displayAmount}
@@ -121,7 +124,8 @@ export function PendingInvoiceRow({
 
 function Row({
   tone,
-  title,
+  patientId,
+  patientName,
   subtitle,
   amountLabel,
   amount,
@@ -130,7 +134,8 @@ function Row({
   action,
 }: {
   tone: "neutral" | "warning" | "action"
-  title: string
+  patientId: string
+  patientName: string
   subtitle: string
   amountLabel: string
   amount: string
@@ -151,7 +156,12 @@ function Row({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <p className="truncate text-sm font-bold text-slate-900">{title}</p>
+          <PatientNameLink
+            patientId={patientId}
+            className="truncate text-sm font-bold no-underline hover:underline"
+          >
+            {patientName}
+          </PatientNameLink>
           <BalanceBadge balance={balance} />
         </div>
         <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>
