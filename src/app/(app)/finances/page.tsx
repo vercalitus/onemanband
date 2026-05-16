@@ -7,7 +7,6 @@ import {
   FileDown,
   FileText,
   Percent,
-  Plug,
   Receipt,
   Search,
   Wallet,
@@ -114,6 +113,7 @@ export default function BillingPage() {
 
   const pendingCount = uninvoicedVisits.length + pendingInvoices.length
   const filteredPendingCount = filteredPendingVisits.length + filteredPendingInvoices.length
+  const hasSyncFailures = failedSyncInvoices.length > 0
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -167,8 +167,10 @@ export default function BillingPage() {
         </button>
       </div>
 
-      {/* Main: invoices + integration status */}
-      <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+      {/* Main: invoices; sync sidebar only when something actually failed */}
+      <div
+        className={cn("grid gap-5", hasSyncFailures && "xl:grid-cols-[1fr_320px]")}
+      >
         <Card className={elevatedCardClass}>
           <CardHeader className={cn(darkCardHeaderClass, "gap-3 py-4")}>
             <div className="flex items-center gap-2.5">
@@ -316,25 +318,24 @@ export default function BillingPage() {
           </CardContent>
         </Card>
 
-        <aside className="flex flex-col gap-5">
-          <Card className={elevatedCardClass}>
-            <CardHeader className={cn(darkCardHeaderClass, "py-4")}>
-              <div className="flex items-center gap-2.5">
-                <Plug className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
+        {hasSyncFailures ? (
+          <aside className="flex flex-col gap-5">
+            <Card className={elevatedCardClass}>
+              <CardHeader className={cn(darkCardHeaderClass, "py-4")}>
                 <CardTitle className="text-base font-bold tracking-tight text-white">
-                  Integration
+                  Sync issues
                 </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className={cn(elevatedCardBodyClass, "py-4")}>
-              <IntegrationStatus
-                integration={integration}
-                failedInvoices={failedSyncInvoices}
-                onRetrySync={retrySync}
-              />
-            </CardContent>
-          </Card>
-        </aside>
+              </CardHeader>
+              <CardContent className={cn(elevatedCardBodyClass, "py-4")}>
+                <IntegrationStatus
+                  integration={integration}
+                  failedInvoices={failedSyncInvoices}
+                  onRetrySync={retrySync}
+                />
+              </CardContent>
+            </Card>
+          </aside>
+        ) : null}
       </div>
 
       <SidePanel
