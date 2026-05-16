@@ -83,6 +83,7 @@ export interface PatientSummary {
   status: PatientStatus
   phone: string
   email: string
+  address?: string
   lastVisit: string
   balance: string
   tags: string[]

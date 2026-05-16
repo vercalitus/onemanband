@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, Mail, Phone } from "lucide-react"
-import { useRef, useState } from "react"
+import { ArrowLeft, Check, Mail, MapPin, Pencil, Phone, X } from "lucide-react"
+import { useState } from "react"
 
 import { cn } from "@/lib/utils"
 import type { PatientSummary } from "@/types/domain"
+import type { PatientContactOverrides } from "../lib/use-patient-cockpit"
 
 const STATUS_BADGE: Record<PatientSummary["status"], string> = {
   active: "bg-slate-100 text-slate-700 border-slate-200",
@@ -15,34 +16,64 @@ const STATUS_BADGE: Record<PatientSummary["status"], string> = {
 
 interface Props {
   patient: PatientSummary
+  overrides: PatientContactOverrides
   totalSessionsDone: number
   planTarget: number
   clinicalStatus: string
   onClinicalStatusChange: (v: string) => void
+  onSaveOverrides: (o: PatientContactOverrides) => void
 }
+
+const FIELD_CLASS =
+  "w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800 outline-none transition-[border-color] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
 
 export function PatientSmartHeader({
   patient,
+  overrides,
   totalSessionsDone,
   planTarget,
   clinicalStatus,
   onClinicalStatusChange,
+  onSaveOverrides,
 }: Props) {
   const clampedDone = Math.min(totalSessionsDone, planTarget)
   const pct = planTarget > 0 ? Math.round((clampedDone / planTarget) * 100) : 0
 
+  /** Merged display values — overrides win */
+  const display = {
+    phone: overrides.phone ?? patient.phone,
+    email: overrides.email ?? patient.email,
+    address: overrides.address ?? patient.address ?? "",
+    medicalHistorySummary:
+      overrides.medicalHistorySummary ?? patient.medicalHistorySummary,
+  }
+
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(display)
+
+  const enterEdit = () => {
+    setDraft(display)
+    setEditing(true)
+  }
+
+  const cancelEdit = () => setEditing(false)
+
+  const saveEdit = () => {
+    onSaveOverrides(draft)
+    setEditing(false)
+  }
+
   const [editingStatus, setEditingStatus] = useState(false)
-  const [draft, setDraft] = useState(clinicalStatus)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [statusDraft, setStatusDraft] = useState(clinicalStatus)
 
   const commitStatus = () => {
-    onClinicalStatusChange(draft.trim() || clinicalStatus)
+    onClinicalStatusChange(statusDraft.trim() || clinicalStatus)
     setEditingStatus(false)
   }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_2px_12px_-4px_rgba(15,23,42,0.08)]">
-      {/* ── Top row: breadcrumb ── */}
+      {/* Breadcrumb */}
       <div className="border-b border-slate-100 px-6 py-3">
         <Link
           href="/patients"
@@ -53,11 +84,11 @@ export function PatientSmartHeader({
         </Link>
       </div>
 
-      {/* ── Main area ── */}
+      {/* Main area */}
       <div className="px-6 py-5">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-10">
-          {/* Left: name + status + medical summary */}
-          <div className="min-w-0 flex-1 space-y-1.5">
+          {/* Name + status + summary */}
+          <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900 md:text-3xl">
                 {patient.fullName}
@@ -72,32 +103,105 @@ export function PatientSmartHeader({
               </span>
             </div>
 
-            {patient.medicalHistorySummary && (
+            {editing ? (
+              <textarea
+                value={draft.medicalHistorySummary}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, medicalHistorySummary: e.target.value }))
+                }
+                rows={3}
+                className={cn(FIELD_CLASS, "resize-none")}
+                placeholder="Medical history summary…"
+              />
+            ) : (
               <p className="max-w-xl text-sm leading-relaxed text-slate-500">
-                {patient.medicalHistorySummary}
+                {display.medicalHistorySummary}
               </p>
             )}
           </div>
 
-          {/* Right: contact (plain text, no box) */}
-          <div className="shrink-0 space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Contact
-            </p>
-            <div className="flex items-center gap-1.5 text-sm text-slate-600">
-              <Phone className="size-3.5 shrink-0 text-slate-400" aria-hidden />
-              {patient.phone}
+          {/* Contact card */}
+          <div className="shrink-0 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                Contact
+              </p>
+              {!editing ? (
+                <button
+                  type="button"
+                  onClick={enterEdit}
+                  className="ml-1 flex items-center gap-1 rounded-md border border-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition-colors hover:border-sky-200 hover:text-sky-600"
+                  aria-label="Edit contact info"
+                >
+                  <Pencil className="size-2.5" aria-hidden />
+                  Edit
+                </button>
+              ) : (
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    className="flex items-center gap-1 rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white transition-colors hover:bg-slate-800"
+                  >
+                    <Check className="size-2.5" aria-hidden />
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 transition-colors hover:bg-slate-50"
+                  >
+                    <X className="size-2.5" aria-hidden />
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-slate-600">
-              <Mail className="size-3.5 shrink-0 text-slate-400" aria-hidden />
-              {patient.email}
-            </div>
+
+            {editing ? (
+              <div className="w-full space-y-1.5 lg:min-w-[240px]">
+                <input
+                  value={draft.phone}
+                  onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))}
+                  className={FIELD_CLASS}
+                  placeholder="Phone"
+                />
+                <input
+                  value={draft.email}
+                  onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
+                  className={FIELD_CLASS}
+                  placeholder="Email"
+                />
+                <input
+                  value={draft.address}
+                  onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
+                  className={FIELD_CLASS}
+                  placeholder="Address"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                  <Phone className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+                  {display.phone}
+                </div>
+                <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                  <Mail className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+                  {display.email}
+                </div>
+                {display.address && (
+                  <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                    <MapPin className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+                    {display.address}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── Bottom row: care plan + clinical status ── */}
+        {/* Care plan + clinical status */}
         <div className="mt-5 flex flex-col gap-4 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:gap-8">
-          {/* Care plan progress */}
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <div className="flex items-baseline gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -118,37 +222,34 @@ export function PatientSmartHeader({
             </div>
           </div>
 
-          {/* Divider */}
           <div className="hidden h-8 w-px bg-slate-100 sm:block" aria-hidden />
 
-          {/* Clinical status — editable inline */}
+          {/* Clinical status */}
           <div className="flex items-center gap-2">
             <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
               Status
             </p>
             {editingStatus ? (
               <input
-                ref={inputRef}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                value={statusDraft}
+                onChange={(e) => setStatusDraft(e.target.value)}
                 onBlur={commitStatus}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") commitStatus()
                   if (e.key === "Escape") {
-                    setDraft(clinicalStatus)
+                    setStatusDraft(clinicalStatus)
                     setEditingStatus(false)
                   }
                 }}
                 autoFocus
                 className="w-full max-w-xs rounded-lg border border-sky-200 bg-white px-2.5 py-1 text-sm text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-sky-100"
                 placeholder="Clinical status…"
-                aria-label="Edit clinical status"
               />
             ) : (
               <button
                 type="button"
                 onClick={() => {
-                  setDraft(clinicalStatus)
+                  setStatusDraft(clinicalStatus)
                   setEditingStatus(true)
                 }}
                 title="Click to edit"

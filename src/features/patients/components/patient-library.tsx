@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { FileImage, FileScan, FileText, FolderOpen } from "lucide-react"
+import { FileImage, FileScan, FileText, FolderOpen, Trash2 } from "lucide-react"
 
+import { cn } from "@/lib/utils"
 import type { DocumentRecord } from "@/types/domain"
 import { DocumentPreviewModal } from "./document-preview-modal"
 
@@ -38,14 +39,26 @@ function formatDate(raw: string) {
 
 interface Props {
   documentRecords: DocumentRecord[]
+  onDeleteDocument: (id: string) => void
 }
 
 /**
  * Compact sidebar card showing all patient documents.
- * One click → document preview modal.
+ * One click → document preview modal. Trash icon → confirm delete.
  */
-export function PatientLibrary({ documentRecords }: Props) {
+export function PatientLibrary({ documentRecords, onDeleteDocument }: Props) {
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+
+  const handleDelete = (id: string) => {
+    if (confirmId === id) {
+      onDeleteDocument(id)
+      setConfirmId(null)
+    } else {
+      setConfirmId(id)
+      setTimeout(() => setConfirmId((c) => (c === id ? null : c)), 3000)
+    }
+  }
 
   if (documentRecords.length === 0) return null
 
@@ -69,11 +82,11 @@ export function PatientLibrary({ documentRecords }: Props) {
             const Icon = DOC_ICONS[doc.type] ?? FileImage
             const label = DOC_LABELS[doc.type] ?? "Document"
             return (
-              <li key={doc.id}>
+              <li key={doc.id} className="group flex items-center">
                 <button
                   type="button"
                   onClick={() => setPreviewDoc(doc)}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-50 active:bg-slate-100"
+                  className="flex flex-1 items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
                 >
                   <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-100 bg-slate-50">
                     <Icon className="size-3.5 text-slate-400" aria-hidden />
@@ -86,6 +99,20 @@ export function PatientLibrary({ documentRecords }: Props) {
                       {label} · {formatDate(doc.uploadedAt)}
                     </p>
                   </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(doc.id)}
+                  className={cn(
+                    "mr-3 flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium transition-colors",
+                    confirmId === doc.id
+                      ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200"
+                      : "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
+                  )}
+                  aria-label={confirmId === doc.id ? "Confirm delete document" : "Delete document"}
+                >
+                  <Trash2 className="size-3" aria-hidden />
+                  {confirmId === doc.id && <span>Remove</span>}
                 </button>
               </li>
             )

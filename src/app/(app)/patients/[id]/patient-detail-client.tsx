@@ -12,6 +12,7 @@ import { SessionCanvas } from "@/features/patients/components/session-canvas"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
 import { PatientActionBar } from "@/features/patients/components/patient-action-bar"
 import { usePatientCockpit } from "@/features/patients/lib/use-patient-cockpit"
+import { todaySchedule } from "@/lib/mock-data"
 
 export function PatientDetailClient() {
   const params = useParams()
@@ -33,11 +34,17 @@ export function PatientDetailClient() {
     setCanvasDataUrl,
     completedSessions,
     completeSession,
+    deleteTreatmentRecord,
+    deleteCompletedSession,
     treatmentRecords,
     documentRecords,
     financeRecords,
     totalSessionsDone,
     planTarget,
+    lastAppointmentType,
+    contactOverrides,
+    saveContactOverrides,
+    deleteDocumentRecord,
   } = usePatientCockpit(id)
 
   const [notesOpen, setNotesOpen] = useState(true)
@@ -50,16 +57,23 @@ export function PatientDetailClient() {
     setToast({ open: true, message })
   }, [])
 
+  /** Find the last appointment type for this patient from today's schedule */
+  const patientLastAppointmentType = (() => {
+    const patientAppts = todaySchedule.filter((a) => a.patientId === id)
+    if (patientAppts.length > 0) return patientAppts[patientAppts.length - 1].appointmentType
+    return lastAppointmentType
+  })()
+
   const handleCompleteSession = () => {
-    completeSession()
-    showToast("Session marked as complete — timeline updated.")
+    completeSession(patientLastAppointmentType)
+    showToast(`Session ${totalSessionsDone + 1} completed — timeline updated.`)
   }
 
   const handleIssueInvoice = () => {
     showToast("Invoice generated and sent to billing.")
   }
 
-  /** Rough outstanding debt based on mock finance records */
+  /** Outstanding debt from mock finance records */
   const outstandingDebt = financeRecords
     .filter((r) => r.invoiceStatus === "overdue" || r.paymentStatus === "pending")
     .reduce((sum, r) => {
@@ -77,23 +91,23 @@ export function PatientDetailClient() {
 
   return (
     <>
-      {/* Page body — extra bottom padding so sticky bar never covers content */}
       <div className="flex gap-6 pb-28 xl:pb-8">
         {/* ── Main column ── */}
         <div className="min-w-0 flex-1 space-y-6 sm:space-y-8">
-          {/* 1. Smart Header */}
+          {/* 1. Smart Header with edit mode */}
           <PatientSmartHeader
             patient={patient}
+            overrides={contactOverrides}
             totalSessionsDone={totalSessionsDone}
             planTarget={planTarget}
             clinicalStatus={clinicalStatus}
             onClinicalStatusChange={setClinicalStatus}
+            onSaveOverrides={saveContactOverrides}
           />
 
           {/* 2. Active Session Area */}
           <section aria-labelledby="session-heading">
             <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
-              {/* Section header */}
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <h2
                   id="session-heading"
@@ -101,19 +115,19 @@ export function PatientDetailClient() {
                 >
                   Active Session
                 </h2>
-                <span className="inline-flex h-5 items-center rounded-full bg-emerald-50 px-2 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                  Live
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] tabular-nums text-slate-400">
+                    Session {totalSessionsDone + 1} of {planTarget}
+                  </span>
+                  <span className="inline-flex h-5 items-center rounded-full bg-emerald-50 px-2 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                    Live
+                  </span>
+                </div>
               </div>
 
-              <div className="p-5 space-y-4">
-                {/* Canvas */}
-                <SessionCanvas
-                  initialDataUrl={canvasDataUrl}
-                  onSave={setCanvasDataUrl}
-                />
+              <div className="space-y-4 p-5">
+                <SessionCanvas initialDataUrl={canvasDataUrl} onSave={setCanvasDataUrl} />
 
-                {/* Collapsible text notes */}
                 <div className="rounded-2xl border border-slate-100 bg-slate-50">
                   <button
                     type="button"
@@ -170,12 +184,15 @@ export function PatientDetailClient() {
                   documentRecords={documentRecords}
                   financeRecords={financeRecords}
                   completedSessions={completedSessions}
+                  planTarget={planTarget}
+                  onDeleteTreatment={deleteTreatmentRecord}
+                  onDeleteCompletedSession={deleteCompletedSession}
                 />
               </div>
             </div>
           </section>
 
-          {/* General notes card (non-editable summary) */}
+          {/* General notes */}
           {patient.generalNotes && (
             <section>
               <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
@@ -192,7 +209,7 @@ export function PatientDetailClient() {
           )}
         </div>
 
-        {/* ── Desktop: Quick-actions sidebar (rendered inside PatientActionBar) ── */}
+        {/* ── Desktop sidebar ── */}
         <PatientActionBar
           outstandingDebt={outstandingDebt}
           onCompleteSession={handleCompleteSession}
@@ -200,10 +217,12 @@ export function PatientDetailClient() {
           patientId={id}
           patientName={patient.fullName}
           documentRecords={documentRecords}
+          onDeleteDocument={deleteDocumentRecord}
+          lastAppointmentType={patientLastAppointmentType}
+          nextSessionNumber={totalSessionsDone + 1}
         />
       </div>
 
-      {/* Toast */}
       <BillingToast
         open={toast.open}
         message={toast.message}

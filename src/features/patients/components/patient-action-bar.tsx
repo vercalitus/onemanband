@@ -7,23 +7,20 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { todaySchedule } from "@/lib/mock-data"
-import type { DocumentRecord, ScheduleItem } from "@/types/domain"
+import type { AppointmentType, DocumentRecord, ScheduleItem } from "@/types/domain"
 import { PatientLibrary } from "./patient-library"
 
 interface Props {
-  /** Debt amount in ILS — shows amber hint when > 0 */
   outstandingDebt: number
-  /** Called when practitioner taps "Complete Session" */
   onCompleteSession: () => void
-  /** Called when practitioner taps "Issue Invoice" */
   onIssueInvoice: () => void
-  /** Patient id for pre-filling the schedule dialog */
   patientId: string
   patientName: string
-  /** Default treatment duration from last treatment type or settings */
   defaultDurationMinutes?: number
-  /** Patient documents for the library sidebar card */
   documentRecords?: DocumentRecord[]
+  onDeleteDocument?: (id: string) => void
+  lastAppointmentType?: AppointmentType
+  nextSessionNumber?: number
 }
 
 const BTN_BASE =
@@ -37,6 +34,9 @@ export function PatientActionBar({
   patientName,
   defaultDurationMinutes = 35,
   documentRecords = [],
+  onDeleteDocument,
+  lastAppointmentType = "adjustments",
+  nextSessionNumber,
 }: Props) {
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const router = useRouter()
@@ -46,9 +46,13 @@ export function PatientActionBar({
     const nextDate = new Date()
     nextDate.setDate(nextDate.getDate() + 7)
     const iso = nextDate.toISOString().slice(0, 10)
-    const startMinutes = 9 * 60 // default 09:00
+    const startMinutes = 9 * 60
     const endMinutes = startMinutes + defaultDurationMinutes
-    const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`
+    const hhmm = (m: number) =>
+      `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`
+    const sessionNote = nextSessionNumber
+      ? `Session ${nextSessionNumber} — ${patientName}`
+      : patientName
     return {
       id: "",
       patientId,
@@ -59,8 +63,8 @@ export function PatientActionBar({
       start: hhmm(startMinutes),
       end: hhmm(endMinutes),
       status: "scheduled",
-      treatment: "",
-      appointmentType: "adjustments",
+      treatment: sessionNote,
+      appointmentType: lastAppointmentType,
     }
   }
 
@@ -186,7 +190,10 @@ export function PatientActionBar({
 
         {/* Patient Library — below Quick Actions */}
         {documentRecords.length > 0 && (
-          <PatientLibrary documentRecords={documentRecords} />
+          <PatientLibrary
+            documentRecords={documentRecords}
+            onDeleteDocument={onDeleteDocument ?? (() => {})}
+          />
         )}
       </aside>
 
