@@ -2,7 +2,7 @@
 
 import { notFound, useParams } from "next/navigation"
 import { useState, useCallback } from "react"
-import { ChevronDown, ChevronUp, StickyNote } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
 
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { cn } from "@/lib/utils"
@@ -192,21 +192,13 @@ export function PatientDetailClient() {
             </div>
           </section>
 
-          {/* General notes */}
-          {patient.generalNotes && (
-            <section>
-              <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
-                <div className="border-b border-slate-100 px-5 py-4">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    General Notes
-                  </h2>
-                </div>
-                <p className="px-5 py-4 text-sm leading-relaxed text-slate-500">
-                  {patient.generalNotes}
-                </p>
-              </div>
-            </section>
-          )}
+          {/* General notes — editable */}
+          <GeneralNotesCard
+            initialValue={contactOverrides.generalNotes ?? patient.generalNotes ?? ""}
+            onSave={(v) =>
+              saveContactOverrides({ ...contactOverrides, generalNotes: v })
+            }
+          />
         </div>
 
         {/* ── Desktop sidebar ── */}
@@ -229,5 +221,89 @@ export function PatientDetailClient() {
         onOpenChange={(v) => setToast((t) => ({ ...t, open: v }))}
       />
     </>
+  )
+}
+
+/**
+ * Editable General Notes card. Inline pencil → textarea; Save/Cancel persist
+ * the override via the cockpit hook.
+ */
+function GeneralNotesCard({
+  initialValue,
+  onSave,
+}: {
+  initialValue: string
+  onSave: (value: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(initialValue)
+
+  const enterEdit = () => {
+    setDraft(initialValue)
+    setEditing(true)
+  }
+  const cancel = () => setEditing(false)
+  const save = () => {
+    onSave(draft.trim())
+    setEditing(false)
+  }
+
+  return (
+    <section>
+      <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            General Notes
+          </h2>
+          {!editing ? (
+            <button
+              type="button"
+              onClick={enterEdit}
+              className="flex items-center gap-1 rounded-md border border-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition-colors hover:border-sky-200 hover:text-sky-600"
+              aria-label="Edit general notes"
+            >
+              <Pencil className="size-2.5" aria-hidden />
+              Edit
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={save}
+                className="flex items-center gap-1 rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white transition-colors hover:bg-slate-800"
+              >
+                <Check className="size-2.5" aria-hidden />
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={cancel}
+                className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 transition-colors hover:bg-slate-50"
+              >
+                <X className="size-2.5" aria-hidden />
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="px-5 py-4">
+          {editing ? (
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={4}
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 outline-none focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
+              placeholder="Add general notes (preferences, history flags, etc.)…"
+            />
+          ) : (
+            <p className="text-sm leading-relaxed text-slate-500">
+              {initialValue || (
+                <span className="italic text-slate-400">No general notes yet.</span>
+              )}
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }

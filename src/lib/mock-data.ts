@@ -336,8 +336,10 @@ export const patients: PatientSummary[] = [
     lastVisit: "2026-04-02",
     balance: "$120",
     tags: ["Cervical Spine", "Insurance"],
-    medicalHistorySummary: "Recurring cervical pain after remote-work strain. No allergies reported.",
-    generalNotes: "Prefers reminder messages by WhatsApp and early morning appointment slots.",
+    medicalHistorySummary:
+      "Recurring cervical pain after sustained remote-work strain, presenting primarily as right-sided neck and upper trapezius tension with referral toward the suboccipital region. Prior imaging (cervical X-Ray, Apr 2026) showed mild C5-C6 disc narrowing without acute findings. No allergies reported. Patient is otherwise active, with no history of cardiovascular or systemic conditions, and responds well to manual mobilization combined with home mobility drills.",
+    generalNotes:
+      "Prefers reminder messages by WhatsApp and early morning appointment slots. Bring exercise sheet to next visit.",
   },
   {
     id: "pt-002",

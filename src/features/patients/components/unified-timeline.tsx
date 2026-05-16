@@ -233,7 +233,7 @@ export function UnifiedTimeline({
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                {/* Date + session badge row */}
+                {/* Date + session badge + delete (top row, well-separated) */}
                 <div className="mb-1 flex items-center gap-2">
                   <p className="font-mono text-[11px] tabular-nums text-slate-400">
                     {formatDate(entry.date)}
@@ -241,6 +241,22 @@ export function UnifiedTimeline({
                   <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 font-mono text-[10px] tabular-nums text-slate-400 ring-1 ring-slate-100">
                     Session {sessionNumber} of {planTarget}
                   </span>
+
+                  {/* Delete — pushed to the far right, separated from the expand chevron */}
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(entry)}
+                    className={cn(
+                      "ml-auto flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
+                      confirming
+                        ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200"
+                        : "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
+                    )}
+                    aria-label={confirming ? "Confirm delete" : "Delete session"}
+                  >
+                    <Trash2 className="size-3.5" aria-hidden />
+                    {confirming && <span>Confirm</span>}
+                  </button>
                 </div>
 
                 {/* Expandable card */}
@@ -256,7 +272,7 @@ export function UnifiedTimeline({
                   <button
                     type="button"
                     onClick={() => hasMore && toggle(entry.id)}
-                    className="flex w-full items-start gap-2 px-4 py-3 text-left"
+                    className="flex w-full items-start gap-3 px-4 py-3 text-left"
                     aria-expanded={expanded}
                   >
                     <div className="min-w-0 flex-1">
@@ -266,36 +282,24 @@ export function UnifiedTimeline({
                       )}
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
-                      {/* Delete button — visible on group hover */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDelete(entry)
-                        }}
+                    {/* Prominent expand chevron — clearly separated, larger hit area */}
+                    {hasMore && (
+                      <span
                         className={cn(
-                          "flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
-                          confirming
-                            ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200"
-                            : "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
+                          "ml-2 flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors",
+                          expanded
+                            ? "border-sky-200 bg-sky-50 text-sky-600"
+                            : "border-slate-200 bg-white text-slate-500 group-hover:border-sky-200 group-hover:bg-sky-50 group-hover:text-sky-600",
                         )}
-                        aria-label={confirming ? "Confirm delete" : "Delete session"}
+                        aria-hidden
                       >
-                        <Trash2 className="size-3.5" aria-hidden />
-                        {confirming && <span>Confirm</span>}
-                      </button>
-
-                      {hasMore && (
-                        <span className="text-slate-300">
-                          {expanded ? (
-                            <ChevronUp className="size-4" aria-hidden />
-                          ) : (
-                            <ChevronDown className="size-4" aria-hidden />
-                          )}
-                        </span>
-                      )}
-                    </div>
+                        {expanded ? (
+                          <ChevronUp className="size-4" />
+                        ) : (
+                          <ChevronDown className="size-4" />
+                        )}
+                      </span>
+                    )}
                   </button>
 
                   {/* Expanded area */}

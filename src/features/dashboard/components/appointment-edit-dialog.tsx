@@ -112,18 +112,25 @@ export function AppointmentEditDialog({
       return
     }
     if (mode === "create") {
-      const base = defaultStartMinutes ?? CALENDAR_HOUR_START * 60 + 60
+      // If the caller passed an appointment stub (e.g. from a patient page),
+      // honour its fields as pre-fills. Otherwise fall back to fresh defaults.
+      const stub = appointment
+      const base =
+        defaultStartMinutes ??
+        (stub ? minutesFromHHMM(stub.start) : CALENDAR_HOUR_START * 60 + 60)
       const snapped = snapMinutesToSlotNearest(base)
-      const dur = 15
+      const dur = stub
+        ? minutesFromHHMM(stub.end) - minutesFromHHMM(stub.start)
+        : 15
       const clampedStart = clampStartForDuration(snapped, dur)
       setStartHour(Math.floor(clampedStart / 60))
       setStartMinute(clampedStart % 60)
       setDurationMin(dur)
-      setPatientName("")
-      setTreatment("")
-      setStatus("scheduled")
-      setApptType("adjustments")
-      setDate(defaultDate ?? toISODate(new Date()))
+      setPatientName(stub?.patientName ?? "")
+      setTreatment(stub?.treatment ?? "")
+      setStatus(stub?.status ?? "scheduled")
+      setApptType(stub?.appointmentType ?? "adjustments")
+      setDate(defaultDate ?? stub?.date ?? toISODate(new Date()))
     }
   }, [open, mode, appointment, defaultStartMinutes, defaultDate])
 

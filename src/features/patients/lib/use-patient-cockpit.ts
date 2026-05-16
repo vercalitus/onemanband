@@ -20,6 +20,7 @@ export interface PatientContactOverrides {
   email?: string
   address?: string
   medicalHistorySummary?: string
+  generalNotes?: string
 }
 
 const DEFAULT_CLINICAL_STATUS =
