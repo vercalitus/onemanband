@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
-import { appointmentTypeVisual } from "@/lib/appointment-types"
+import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
 import { minutesFromHHMM } from "@/lib/appointment-time"
 import { toISODate } from "@/lib/date-helpers"
@@ -58,6 +58,7 @@ export function WeekView({
   onSelectDate: (next: Date) => void
   showCanceled: boolean
 }) {
+  const typeVisual = useAppointmentTypeVisual()
   const today = useMemo(() => new Date(), [])
   const weekStart = useMemo(() => startOfWeek(value), [value])
   const days = useMemo(
@@ -132,7 +133,7 @@ export function WeekView({
                   <p className="my-auto px-1 text-center text-[11px] text-slate-300">No visits</p>
                 ) : (
                   list.map((apt) => {
-                    const typeStyle = appointmentTypeVisual[apt.appointmentType]
+                    const typeStyle = typeVisual[apt.appointmentType]
                     const debt = hasOutstandingBalance(apt.patientId)
                     const isCancelled = apt.status === "cancelled"
                     return (

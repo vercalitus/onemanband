@@ -116,7 +116,7 @@ export interface FinanceRecord {
 }
 
 /** Provider that issues / syncs invoices on the clinic's behalf. */
-export type InvoiceProvider = "Green Invoice" | "Morning"
+export type InvoiceProvider = "Green Invoice" | "Morning" | "Invoice4U"
 
 /** Sync state of an invoice against the external provider. */
 export type InvoiceSyncStatus = "synced" | "pending" | "failed"

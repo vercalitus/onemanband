@@ -39,7 +39,7 @@ export const navigationItems: NavItem[] = [
     href: "/settings",
     label: "My Settings",
     icon: "Settings2",
-    description: "Practice profile and integrations — coming soon",
+    description: "Practice profile, pricing, and integrations",
   },
 ]
 

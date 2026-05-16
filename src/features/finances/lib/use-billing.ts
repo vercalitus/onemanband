@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import {
-  formatCurrency,
   seedIntegration,
   seedInvoices,
   seedUninvoicedVisits,
 } from "@/lib/mock-finances"
+import { formatIls } from "@/lib/format-ils"
+import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
 import type {
   BillingInvoice,
   ProviderIntegration,
@@ -82,38 +83,59 @@ export function useBilling() {
     } catch {}
   }, [integration, hydrated])
 
+  const syncVisitPricesFromSettings = useCallback(() => {
+    setUninvoicedVisits((prev) =>
+      prev.map((v) => {
+        const p = getTreatmentPriceIls(v.treatmentType)
+        if (p == null) return v
+        return { ...v, suggestedAmount: p, suggestedDisplayAmount: formatIls(p) }
+      }),
+    )
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    syncVisitPricesFromSettings()
+    window.addEventListener("clinic-settings-saved", syncVisitPricesFromSettings)
+    return () => window.removeEventListener("clinic-settings-saved", syncVisitPricesFromSettings)
+  }, [hydrated, syncVisitPricesFromSettings])
+
   /**
    * Convert an uninvoiced visit into an "issued" invoice. The visit then
    * disappears from the Pending tab and a new row joins the Pending invoices
    * list (it's "issued" but not "paid").
    */
-  const generateInvoice = useCallback((visitId: string) => {
-    setUninvoicedVisits((prev) => {
-      const visit = prev.find((v) => v.id === visitId)
-      if (!visit) return prev
-      const id = `INV-${Math.floor(2400 + Math.random() * 600)}`
-      const issuedAt = new Date().toISOString().slice(0, 10)
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + 14)
-      const newInvoice: BillingInvoice = {
-        id,
-        patientId: visit.patientId,
-        patientName: visit.patientName,
-        issuedAt,
-        dueAt: dueDate.toISOString().slice(0, 10),
-        paidAt: null,
-        amount: visit.suggestedAmount,
-        displayAmount: formatCurrency(visit.suggestedAmount),
-        status: "issued",
-        paymentStatus: "pending",
-        treatmentType: visit.treatmentType,
-        provider: seedIntegration.provider,
-        syncStatus: "synced",
-      }
-      setInvoices((current) => [newInvoice, ...current])
-      return prev.filter((v) => v.id !== visitId)
-    })
-  }, [])
+  const generateInvoice = useCallback(
+    (visitId: string) => {
+      setUninvoicedVisits((prev) => {
+        const visit = prev.find((v) => v.id === visitId)
+        if (!visit) return prev
+        const id = `INV-${Math.floor(2400 + Math.random() * 600)}`
+        const issuedAt = new Date().toISOString().slice(0, 10)
+        const dueDate = new Date()
+        dueDate.setDate(dueDate.getDate() + 14)
+        const unit = getTreatmentPriceIls(visit.treatmentType) ?? visit.suggestedAmount
+        const newInvoice: BillingInvoice = {
+          id,
+          patientId: visit.patientId,
+          patientName: visit.patientName,
+          issuedAt,
+          dueAt: dueDate.toISOString().slice(0, 10),
+          paidAt: null,
+          amount: unit,
+          displayAmount: formatIls(unit),
+          status: "issued",
+          paymentStatus: "pending",
+          treatmentType: visit.treatmentType,
+          provider: integration.provider,
+          syncStatus: "synced",
+        }
+        setInvoices((current) => [newInvoice, ...current])
+        return prev.filter((v) => v.id !== visitId)
+      })
+    },
+    [integration.provider],
+  )
 
   /**
    * Mark an issued/overdue invoice as paid. Moves it from Pending to History

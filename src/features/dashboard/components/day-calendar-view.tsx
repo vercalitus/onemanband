@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { AppointmentStatus, ScheduleItem } from "@/types/domain"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
-import { appointmentTypeVisual } from "@/lib/appointment-types"
+import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
 import {
   CALENDAR_HOUR_END,
@@ -86,6 +86,7 @@ export function DayCalendarView({
   /** Override scroll-area height — calendar page wants a taller viewport than the dashboard widget. */
   heightClassName?: string
 }) {
+  const typeVisual = useAppointmentTypeVisual()
   const effectiveISO = useMemo(() => toISODate(selectedDate ?? new Date()), [selectedDate])
   const todayISO = toISODate(new Date())
   const isViewingToday = effectiveISO === todayISO
@@ -159,7 +160,7 @@ export function DayCalendarView({
       }
 
       const status = statusTone[apt.status]
-      const typeStyle = appointmentTypeVisual[apt.appointmentType]
+      const typeStyle = typeVisual[apt.appointmentType]
       const isCancelled = apt.status === "cancelled"
       const debt = hasOutstandingBalance(apt.patientId)
 

@@ -21,7 +21,8 @@ import {
   MIN_APPOINTMENT_MINUTES,
   APPOINTMENT_SLOT_MINUTES,
 } from "@/types/domain"
-import { appointmentTypeVisual, APPOINTMENT_TYPE_OPTIONS } from "@/lib/appointment-types"
+import { APPOINTMENT_TYPE_OPTIONS } from "@/lib/appointment-types"
+import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import {
   CALENDAR_HOUR_END,
   CALENDAR_HOUR_START,
@@ -81,6 +82,7 @@ export function AppointmentEditDialog({
   allAppointments: ScheduleItem[]
   onSave: (item: ScheduleItem, meta: { isNew: boolean }) => void
 }) {
+  const typeVisual = useAppointmentTypeVisual()
   const [error, setError] = useState<string | null>(null)
   const [patientName, setPatientName] = useState("")
   const [treatment, setTreatment] = useState("")
@@ -241,7 +243,7 @@ export function AppointmentEditDialog({
     onOpenChange(false)
   }
 
-  const typeChip = appointmentTypeVisual[apptType].chip
+  const typeChip = typeVisual[apptType].chip
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -278,7 +280,7 @@ export function AppointmentEditDialog({
             </DialogTitle>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${typeChip}`}>
-                {appointmentTypeVisual[apptType].label}
+                {typeVisual[apptType].label}
               </span>
               <div className="flex items-center gap-2 text-sm text-sky-100">
                 <CalendarDays className="size-4 shrink-0 text-sky-300" aria-hidden />
@@ -477,7 +479,7 @@ export function AppointmentEditDialog({
                   >
                     {APPOINTMENT_TYPE_OPTIONS.map((t) => (
                       <option key={t} value={t}>
-                        {appointmentTypeVisual[t].label}
+                        {typeVisual[t].label}
                       </option>
                     ))}
                   </select>

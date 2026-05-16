@@ -5,7 +5,7 @@ import { FolderOpen } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import type { AppointmentStatus, ScheduleItem } from "@/types/domain"
-import { appointmentTypeVisual } from "@/lib/appointment-types"
+import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -95,6 +95,8 @@ export function AppointmentCard({
 }) {
   const [status, setStatus] = useState<AppointmentStatus>(appointment.status)
 
+  const typeVisual = useAppointmentTypeVisual()
+
   const nextStatusLabel = useMemo(() => formatStatus(getNextStatus(status)), [status])
 
   return (
@@ -138,9 +140,9 @@ export function AppointmentCard({
                 <p className="text-sm leading-6 text-slate-500">{appointment.treatment}</p>
                 <p className="pt-1">
                   <span
-                    className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${appointmentTypeVisual[appointment.appointmentType].chip}`}
+                    className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${typeVisual[appointment.appointmentType].chip}`}
                   >
-                    {appointmentTypeVisual[appointment.appointmentType].label}
+                    {typeVisual[appointment.appointmentType].label}
                   </span>
                 </p>
               </div>

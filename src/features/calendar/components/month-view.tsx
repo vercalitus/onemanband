@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 
-import { appointmentTypeVisual } from "@/lib/appointment-types"
+import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { minutesFromHHMM } from "@/lib/appointment-time"
 import { toISODate } from "@/lib/date-helpers"
 import { cn } from "@/lib/utils"
@@ -42,6 +42,7 @@ export function MonthView({
   /** Called after a cell click so the parent can switch to Day view. */
   onSwitchToDay: () => void
 }) {
+  const typeVisual = useAppointmentTypeVisual()
   const today = useMemo(() => new Date(), [])
   const monthStart = useMemo(() => startOfMonth(value), [value])
 
@@ -128,7 +129,7 @@ export function MonthView({
               </div>
               <div className="flex flex-col gap-0.5">
                 {preview.map((apt) => {
-                  const t = appointmentTypeVisual[apt.appointmentType]
+                  const t = typeVisual[apt.appointmentType]
                   return (
                     <span
                       key={apt.id}
