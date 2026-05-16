@@ -30,10 +30,10 @@ export const navigationItems: NavItem[] = [
     description: "Invoices, debtors, and revenue",
   },
   {
-    href: "/news",
+    href: "/clinical-feed",
     label: "Clinical Feed",
     icon: "Newspaper",
-    description: "Clinical headlines and curated keywords",
+    description: "Clinical headlines and curated sources",
   },
   {
     href: "/settings",

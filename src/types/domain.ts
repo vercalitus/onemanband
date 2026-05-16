@@ -118,9 +118,23 @@ export interface FinanceRecord {
 export interface NewsArticle {
   id: string
   title: string
+  /** Human-readable source name (kept for display + back-compat with older mock data). */
   source: string
+  /** FK to ClinicalSource.id — drives sidebar filtering on the Clinical Feed page. */
+  sourceId: string
   url: string
   keyword: string
   publishedAt: string
   summary: string
+  /** Estimated reading minutes (optional; UI hides the chip when not provided). */
+  readingMinutes?: number
+}
+
+export interface ClinicalSource {
+  id: string
+  name: string
+  /** Optional home URL — shown as subtitle and used as a default link target. */
+  url?: string
+  /** Marks user-added sources so we can persist + later delete them separately. */
+  custom?: boolean
 }

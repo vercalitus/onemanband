@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  /** Old /news URL is preserved as a permanent redirect so saved links keep working
+   *  after the page was renamed to /clinical-feed. */
+  async redirects() {
+    return [
+      { source: "/news", destination: "/clinical-feed", permanent: true },
+    ]
+  },
   /** Stale webpack filesystem cache is a common cause of "Cannot find module './611.js'" in dev on Windows. */
   webpack: (config, { dev }) => {
     if (dev) {

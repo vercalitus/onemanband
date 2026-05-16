@@ -1,4 +1,5 @@
 import type {
+  ClinicalSource,
   DocumentRecord,
   FinanceRecord,
   NewsArticle,
@@ -506,33 +507,103 @@ export const financesByPatient: Record<string, FinanceRecord[]> = {
   ],
 }
 
+/**
+ * Curated list of clinical sources surfaced in the Clinical Feed sidebar.
+ * In production these would come from Supabase and include a feed URL the
+ * backend polls; for now they're static and drive UI filtering only.
+ */
+export const clinicalSources: ClinicalSource[] = [
+  { id: "src-pubmed", name: "PubMed", url: "https://pubmed.ncbi.nlm.nih.gov" },
+  { id: "src-cochrane", name: "Cochrane Library", url: "https://www.cochranelibrary.com" },
+  { id: "src-jospt", name: "JOSPT", url: "https://www.jospt.org" },
+  { id: "src-bjsm", name: "British Journal of Sports Medicine", url: "https://bjsm.bmj.com" },
+  { id: "src-ops", name: "Practice Operations Digest" },
+]
+
 export const newsFeed: NewsArticle[] = [
   {
     id: "news-1",
     title: "Cervical Spine Loading Patterns in Hybrid Workflows",
-    source: "Journal of Musculoskeletal Practice",
+    source: "PubMed",
+    sourceId: "src-pubmed",
     url: "https://example.com/cervical-spine-loading",
     keyword: "Cervical Spine",
     publishedAt: "2026-03-28",
-    summary: "A review of how neck positioning habits changed after long-term hybrid work adoption.",
+    summary:
+      "A six-month cohort study examined how neck positioning habits shift after long-term hybrid work adoption, with implications for cervical treatment planning.",
+    readingMinutes: 6,
   },
   {
     id: "news-2",
     title: "Osteopathic Treatment Sequencing for Persistent Lumbar Pain",
-    source: "Clinical Manual Therapy Review",
+    source: "JOSPT",
+    sourceId: "src-jospt",
     url: "https://example.com/lumbar-sequencing",
     keyword: "Lumbar",
     publishedAt: "2026-03-24",
-    summary: "Highlights sequencing strategies that improve patient tolerance across six-week plans.",
+    summary:
+      "Highlights sequencing strategies that improve patient tolerance across six-week care plans, with recommended progression cues.",
+    readingMinutes: 8,
   },
   {
     id: "news-3",
     title: "Insurance Documentation Trends for Imaging Approvals",
     source: "Practice Operations Digest",
+    sourceId: "src-ops",
     url: "https://example.com/imaging-approvals",
     keyword: "Insurance",
     publishedAt: "2026-03-20",
-    summary: "Checklist-based submission packages are reducing repeat insurer requests.",
+    summary:
+      "Checklist-based submission packages are reducing repeat insurer requests and shortening time-to-approval on routine MRI authorisations.",
+    readingMinutes: 4,
+  },
+  {
+    id: "news-4",
+    title: "Manual Therapy vs. Exercise-Only for Mid-Range Lumbar Discomfort",
+    source: "Cochrane Library",
+    sourceId: "src-cochrane",
+    url: "https://example.com/manual-vs-exercise",
+    keyword: "Lumbar",
+    publishedAt: "2026-03-15",
+    summary:
+      "Systematic review across 14 RCTs comparing manual therapy alone, exercise alone, and combined approaches for non-radicular lumbar pain.",
+    readingMinutes: 12,
+  },
+  {
+    id: "news-5",
+    title: "Return-to-Sport Criteria After Lateral Ankle Sprain",
+    source: "British Journal of Sports Medicine",
+    sourceId: "src-bjsm",
+    url: "https://example.com/ankle-sprain-rts",
+    keyword: "Rehab",
+    publishedAt: "2026-03-12",
+    summary:
+      "Updated consensus statement on objective return-to-sport criteria following grade I–II lateral ankle injuries in recreational athletes.",
+    readingMinutes: 7,
+  },
+  {
+    id: "news-6",
+    title: "Thoracic Mobility Drills and Overhead Function in Office Workers",
+    source: "PubMed",
+    sourceId: "src-pubmed",
+    url: "https://example.com/thoracic-mobility",
+    keyword: "Thoracic",
+    publishedAt: "2026-03-08",
+    summary:
+      "A randomised trial of three thoracic mobility protocols and their effect on shoulder overhead range in sedentary adults.",
+    readingMinutes: 5,
+  },
+  {
+    id: "news-7",
+    title: "Pelvic Alignment Assessment: Reliability Between Clinicians",
+    source: "JOSPT",
+    sourceId: "src-jospt",
+    url: "https://example.com/pelvic-alignment",
+    keyword: "Pelvic",
+    publishedAt: "2026-03-02",
+    summary:
+      "Inter-rater reliability findings for common pelvic alignment tests, with practical implications for solo practitioners.",
+    readingMinutes: 9,
   },
 ]
 
