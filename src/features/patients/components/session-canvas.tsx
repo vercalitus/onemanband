@@ -49,7 +49,7 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
 
       // Dot grid
       ctx.save()
-      ctx.fillStyle = "rgba(100,116,139,0.045)" // very subtle dot grid
+      ctx.fillStyle = "rgba(100,116,139,0.04)" // barely-there dot grid
       const gap = 24
       for (let y = gap; y < height; y += gap) {
         for (let x = gap; x < width; x += gap) {

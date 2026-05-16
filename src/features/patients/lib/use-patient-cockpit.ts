@@ -20,7 +20,8 @@ export interface PatientCockpitState {
   completedSessions: CompletedSession[]
 }
 
-const DEFAULT_CLINICAL_STATUS = "No current status set."
+const DEFAULT_CLINICAL_STATUS =
+  "שיפור הדרגתי בטווח תנועה צווארי, דגש על יציבה בעבודה"
 
 function storageKey(patientId: string, field: string) {
   return `patient.${patientId}.${field}`

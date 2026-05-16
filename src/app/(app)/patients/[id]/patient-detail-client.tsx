@@ -199,6 +199,7 @@ export function PatientDetailClient() {
           onIssueInvoice={handleIssueInvoice}
           patientId={id}
           patientName={patient.fullName}
+          documentRecords={documentRecords}
         />
       </div>
 

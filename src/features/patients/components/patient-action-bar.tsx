@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { todaySchedule } from "@/lib/mock-data"
-import type { ScheduleItem } from "@/types/domain"
+import type { DocumentRecord, ScheduleItem } from "@/types/domain"
+import { PatientLibrary } from "./patient-library"
 
 interface Props {
   /** Debt amount in ILS — shows amber hint when > 0 */
@@ -21,6 +22,8 @@ interface Props {
   patientName: string
   /** Default treatment duration from last treatment type or settings */
   defaultDurationMinutes?: number
+  /** Patient documents for the library sidebar card */
+  documentRecords?: DocumentRecord[]
 }
 
 const BTN_BASE =
@@ -33,6 +36,7 @@ export function PatientActionBar({
   patientId,
   patientName,
   defaultDurationMinutes = 35,
+  documentRecords = [],
 }: Props) {
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const router = useRouter()
@@ -102,12 +106,15 @@ export function PatientActionBar({
           className={cn(
             BTN_BASE,
             hasDebt
-              ? "bg-amber-500 text-white hover:bg-amber-400"
+              ? "border border-amber-200 bg-white text-slate-800 hover:bg-amber-50 shadow-none"
               : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-none",
           )}
           aria-label={hasDebt ? `Issue invoice — ${debtLabel}` : "Issue invoice"}
         >
-          <Receipt className="size-5 shrink-0" aria-hidden />
+          <Receipt
+            className={cn("size-5 shrink-0", hasDebt ? "text-amber-500" : "text-slate-500")}
+            aria-hidden
+          />
           <span className="flex flex-col items-start leading-none">
             <span>Issue Invoice</span>
             {hasDebt && (
@@ -148,17 +155,20 @@ export function PatientActionBar({
               type="button"
               onClick={onIssueInvoice}
               className={cn(
-                "flex w-full items-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition-colors active:scale-[0.98]",
+                "flex w-full items-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition-colors active:scale-[0.98]",
                 hasDebt
-                  ? "bg-amber-500 text-white hover:bg-amber-400"
-                  : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
+                  ? "border-amber-200 bg-white text-slate-800 hover:bg-amber-50"
+                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
               )}
             >
-              <Receipt className="size-4 shrink-0" aria-hidden />
+              <Receipt
+                className={cn("size-4 shrink-0", hasDebt ? "text-amber-500" : "text-slate-400")}
+                aria-hidden
+              />
               <span className="flex flex-col items-start leading-none">
                 <span>Issue Invoice</span>
                 {hasDebt && (
-                  <span className="mt-0.5 text-[10px] font-normal opacity-90">{debtLabel}</span>
+                  <span className="mt-0.5 text-[10px] font-normal text-amber-600">{debtLabel}</span>
                 )}
               </span>
             </button>
@@ -173,6 +183,11 @@ export function PatientActionBar({
             </button>
           </div>
         </div>
+
+        {/* Patient Library — below Quick Actions */}
+        {documentRecords.length > 0 && (
+          <PatientLibrary documentRecords={documentRecords} />
+        )}
       </aside>
 
       {/* Appointment dialog */}
