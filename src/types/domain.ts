@@ -115,6 +115,80 @@ export interface FinanceRecord {
   paymentStatus: PaymentStatus
 }
 
+/** Provider that issues / syncs invoices on the clinic's behalf. */
+export type InvoiceProvider = "Green Invoice" | "Morning"
+
+/** Sync state of an invoice against the external provider. */
+export type InvoiceSyncStatus = "synced" | "pending" | "failed"
+
+/** Kinds of work that produced an invoice — drives the Insights breakdown. */
+export type BillingTreatmentType = "first" | "adjustments" | "kupa"
+
+/**
+ * Billing-grade invoice record used by the Financial OS page. Numbers are
+ * stored as raw numbers (not display strings) so KPI math doesn't need
+ * parsing. `displayAmount` is precomputed for the UI to keep formatting
+ * consistent everywhere.
+ */
+export interface BillingInvoice {
+  id: string
+  patientId: string
+  patientName: string
+  /** ISO date the invoice was issued (or null if it hasn't been issued yet). */
+  issuedAt: string | null
+  /** ISO date the invoice is due. */
+  dueAt: string | null
+  /** ISO date the invoice was actually paid (only when status === "paid"). */
+  paidAt: string | null
+  /** Amount in clinic currency. */
+  amount: number
+  /** Pre-formatted string for display, e.g. "$120". */
+  displayAmount: string
+  status: InvoiceStatus
+  paymentStatus: PaymentStatus
+  treatmentType: BillingTreatmentType
+  provider: InvoiceProvider
+  syncStatus: InvoiceSyncStatus
+}
+
+/**
+ * Patient-level snapshot for the Debtors list / Pending tab. Computed once
+ * from the invoice list (a patient's balance = sum of unpaid + overdue).
+ */
+export interface BillingPatientSnapshot {
+  patientId: string
+  patientName: string
+  /** Net balance; positive = owes us; negative = credit on account; 0 = settled. */
+  balance: number
+  displayBalance: string
+  lastVisit: string | null
+  status: PatientStatus
+}
+
+/**
+ * "Visit completed but never invoiced". Surfaced in the Pending tab so the
+ * clinician can generate an invoice with one click.
+ */
+export interface UninvoicedVisit {
+  id: string
+  patientId: string
+  patientName: string
+  /** ISO date the visit happened. */
+  visitDate: string
+  treatmentType: BillingTreatmentType
+  /** Suggested amount, used to seed the invoice if the user clicks "Generate". */
+  suggestedAmount: number
+  suggestedDisplayAmount: string
+}
+
+export interface ProviderIntegration {
+  provider: InvoiceProvider
+  connected: boolean
+  /** ISO timestamp of the most recent successful sync. */
+  lastSyncAt: string
+  autoSyncMinutes: number
+}
+
 export interface NewsArticle {
   id: string
   title: string
