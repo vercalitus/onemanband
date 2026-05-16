@@ -13,6 +13,7 @@ import {
   Wallet,
 } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { SidePanel } from "@/components/ui/side-panel"
@@ -120,12 +121,14 @@ export default function BillingPage() {
       {/* KPI strip */}
       <section className="grid gap-4 md:grid-cols-3">
         <KpiCard
+          tone="amber"
           label="Outstanding balance"
           value={formatCurrency(outstanding)}
           icon={Wallet}
           context={`${pendingInvoices.length} invoice${pendingInvoices.length === 1 ? "" : "s"} awaiting payment`}
         />
         <KpiCard
+          tone="sky"
           label="Monthly revenue"
           value={formatCurrency(monthlyRevenue)}
           icon={CircleDollarSign}
@@ -134,6 +137,7 @@ export default function BillingPage() {
           contextMonospace
         />
         <KpiCard
+          tone="emerald"
           label="Collection rate"
           value={collectionRate === null ? "—" : `${collectionRate}%`}
           icon={Percent}
@@ -154,17 +158,10 @@ export default function BillingPage() {
 
       {/* Advanced Insights trigger */}
       <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setInsightsOpen(true)}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5",
-            "text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-sky-200 hover:text-sky-700",
-          )}
-        >
-          <BarChart3 className="size-3.5 stroke-[2]" aria-hidden />
+        <Button type="button" variant="outline" size="sm" onClick={() => setInsightsOpen(true)}>
+          <BarChart3 className="size-3.5" aria-hidden />
           Advanced Insights
-        </button>
+        </Button>
       </div>
 
       {/* Main: invoices + invoicing provider link (no last-sync noise) */}
@@ -181,7 +178,7 @@ export default function BillingPage() {
           </CardHeader>
           <CardContent className={cn(elevatedCardBodyClass, "bg-slate-50/60 py-6")}>
             <Tabs defaultValue="pending" className="gap-5">
-              <TabsList className="bg-white shadow-[0_1px_3px_-1px_rgba(15,23,42,0.06)] ring-1 ring-slate-100">
+              <TabsList>
                 <TabsTrigger value="pending">
                   Pending action
                   <span className="ml-1.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
@@ -206,7 +203,7 @@ export default function BillingPage() {
                     value={pendingQuery}
                     onChange={(e) => setPendingQuery(e.target.value)}
                     placeholder="Search pending by patient or invoice ID"
-                    className="h-10 rounded-xl border-slate-200 bg-white pl-9 text-sm"
+                    className="pl-9"
                     aria-label="Search pending invoices and visits"
                   />
                 </div>
@@ -261,33 +258,19 @@ export default function BillingPage() {
                       value={historyQuery}
                       onChange={(e) => setHistoryQuery(e.target.value)}
                       placeholder="Search by patient, invoice ID, or date"
-                      className="h-10 rounded-xl border-slate-200 bg-white pl-9 text-sm"
+                      className="pl-9"
                       aria-label="Search invoice history"
                     />
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => downloadHistoryCsv(filteredHistory)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2",
-                        "text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50",
-                      )}
-                    >
-                      <FileDown className="size-3.5 stroke-[2]" aria-hidden />
+                    <Button type="button" variant="outline" size="sm" onClick={() => downloadHistoryCsv(filteredHistory)}>
+                      <FileDown className="size-3.5" aria-hidden />
                       Export CSV
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printHistoryForPdf(filteredHistory)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2",
-                        "text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50",
-                      )}
-                    >
-                      <FileText className="size-3.5 stroke-[2]" aria-hidden />
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => printHistoryForPdf(filteredHistory)}>
+                      <FileText className="size-3.5" aria-hidden />
                       Export PDF
-                    </button>
+                    </Button>
                   </div>
                 </div>
 

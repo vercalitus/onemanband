@@ -22,9 +22,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="mx-auto flex min-h-screen min-w-0 max-w-[1680px]">
                   <AppSidebar />
 
-                  <div className="relative flex min-h-screen min-w-0 max-w-full flex-1 flex-col bg-background shadow-[-6px_0_28px_-14px_rgba(15,23,42,0.06)]">
-                    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/95 backdrop-blur-md">
-                      <div className="flex min-h-14 w-full min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-1.5 sm:gap-x-4 sm:px-6 md:flex-nowrap md:px-8">
+                  <div className="relative flex min-h-screen min-w-0 max-w-full flex-1 flex-col border-l-[3px] border-sky-200/65 bg-white/55 shadow-[inset_18px_0_50px_-28px_rgba(56,189,248,0.14),-8px_0_32px_-18px_rgba(15,23,42,0.06)] backdrop-blur-md">
+                    <header className="sticky top-0 z-20 border-b-2 border-sky-100/90 bg-white/88 shadow-[0_12px_40px_-18px_rgba(56,189,248,0.22),0_4px_16px_-8px_rgba(15,23,42,0.06)] backdrop-blur-lg">
+                      <div className="flex min-h-[3.75rem] w-full min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 sm:gap-x-4 sm:px-6 md:flex-nowrap md:px-8">
                         {/* Left — mobile menu + date */}
                         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                           <MobileNav />
@@ -37,7 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           <Button
                             variant="outline"
                             size="icon-sm"
-                            className="shrink-0 border-slate-100 bg-white shadow-none"
+                            className="shrink-0"
                             aria-label="Notifications"
                           >
                             <BellDot className="size-4 text-sky-600" />
@@ -47,7 +47,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </header>
 
                     {/* Generous top padding below the sticky header for calmer reading rhythm. */}
-                    <main className="flex-1 min-w-0 max-w-full px-4 pb-3 pt-7 sm:px-6 md:px-8 md:pt-8">{children}</main>
+                    <main className="flex-1 min-w-0 max-w-full px-4 pb-6 pt-8 sm:px-6 md:px-10 md:pb-8 md:pt-10">
+                      {children}
+                    </main>
                   </div>
                 </div>
               </div>

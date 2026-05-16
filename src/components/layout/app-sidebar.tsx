@@ -21,7 +21,7 @@ export function AppSidebar() {
   const profile = useClinicProfile()
 
   return (
-    <aside className="hidden w-72 flex-shrink-0 flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-5 py-6 text-slate-200 lg:flex">
+    <aside className="relative hidden w-72 flex-shrink-0 flex-col border-r border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-5 py-6 text-slate-200 shadow-[12px_0_48px_-16px_rgba(0,0,0,0.55)] lg:flex">
       <div className="flex items-center gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5 text-sky-400">
           {profile.logoDataUrl ? (
