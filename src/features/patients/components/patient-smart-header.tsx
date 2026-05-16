@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils"
 import type { PatientSummary } from "@/types/domain"
 
 const STATUS_BADGE: Record<PatientSummary["status"], string> = {
-  active: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  frozen: "bg-sky-100 text-sky-800 border-sky-200",
-  past: "bg-slate-100 text-slate-600 border-slate-200",
+  active: "bg-slate-100 text-slate-700 border-slate-200",
+  frozen: "bg-slate-100 text-slate-600 border-slate-200",
+  past: "bg-slate-100 text-slate-500 border-slate-200",
 }
 
 interface Props {
@@ -41,27 +41,30 @@ export function PatientSmartHeader({
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)]">
-      {/* Dark header band */}
-      <div className="rounded-t-3xl border-b border-white/10 bg-slate-900 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-        <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          {/* Left: breadcrumb + name + status badge */}
-          <div className="min-w-0 flex-1 space-y-3">
-            <Link
-              href="/patients"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-400 transition-colors hover:text-sky-300"
-            >
-              <ArrowLeft className="size-3.5 stroke-[2.4]" aria-hidden />
-              Patients
-            </Link>
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_2px_12px_-4px_rgba(15,23,42,0.08)]">
+      {/* ── Top row: breadcrumb ── */}
+      <div className="border-b border-slate-100 px-6 py-3">
+        <Link
+          href="/patients"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-700"
+        >
+          <ArrowLeft className="size-3" aria-hidden />
+          Patients
+        </Link>
+      </div>
 
+      {/* ── Main area ── */}
+      <div className="px-6 py-5">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-10">
+          {/* Left: name + status + medical summary */}
+          <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white md:text-4xl">
+              <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900 md:text-3xl">
                 {patient.fullName}
               </h1>
               <span
                 className={cn(
-                  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize",
+                  "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold capitalize",
                   STATUS_BADGE[patient.status],
                 )}
               >
@@ -70,88 +73,91 @@ export function PatientSmartHeader({
             </div>
 
             {patient.medicalHistorySummary && (
-              <p className="max-w-2xl text-sm leading-relaxed text-slate-300/90">
+              <p className="max-w-xl text-sm leading-relaxed text-slate-500">
                 {patient.medicalHistorySummary}
               </p>
             )}
           </div>
 
-          {/* Right: contact */}
-          <div className="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 lg:min-w-[240px]">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+          {/* Right: contact (plain text, no box) */}
+          <div className="shrink-0 space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
               Contact
             </p>
-            <div className="flex items-center gap-2 text-sm text-slate-200">
-              <Phone className="size-3.5 text-sky-400" aria-hidden />
+            <div className="flex items-center gap-1.5 text-sm text-slate-600">
+              <Phone className="size-3.5 shrink-0 text-slate-400" aria-hidden />
               {patient.phone}
             </div>
-            <div className="mt-1 flex items-center gap-2 text-sm text-slate-200">
-              <Mail className="size-3.5 text-sky-400" aria-hidden />
+            <div className="flex items-center gap-1.5 text-sm text-slate-600">
+              <Mail className="size-3.5 shrink-0 text-slate-400" aria-hidden />
               {patient.email}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* White band: care plan + clinical status */}
-      <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Care plan progress */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Care Plan
-            </p>
-            <p className="font-mono text-sm font-semibold tabular-nums text-slate-900">
-              {clampedDone}/{planTarget}
-            </p>
-            <p className="text-[11px] text-slate-400">sessions</p>
+        {/* ── Bottom row: care plan + clinical status ── */}
+        <div className="mt-5 flex flex-col gap-4 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:gap-8">
+          {/* Care plan progress */}
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex items-baseline gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                Care Plan
+              </p>
+              <p className="font-mono text-sm font-semibold tabular-nums text-slate-800">
+                {clampedDone}
+                <span className="font-normal text-slate-400">/{planTarget}</span>
+              </p>
+              <p className="text-[11px] text-slate-400">sessions</p>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-sky-500 transition-all duration-700"
+                style={{ width: `${pct}%` }}
+                aria-label={`${pct}% of care plan complete`}
+              />
+            </div>
           </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-700",
-                pct >= 100 ? "bg-emerald-500" : pct >= 60 ? "bg-sky-500" : "bg-amber-400",
-              )}
-              style={{ width: `${pct}%` }}
-              aria-label={`${pct}% of care plan complete`}
-            />
-          </div>
-        </div>
 
-        {/* Clinical status — editable inline */}
-        <div className="flex shrink-0 items-center gap-2 sm:max-w-xs">
-          <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden />
-          {editingStatus ? (
-            <input
-              ref={inputRef}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitStatus}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitStatus()
-                if (e.key === "Escape") {
+          {/* Divider */}
+          <div className="hidden h-8 w-px bg-slate-100 sm:block" aria-hidden />
+
+          {/* Clinical status — editable inline */}
+          <div className="flex items-center gap-2">
+            <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              Status
+            </p>
+            {editingStatus ? (
+              <input
+                ref={inputRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commitStatus}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitStatus()
+                  if (e.key === "Escape") {
+                    setDraft(clinicalStatus)
+                    setEditingStatus(false)
+                  }
+                }}
+                autoFocus
+                className="w-full max-w-xs rounded-lg border border-sky-200 bg-white px-2.5 py-1 text-sm text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-sky-100"
+                placeholder="Clinical status…"
+                aria-label="Edit clinical status"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
                   setDraft(clinicalStatus)
-                  setEditingStatus(false)
-                }
-              }}
-              autoFocus
-              className="w-full rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-sm text-slate-800 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-              placeholder="Clinical status…"
-              aria-label="Edit clinical status"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(clinicalStatus)
-                setEditingStatus(true)
-              }}
-              title="Click to edit clinical status"
-              className="text-left text-sm leading-snug text-slate-600 underline-offset-2 hover:text-sky-700 hover:underline"
-            >
-              {clinicalStatus}
-            </button>
-          )}
+                  setEditingStatus(true)
+                }}
+                title="Click to edit"
+                className="text-left text-sm text-slate-600 underline-offset-2 hover:text-sky-700 hover:underline"
+              >
+                {clinicalStatus}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

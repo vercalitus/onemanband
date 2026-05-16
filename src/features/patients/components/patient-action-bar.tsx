@@ -103,7 +103,7 @@ export function PatientActionBar({
             BTN_BASE,
             hasDebt
               ? "bg-amber-500 text-white hover:bg-amber-400"
-              : "bg-sky-600 text-white hover:bg-sky-500",
+              : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-none",
           )}
           aria-label={hasDebt ? `Issue invoice — ${debtLabel}` : "Issue invoice"}
         >
@@ -148,8 +148,10 @@ export function PatientActionBar({
               type="button"
               onClick={onIssueInvoice}
               className={cn(
-                "flex w-full items-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold text-white transition-colors active:scale-[0.98]",
-                hasDebt ? "bg-amber-500 hover:bg-amber-400" : "bg-sky-600 hover:bg-sky-500",
+                "flex w-full items-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition-colors active:scale-[0.98]",
+                hasDebt
+                  ? "bg-amber-500 text-white hover:bg-amber-400"
+                  : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
               )}
             >
               <Receipt className="size-4 shrink-0" aria-hidden />
