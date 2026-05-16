@@ -1,173 +1,213 @@
 "use client"
 
-import Link from "next/link"
-import { notFound, useParams, useSearchParams } from "next/navigation"
-import { Activity, FileText, StickyNote, Wallet } from "lucide-react"
+import { notFound, useParams } from "next/navigation"
+import { useState, useCallback } from "react"
+import { ChevronDown, ChevronUp, StickyNote } from "lucide-react"
 
-import { documentsByPatient, financesByPatient, treatmentsByPatient } from "@/lib/mock-data"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
-import { getNavItemByHref, navBadgeCaption } from "@/lib/navigation"
-
-const statusTone = {
-  active: "default",
-  frozen: "secondary",
-  past: "outline",
-} as const
+import { cn } from "@/lib/utils"
+import { BillingToast } from "@/features/finances/components/billing-toast"
+import { PatientSmartHeader } from "@/features/patients/components/patient-smart-header"
+import { SessionCanvas } from "@/features/patients/components/session-canvas"
+import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
+import { PatientActionBar } from "@/features/patients/components/patient-action-bar"
+import { usePatientCockpit } from "@/features/patients/lib/use-patient-cockpit"
 
 export function PatientDetailClient() {
   const params = useParams()
-  const searchParams = useSearchParams()
-  const id = typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
+  const id =
+    typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
   const merged = useMergedPatients()
   const patient = merged.find((entry) => entry.id === id)
-  const patientsNav = getNavItemByHref("/patients")!
 
-  if (!patient || !id) {
-    notFound()
+  if (!patient || !id) notFound()
+
+  const {
+    hydrated,
+    clinicalStatus,
+    setClinicalStatus,
+    sessionNotes,
+    setSessionNotes,
+    canvasDataUrl,
+    setCanvasDataUrl,
+    completedSessions,
+    completeSession,
+    treatmentRecords,
+    documentRecords,
+    financeRecords,
+    totalSessionsDone,
+    planTarget,
+  } = usePatientCockpit(id)
+
+  const [notesOpen, setNotesOpen] = useState(true)
+  const [toast, setToast] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: "",
+  })
+
+  const showToast = useCallback((message: string) => {
+    setToast({ open: true, message })
+  }, [])
+
+  const handleCompleteSession = () => {
+    completeSession()
+    showToast("Session marked as complete — timeline updated.")
   }
 
-  const treatmentRecords = treatmentsByPatient[id] ?? []
-  const documentRecords = documentsByPatient[id] ?? []
-  const financeRecords = financesByPatient[id] ?? []
-  const tab = searchParams.get("tab") ?? undefined
-  const activeTab = ["records", "documents", "finances", "notes"].includes(tab ?? "") ? tab! : "records"
+  const handleIssueInvoice = () => {
+    showToast("Invoice generated and sent to billing.")
+  }
+
+  /** Rough outstanding debt based on mock finance records */
+  const outstandingDebt = financeRecords
+    .filter((r) => r.invoiceStatus === "overdue" || r.paymentStatus === "pending")
+    .reduce((sum, r) => {
+      const n = parseInt(r.amount.replace(/[^0-9]/g, ""), 10)
+      return sum + (isNaN(n) ? 0 : n)
+    }, 0)
+
+  if (!hydrated) {
+    return (
+      <div className="flex items-center justify-center py-20 text-sm text-slate-400">
+        Loading…
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <Card className={`mt-4 sm:mt-6 ${elevatedCardClass}`}>
-        <CardHeader className={darkCardHeaderClass}>
-          <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1 space-y-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                <Link href="/patients" className="text-sm font-medium text-sky-400 transition-colors hover:text-sky-300">
-                  {patientsNav.label}
-                </Link>
-                <Badge variant="outline" className="w-fit border-white/20 bg-white/10 text-slate-200">
-                  {navBadgeCaption(patientsNav.description)}
-                </Badge>
+    <>
+      {/* Page body — extra bottom padding so sticky bar never covers content */}
+      <div className="flex gap-6 pb-28 xl:pb-8">
+        {/* ── Main column ── */}
+        <div className="min-w-0 flex-1 space-y-6 sm:space-y-8">
+          {/* 1. Smart Header */}
+          <PatientSmartHeader
+            patient={patient}
+            totalSessionsDone={totalSessionsDone}
+            planTarget={planTarget}
+            clinicalStatus={clinicalStatus}
+            onClinicalStatusChange={setClinicalStatus}
+          />
+
+          {/* 2. Active Session Area */}
+          <section aria-labelledby="session-heading">
+            <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
+              {/* Section header */}
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <h2
+                  id="session-heading"
+                  className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
+                >
+                  Active Session
+                </h2>
+                <span className="inline-flex h-5 items-center rounded-full bg-emerald-50 px-2 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                  Live
+                </span>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-semibold tracking-[-0.05em] text-white md:text-4xl">{patient.fullName}</h1>
-                <Badge variant={statusTone[patient.status]} className="border-0">
-                  {patient.status}
-                </Badge>
+
+              <div className="p-5 space-y-4">
+                {/* Canvas */}
+                <SessionCanvas
+                  initialDataUrl={canvasDataUrl}
+                  onSave={setCanvasDataUrl}
+                />
+
+                {/* Collapsible text notes */}
+                <div className="rounded-2xl border border-slate-100 bg-slate-50">
+                  <button
+                    type="button"
+                    onClick={() => setNotesOpen((v) => !v)}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition-colors hover:text-sky-700"
+                    aria-expanded={notesOpen}
+                    aria-controls="session-notes-panel"
+                  >
+                    <StickyNote className="size-4 text-slate-400" aria-hidden />
+                    Session notes
+                    {notesOpen ? (
+                      <ChevronUp className="ml-auto size-4 text-slate-400" aria-hidden />
+                    ) : (
+                      <ChevronDown className="ml-auto size-4 text-slate-400" aria-hidden />
+                    )}
+                  </button>
+
+                  <div
+                    id="session-notes-panel"
+                    className={cn(
+                      "overflow-hidden transition-all duration-300",
+                      notesOpen ? "max-h-[400px]" : "max-h-0",
+                    )}
+                  >
+                    <div className="border-t border-slate-100 p-4">
+                      <textarea
+                        value={sessionNotes}
+                        onChange={(e) => setSessionNotes(e.target.value)}
+                        placeholder="Type structured notes, findings, adjustments made…"
+                        rows={5}
+                        className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 placeholder-slate-400 outline-none transition-[border-color,box-shadow] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="max-w-3xl text-sm leading-6 text-slate-300">{patient.medicalHistorySummary}</p>
             </div>
+          </section>
 
-            <div className="w-full shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm lg:max-w-[280px]">
-              <p className="font-medium text-white">Contact</p>
-              <p className="mt-1 text-slate-300">{patient.phone}</p>
-              <p className="text-slate-300">{patient.email}</p>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      <Tabs defaultValue={activeTab}>
-        <TabsList variant="line">
-          <TabsTrigger value="records">Medical Records</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="finances">Financial History</TabsTrigger>
-          <TabsTrigger value="notes">General Notes</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="records" className="mt-6">
-          <div className="grid gap-4">
-            {treatmentRecords.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
-                No treatment entries yet for this chart.
-              </p>
-            ) : (
-              treatmentRecords.map((record) => (
-                <Card key={record.id} className={elevatedCardClass}>
-                  <CardHeader className={darkCardHeaderClass}>
-                    <div className="flex items-center gap-2.5">
-                      <Activity className="size-5 stroke-[1.6] text-sky-400" />
-                      <CardTitle className="text-lg font-bold tracking-tight text-white">{record.title}</CardTitle>
-                    </div>
-                    <CardDescription className="text-slate-400">
-                      {record.recordedAt} · {record.practitioner}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className={`${elevatedCardBodyClass} text-sm leading-6 text-slate-500`}>{record.note}</CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="documents" className="mt-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            {documentRecords.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400 md:col-span-2">
-                No documents uploaded yet.
-              </p>
-            ) : (
-              documentRecords.map((document) => (
-                <Card key={document.id} className={elevatedCardClass}>
-                  <CardHeader className={darkCardHeaderClass}>
-                    <div className="flex items-center gap-2.5">
-                      <FileText className="size-5 stroke-[1.6] text-sky-400" />
-                      <CardTitle className="text-lg font-bold tracking-tight text-white">{document.name}</CardTitle>
-                    </div>
-                    <CardDescription className="text-slate-400">
-                      {document.type.toUpperCase()} · uploaded {document.uploadedAt}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className={`${elevatedCardBodyClass} text-sm leading-6 text-slate-500`}>{document.source}</CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="finances" className="mt-6">
-          <div className="grid gap-4">
-            {financeRecords.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
-                No billing rows linked to this patient in mock data.
-              </p>
-            ) : (
-              financeRecords.map((record) => (
-                <Card key={record.id} className={elevatedCardClass}>
-                  <CardHeader className={darkCardHeaderClass}>
-                    <div className="flex items-center gap-2.5">
-                      <Wallet className="size-5 stroke-[1.6] text-sky-400" />
-                      <CardTitle className="text-lg font-bold tracking-tight text-white">{record.description}</CardTitle>
-                    </div>
-                    <CardDescription className="text-slate-400">{record.issuedAt}</CardDescription>
-                  </CardHeader>
-                  <CardContent className={`${elevatedCardBodyClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
-                    <span className="font-mono text-sm font-medium tabular-nums text-slate-900">{record.amount}</span>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">{record.invoiceStatus}</Badge>
-                      <Badge variant="secondary">{record.paymentStatus.replace("_", " ")}</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="notes" className="mt-6">
-          <Card className={elevatedCardClass}>
-            <CardHeader className={darkCardHeaderClass}>
-              <div className="flex items-center gap-2.5">
-                <StickyNote className="size-5 stroke-[1.6] text-sky-400" />
-                <CardTitle className="text-xl font-bold tracking-tight text-white">General Notes</CardTitle>
+          {/* 3. Unified Timeline */}
+          <section aria-labelledby="timeline-heading">
+            <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h2
+                  id="timeline-heading"
+                  className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
+                >
+                  Patient Timeline
+                </h2>
               </div>
-            </CardHeader>
-            <CardContent className={`${elevatedCardBodyClass} text-sm leading-6 text-slate-500`}>{patient.generalNotes}</CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+              <div className="p-5 pb-3">
+                <UnifiedTimeline
+                  treatmentRecords={treatmentRecords}
+                  documentRecords={documentRecords}
+                  financeRecords={financeRecords}
+                  completedSessions={completedSessions}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* General notes card (non-editable summary) */}
+          {patient.generalNotes && (
+            <section>
+              <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
+                <div className="border-b border-slate-100 px-5 py-4">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    General Notes
+                  </h2>
+                </div>
+                <p className="px-5 py-4 text-sm leading-relaxed text-slate-500">
+                  {patient.generalNotes}
+                </p>
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* ── Desktop: Quick-actions sidebar (rendered inside PatientActionBar) ── */}
+        <PatientActionBar
+          outstandingDebt={outstandingDebt}
+          onCompleteSession={handleCompleteSession}
+          onIssueInvoice={handleIssueInvoice}
+          patientId={id}
+          patientName={patient.fullName}
+        />
+      </div>
+
+      {/* Toast */}
+      <BillingToast
+        open={toast.open}
+        message={toast.message}
+        onOpenChange={(v) => setToast((t) => ({ ...t, open: v }))}
+      />
+    </>
   )
 }
