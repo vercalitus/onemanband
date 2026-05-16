@@ -39,17 +39,16 @@ export function FeedCard({
   return (
     <article
       className={cn(
-        // Equal-height tiles on the grid keep visual rhythm even when summaries are short.
-        "group relative flex h-full min-h-[230px] flex-col gap-3 rounded-2xl bg-white p-5",
-        "shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)] ring-1 ring-transparent transition-all duration-200",
-        "hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(15,23,42,0.35)] hover:ring-sky-200",
+        "group relative flex h-full min-h-[240px] flex-col gap-4 rounded-3xl bg-white p-6",
+        "shadow-[0_1px_3px_rgba(15,23,42,0.05),0_12px_36px_-18px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/40 transition-all duration-200",
+        "hover:-translate-y-0.5 hover:shadow-[0_8px_40px_-20px_rgba(15,23,42,0.15)] hover:ring-sky-200/60",
       )}
     >
       <header className="flex items-start justify-between gap-3">
         <span
           className={cn(
-            "inline-flex max-w-[80%] items-center rounded-md bg-slate-900 px-2 py-0.5",
-            "text-[10px] font-bold uppercase tracking-[0.12em] text-white",
+            "inline-flex max-w-[80%] items-center rounded-lg bg-slate-700/95 px-2.5 py-1",
+            "text-[10px] font-semibold uppercase tracking-[0.12em] text-white",
           )}
           title={article.source}
         >
@@ -66,21 +65,21 @@ export function FeedCard({
           aria-label={saved ? "Remove from saved" : "Save for later"}
           aria-pressed={saved}
           className={cn(
-            "relative z-10 -mr-1 -mt-1 shrink-0 rounded-lg p-1.5 transition-colors",
+            "relative z-10 -mr-1 -mt-1 shrink-0 rounded-xl p-2 transition-colors",
             saved
               ? "text-sky-600 hover:bg-sky-50"
               : "text-slate-300 hover:bg-slate-50 hover:text-sky-600",
           )}
         >
           {saved ? (
-            <BookmarkCheck className="size-4 stroke-[1.8]" aria-hidden />
+            <BookmarkCheck className="size-4 stroke-[1.75]" aria-hidden />
           ) : (
-            <Bookmark className="size-4 stroke-[1.8]" aria-hidden />
+            <Bookmark className="size-4 stroke-[1.75]" aria-hidden />
           )}
         </button>
       </header>
 
-      <h3 className="font-heading text-[18px] font-bold leading-snug tracking-tight text-slate-900 transition-colors group-hover:text-sky-900">
+      <h3 className="font-heading text-[18px] font-semibold leading-snug tracking-tight text-slate-800 transition-colors group-hover:text-sky-800">
         <a
           href={article.url}
           target="_blank"
@@ -91,7 +90,7 @@ export function FeedCard({
         </a>
       </h3>
 
-      <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">{article.summary}</p>
+      <p className="line-clamp-4 text-sm font-normal leading-[1.65] text-slate-600">{article.summary}</p>
 
       <footer
         className={cn(
@@ -112,7 +111,7 @@ export function FeedCard({
         </span>
         <span className="relative z-10 inline-flex shrink-0 items-center gap-1 text-slate-400 transition-colors group-hover:text-sky-600">
           Read
-          <ExternalLink className="size-3 stroke-[2]" aria-hidden />
+          <ExternalLink className="size-3.5 stroke-[1.75]" aria-hidden />
         </span>
       </footer>
     </article>

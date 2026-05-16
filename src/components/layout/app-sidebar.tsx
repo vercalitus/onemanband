@@ -28,7 +28,7 @@ export function AppSidebar() {
             // eslint-disable-next-line @next/next/no-img-element -- user-provided data URL from settings
             <img src={profile.logoDataUrl} alt="" className="size-full object-cover" />
           ) : (
-            <Stethoscope className="size-4.5" />
+            <Stethoscope className="size-4.5 stroke-[1.75]" />
           )}
         </div>
         <div className="min-w-0">

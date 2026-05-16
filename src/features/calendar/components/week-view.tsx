@@ -124,11 +124,11 @@ export function WeekView({
       </div>
 
       <ScrollArea className="h-[min(70vh,560px)] md:h-[560px]">
-        <div className="grid grid-cols-7 gap-2 p-2">
+        <div className="grid grid-cols-7 gap-3 p-3 md:gap-3.5 md:p-3.5">
           {days.map((d) => {
             const list = cellsByDay.get(d.toDateString()) ?? []
             return (
-              <div key={d.toDateString()} className="flex min-h-[200px] flex-col gap-1.5 rounded-lg bg-slate-50/40 p-1.5">
+              <div key={d.toDateString()} className="flex min-h-[200px] flex-col gap-2 rounded-xl bg-slate-50/50 p-2 md:min-h-[220px] md:gap-2.5 md:p-2.5">
                 {list.length === 0 ? (
                   <p className="my-auto px-1 text-center text-[11px] text-slate-300">No visits</p>
                 ) : (
@@ -145,7 +145,7 @@ export function WeekView({
                           setDialogOpen(true)
                         }}
                         className={cn(
-                          "flex min-h-[64px] flex-col items-stretch gap-1 rounded-lg border px-2 py-1.5 text-left transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none",
+                          "flex min-h-[68px] flex-col items-stretch gap-1 rounded-xl border px-2.5 py-2 text-left transition-shadow hover:shadow-sm focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none",
                           typeStyle.surface,
                           typeStyle.stripe,
                           isCancelled && "opacity-60",

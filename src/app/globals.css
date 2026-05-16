@@ -49,37 +49,41 @@
 }
 
 :root {
-  --background: oklch(0.982 0.004 220);
-  --foreground: oklch(0.31 0.012 185);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.31 0.012 185);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.31 0.012 185);
-  --primary: oklch(0.92 0.02 165);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0.01 205);
-  --secondary-foreground: oklch(0.35 0.015 190);
-  --muted: oklch(0.985 0.004 185);
-  --muted-foreground: oklch(0.56 0.012 190);
-  --accent: oklch(0.96 0.012 220);
-  --accent-foreground: oklch(0.35 0.015 200);
-  --destructive: oklch(0.92 0.02 45);
-  --border: oklch(0.94 0.004 200);
-  --input: oklch(0.94 0.004 200);
-  --ring: oklch(0.76 0.02 205);
-  --chart-1: oklch(0.78 0.02 165);
-  --chart-2: oklch(0.82 0.02 215);
-  --chart-3: oklch(0.84 0.015 120);
-  --chart-4: oklch(0.88 0.015 70);
-  --chart-5: oklch(0.86 0.015 45);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.974 0.018 220);        /* #F0F9FF water blue */
+  /* Soft contrast shell: cool paper background, blue-gray type (no harsh black). */
+  --background: oklch(0.978 0.006 230);
+  --foreground: oklch(0.37 0.022 235);
+  --card: oklch(0.997 0.004 230);
+  --card-foreground: oklch(0.37 0.022 235);
+  --popover: oklch(0.997 0.004 230);
+  --popover-foreground: oklch(0.37 0.022 235);
+  /* Primary actions: soft sky blue (readable on white text). */
+  --primary: oklch(0.56 0.12 240);
+  --primary-foreground: oklch(0.995 0.002 250);
+  --secondary: oklch(0.96 0.014 230);
+  --secondary-foreground: oklch(0.4 0.02 235);
+  --muted: oklch(0.966 0.008 230);
+  --muted-foreground: oklch(0.52 0.02 235);
+  --accent: oklch(0.94 0.02 230);
+  --accent-foreground: oklch(0.38 0.022 235);
+  /* Alerts / butter-orange (muted, not alarm-red). */
+  --destructive: oklch(0.75 0.1 55);
+  --border: oklch(0.91 0.012 230);
+  --input: oklch(0.93 0.01 230);
+  --ring: oklch(0.72 0.08 235);
+  --chart-1: oklch(0.72 0.09 160);
+  --chart-2: oklch(0.74 0.08 230);
+  --chart-3: oklch(0.76 0.07 200);
+  --chart-4: oklch(0.8 0.08 75);
+  --chart-5: oklch(0.82 0.09 55);
+  /* Friendlier default corner radius across cards / buttons / inputs. */
+  --radius: 1.125rem;
+  --sidebar: oklch(0.974 0.018 220);
   --sidebar-foreground: oklch(0.38 0.04 230);
-  --sidebar-primary: oklch(0.78 0.08 220);   /* sky-300 #7DD3FC */
-  --sidebar-primary-foreground: oklch(0.22 0.06 230); /* navy #0C4A6E */
-  --sidebar-accent: oklch(0.86 0.07 220);    /* sky-200 #BAE6FD */
+  --sidebar-primary: oklch(0.78 0.08 220);
+  --sidebar-primary-foreground: oklch(0.22 0.06 230);
+  --sidebar-accent: oklch(0.86 0.07 220);
   --sidebar-accent-foreground: oklch(0.22 0.06 230);
-  --sidebar-border: oklch(0.935 0.022 220);  /* #E0F2FE */
+  --sidebar-border: oklch(0.935 0.022 220);
   --sidebar-ring: oklch(0.72 0.08 220);
 }
 
@@ -90,18 +94,18 @@
   --card-foreground: oklch(0.96 0.004 220);
   --popover: oklch(0.26 0.012 245);
   --popover-foreground: oklch(0.96 0.004 220);
-  --primary: oklch(0.72 0.05 215);
-  --primary-foreground: oklch(0.22 0.02 245);
+  --primary: oklch(0.68 0.1 235);
+  --primary-foreground: oklch(0.18 0.02 245);
   --secondary: oklch(0.3 0.012 240);
   --secondary-foreground: oklch(0.96 0.004 220);
   --muted: oklch(0.3 0.012 240);
   --muted-foreground: oklch(0.76 0.016 220);
   --accent: oklch(0.34 0.015 210);
   --accent-foreground: oklch(0.96 0.004 220);
-  --destructive: oklch(0.68 0.08 48);
+  --destructive: oklch(0.72 0.09 58);
   --border: oklch(1 0 0 / 7%);
   --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.72 0.05 215);
+  --ring: oklch(0.72 0.08 235);
   --chart-1: oklch(0.65 0.05 210);
   --chart-2: oklch(0.69 0.05 170);
   --chart-3: oklch(0.72 0.04 150);
@@ -126,21 +130,24 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-color: #F8FAFC;
+    background-color: oklch(0.978 0.006 230);
     background-image: none;
     text-rendering: optimizeLegibility;
-    letter-spacing: -0.01em;
-    line-height: 1.55;
+    letter-spacing: -0.012em;
+    line-height: 1.65;
   }
   h1,
   h2,
   h3,
   h4 {
-    color: oklch(0.23 0.018 175);
-    letter-spacing: -0.03em;
+    color: oklch(0.3 0.025 235);
+    letter-spacing: -0.028em;
+    font-weight: 600;
   }
   p {
-    color: oklch(0.48 0.014 176);
+    color: oklch(0.5 0.02 235);
+    font-weight: 400;
+    line-height: 1.65;
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 22%, white);

@@ -46,7 +46,7 @@ function SidebarNavLink({
       <Icon
         className={cn(
           secondary ? "mt-px size-3.5" : "mt-0.5 size-4",
-          "shrink-0",
+          "shrink-0 stroke-[1.75]",
           isActive ? "text-sky-400" : secondary ? "text-sky-300/55" : "text-sky-200",
         )}
       />
@@ -64,7 +64,7 @@ function SidebarNavLink({
       </div>
       <ChevronRight
         className={cn(
-          "ml-auto shrink-0 transition-transform text-sky-400/40",
+          "ml-auto shrink-0 stroke-[1.75] transition-transform text-sky-400/40",
           secondary ? "mt-px size-3" : "mt-0.5 size-3.5",
           isActive && "translate-x-0.5 text-sky-400",
         )}

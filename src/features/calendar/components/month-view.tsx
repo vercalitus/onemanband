@@ -106,7 +106,7 @@ export function MonthView({
                 onSwitchToDay()
               }}
               className={cn(
-                "flex min-h-[92px] flex-col items-stretch gap-1 border-b border-r border-slate-100 p-1.5 text-left transition-colors hover:bg-sky-50/40",
+                "flex min-h-[100px] flex-col items-stretch gap-1.5 border-b border-r border-slate-100 p-2 text-left transition-colors hover:bg-sky-50/40",
                 !inMonth && "bg-slate-50/30 text-slate-300",
                 isSelected && "bg-sky-50/60",
               )}

@@ -77,7 +77,7 @@ export default function ClinicalFeedPage() {
   })()
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[260px_1fr]">
+    <div className="grid gap-6 md:gap-8 xl:grid-cols-[260px_1fr]">
       <aside className="space-y-4">
         <Card className={elevatedCardClass}>
           {/* Grid header: CardAction lands in column 2, same row as the title */}
@@ -166,7 +166,7 @@ export default function ClinicalFeedPage() {
                 )}
               </div>
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 xl:gap-6">
+              <div className="grid gap-6 sm:grid-cols-2 sm:gap-7 xl:grid-cols-3 xl:gap-8">
                 {filteredArticles.map((article) => (
                   <FeedCard
                     key={article.id}

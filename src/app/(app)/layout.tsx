@@ -18,12 +18,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <PatientExtrasProvider>
           <GlobalAddPatientProvider>
             <ScheduleDayProvider>
-              <div className="min-h-screen bg-[#F8FAFC]">
+              <div className="min-h-screen bg-background">
                 <div className="mx-auto flex min-h-screen min-w-0 max-w-[1680px]">
                   <AppSidebar />
 
-                  <div className="relative flex min-h-screen min-w-0 max-w-full flex-1 flex-col bg-[#F8FAFC] shadow-[-8px_0_20px_-10px_rgba(15,23,42,0.07)]">
-                    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
+                  <div className="relative flex min-h-screen min-w-0 max-w-full flex-1 flex-col bg-background shadow-[-6px_0_28px_-14px_rgba(15,23,42,0.06)]">
+                    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/95 backdrop-blur-md">
                       <div className="flex min-h-14 w-full min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-1.5 sm:gap-x-4 sm:px-6 md:flex-nowrap md:px-8">
                         {/* Left — mobile menu + date */}
                         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
@@ -46,8 +46,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </div>
                     </header>
 
-                    {/* Doubled the breathing room between the sticky header and page content, uniformly. */}
-                    <main className="flex-1 min-w-0 max-w-full px-4 pb-3 pt-6 sm:px-6 md:px-8">{children}</main>
+                    {/* Generous top padding below the sticky header for calmer reading rhythm. */}
+                    <main className="flex-1 min-w-0 max-w-full px-4 pb-3 pt-7 sm:px-6 md:px-8 md:pt-8">{children}</main>
                   </div>
                 </div>
               </div>

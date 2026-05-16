@@ -116,7 +116,7 @@ export default function BillingPage() {
   const filteredPendingCount = filteredPendingVisits.length + filteredPendingInvoices.length
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="space-y-6 sm:space-y-7">
       {/* KPI strip */}
       <section className="grid gap-4 md:grid-cols-3">
         <KpiCard
