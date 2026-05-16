@@ -26,6 +26,22 @@ export interface PatientContactOverrides {
 const DEFAULT_CLINICAL_STATUS =
   "Gradual improvement in cervical range of motion, focus on workplace posture"
 
+/** Previously shipped default in Hebrew — migrate to English so cached localStorage updates. */
+const LEGACY_CLINICAL_STATUS_HE =
+  "שיפור הדרגתי בטווח תנועה צווארי, דגש על יציבה בעבודה"
+
+/**
+ * If the user still has the old Hebrew default from localStorage, replace it once.
+ */
+function migrateClinicalStatus(patientId: string, stored: string): string {
+  const trimmed = stored.trim()
+  if (trimmed === LEGACY_CLINICAL_STATUS_HE.trim()) {
+    writeField(patientId, "clinicalStatus", DEFAULT_CLINICAL_STATUS)
+    return DEFAULT_CLINICAL_STATUS
+  }
+  return stored
+}
+
 const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
   first: "First Visit",
   adjustments: "Adjustments",
@@ -64,7 +80,8 @@ export function usePatientCockpit(patientId: string) {
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    setClinicalStatusRaw(readField(patientId, "clinicalStatus", DEFAULT_CLINICAL_STATUS))
+    const rawClinical = readField(patientId, "clinicalStatus", DEFAULT_CLINICAL_STATUS)
+    setClinicalStatusRaw(migrateClinicalStatus(patientId, rawClinical))
     setSessionNotesRaw(readField(patientId, "sessionNotes", ""))
     setCanvasDataUrlRaw(readField(patientId, "canvasDataUrl", null))
     setCompletedSessionsRaw(readField(patientId, "completedSessions", []))
