@@ -76,12 +76,12 @@ export function MonthView({
   }, [filtered])
 
   return (
-    <div className="overflow-hidden rounded-2xl border-2 border-slate-100/90 bg-white/90 shadow-[0_10px_40px_-18px_rgba(15,23,42,0.1)]">
-      <div className="grid grid-cols-7 border-b-2 border-slate-100 bg-gradient-to-b from-slate-100/80 to-slate-50/40">
+    <div className="overflow-hidden rounded-lg">
+      <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/60">
         {WEEKDAYS.map((d) => (
           <div
             key={d}
-            className="px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500"
+            className="px-2 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400"
           >
             {d}
           </div>
@@ -106,7 +106,7 @@ export function MonthView({
                 onSwitchToDay()
               }}
               className={cn(
-                "flex min-h-[112px] flex-col items-stretch gap-2 border-b border-r border-slate-100/90 p-2.5 text-left transition-colors hover:bg-sky-50/70",
+                "flex min-h-[100px] flex-col items-stretch gap-1.5 border-b border-r border-slate-100 p-2 text-left transition-colors hover:bg-sky-50/40",
                 !inMonth && "bg-slate-50/30 text-slate-300",
                 isSelected && "bg-sky-50/60",
               )}

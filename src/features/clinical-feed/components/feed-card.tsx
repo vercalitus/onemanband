@@ -39,9 +39,9 @@ export function FeedCard({
   return (
     <article
       className={cn(
-        "group relative flex h-full min-h-[260px] flex-col gap-5 rounded-3xl border-2 border-slate-100/95 bg-gradient-to-b from-white to-sky-50/25 p-7",
-        "shadow-[0_4px_16px_rgba(15,23,42,0.06),0_22px_55px_-24px_rgba(56,189,248,0.18)] transition-all duration-200",
-        "hover:-translate-y-1 hover:border-sky-200/80 hover:shadow-[0_14px_48px_-20px_rgba(56,189,248,0.22)]",
+        "group relative flex h-full min-h-[240px] flex-col gap-4 rounded-3xl bg-white p-6",
+        "shadow-[0_1px_3px_rgba(15,23,42,0.05),0_12px_36px_-18px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/40 transition-all duration-200",
+        "hover:-translate-y-0.5 hover:shadow-[0_8px_40px_-20px_rgba(15,23,42,0.15)] hover:ring-sky-200/60",
       )}
     >
       <header className="flex items-start justify-between gap-3">

@@ -91,7 +91,7 @@ export function WeekView({
 
   return (
     <>
-      <div className="grid grid-cols-7 border-b-2 border-slate-100 bg-gradient-to-b from-slate-50 to-white text-center">
+      <div className="grid grid-cols-7 border-b border-slate-100 text-center">
         {days.map((d) => {
           const isToday = isSameDay(d, today)
           const isSelected = isSameDay(d, value)
@@ -124,14 +124,11 @@ export function WeekView({
       </div>
 
       <ScrollArea className="h-[min(70vh,560px)] md:h-[560px]">
-        <div className="grid grid-cols-7 gap-4 p-4 md:gap-5 md:p-5">
+        <div className="grid grid-cols-7 gap-3 p-3 md:gap-3.5 md:p-3.5">
           {days.map((d) => {
             const list = cellsByDay.get(d.toDateString()) ?? []
             return (
-              <div
-                key={d.toDateString()}
-                className="flex min-h-[208px] flex-col gap-3 rounded-2xl border border-sky-100/70 bg-gradient-to-b from-sky-50/50 to-white p-3 shadow-inner md:min-h-[228px] md:p-3.5"
-              >
+              <div key={d.toDateString()} className="flex min-h-[200px] flex-col gap-2 rounded-xl bg-slate-50/50 p-2 md:min-h-[220px] md:gap-2.5 md:p-2.5">
                 {list.length === 0 ? (
                   <p className="my-auto px-1 text-center text-[11px] text-slate-300">No visits</p>
                 ) : (

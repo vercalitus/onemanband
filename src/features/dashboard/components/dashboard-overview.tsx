@@ -32,30 +32,32 @@ const trendIcon = {
   steady: CircleCheckBig,
 }
 
+const pulseIconChrome = "bg-sky-100 text-sky-600"
+
 const metricAccent = {
   visits: {
     icon: CalendarCheck2,
-    iconClass: "bg-sky-100 text-sky-700 ring-1 ring-sky-200/70",
-    cardClass: "border-2 border-sky-200/85 bg-gradient-to-br from-sky-50/95 to-white",
-    shadow: "shadow-[0_12px_44px_-14px_rgba(56,189,248,0.32)]",
+    iconClass: pulseIconChrome,
+    cardClass: "border-slate-100 bg-white",
+    shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
   },
   capacity: {
     icon: Gauge,
-    iconClass: "bg-violet-100 text-violet-800 ring-1 ring-violet-200/70",
-    cardClass: "border-2 border-violet-200/80 bg-gradient-to-br from-violet-50/95 to-white",
-    shadow: "shadow-[0_12px_44px_-14px_rgba(139,92,246,0.22)]",
+    iconClass: pulseIconChrome,
+    cardClass: "border-slate-100 bg-white",
+    shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
   },
   revenue: {
     icon: Coins,
-    iconClass: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/70",
-    cardClass: "border-2 border-emerald-200/80 bg-gradient-to-br from-emerald-50/95 to-white",
-    shadow: "shadow-[0_12px_44px_-14px_rgba(16,185,129,0.26)]",
+    iconClass: pulseIconChrome,
+    cardClass: "border-slate-100 bg-white",
+    shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
   },
   debt: {
     icon: Wallet,
-    iconClass: "bg-amber-100 text-amber-900 ring-1 ring-amber-200/70",
-    cardClass: "border-2 border-amber-200/80 bg-gradient-to-br from-amber-50/95 to-white",
-    shadow: "shadow-[0_12px_44px_-14px_rgba(245,158,11,0.22)]",
+    iconClass: pulseIconChrome,
+    cardClass: "border-slate-100 bg-white",
+    shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
   },
 } as const
 
@@ -255,7 +257,7 @@ export function DashboardOverview() {
           })}
         </section>
 
-        <section className="mt-8 rounded-3xl border-2 border-sky-100/90 bg-gradient-to-b from-white to-sky-50/30 p-6 shadow-[0_16px_48px_-20px_rgba(56,189,248,0.2)] transition-all duration-200 md:p-8">
+        <section className="mt-8 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] transition-all duration-200 md:p-6">
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex size-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
               <TrendingUp className="size-5 stroke-[1.6]" />
@@ -266,7 +268,7 @@ export function DashboardOverview() {
             {clinicPulseItems.map((item) => (
               <div
                 key={item.title}
-                className="rounded-2xl border-2 border-slate-100 bg-gradient-to-b from-white to-slate-50/80 p-5 transition-colors duration-200 hover:border-sky-200/70 md:p-5"
+                className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-colors duration-200 md:border-slate-100 md:bg-white"
               >
                 <p className="text-sm font-semibold text-slate-900">{item.title}</p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">{item.body}</p>
