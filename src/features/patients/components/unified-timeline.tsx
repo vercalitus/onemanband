@@ -82,6 +82,29 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   other: "Document",
 }
 
+/**
+ * Splits a clinical note into a prominent one-line summary (first sentence)
+ * and optional detail text, so the practitioner can grasp the gist at a glance.
+ */
+function ClinicalNoteLine({ note }: { note: string }) {
+  // Split on first sentence-ending period followed by a space (or end of string)
+  const dotIdx = note.search(/\.\s/)
+  const hasTwoParts = dotIdx !== -1 && dotIdx < note.length - 1
+
+  const summary = hasTwoParts ? note.slice(0, dotIdx + 1) : note
+  const detail = hasTwoParts ? note.slice(dotIdx + 2).trim() : ""
+
+  return (
+    <div className="mt-1.5 space-y-0.5">
+      {/* Clinical summary — stands out at a glance */}
+      <p className="text-[13px] font-medium leading-snug text-slate-700">{summary}</p>
+      {detail && (
+        <p className="text-[12px] leading-relaxed text-slate-400">{detail}</p>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   treatmentRecords: TreatmentRecord[]
   documentRecords: DocumentRecord[]
@@ -182,12 +205,7 @@ export function UnifiedTimeline({
               <div className="rounded-xl border border-slate-100 bg-white px-4 py-3">
                 <p className="text-sm font-semibold text-slate-800">{entry.title}</p>
 
-                {entry.note && (
-                  <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-                    {entry.note.slice(0, 220)}
-                    {entry.note.length > 220 && "…"}
-                  </p>
-                )}
+                {entry.note && <ClinicalNoteLine note={entry.note} />}
 
                 {/* Related docs + invoices as small chips */}
                 {(entry.relatedDocs.length > 0 || entry.relatedFinances.length > 0) && (
