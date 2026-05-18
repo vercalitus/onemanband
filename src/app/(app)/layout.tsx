@@ -16,7 +16,7 @@ import { TodosProvider } from "@/components/providers/todos-provider"
 import { Button } from "@/components/ui/button"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { t, isRtl } = useLocale()
+  const { t } = useLocale()
 
   const mainColumn = (
     <div className="relative flex min-h-screen min-w-0 max-w-full flex-1 flex-col bg-background shadow-[-6px_0_28px_-14px_rgba(15,23,42,0.06)] rtl:shadow-[6px_0_28px_-14px_rgba(15,23,42,0.06)]">
@@ -54,9 +54,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <ScheduleDayProvider>
               <div className="min-h-screen bg-background">
                 <div className="mx-auto flex min-h-screen min-w-0 max-w-[1680px] flex-row">
-                  {!isRtl ? <AppSidebar /> : null}
+                  {/*
+                   * With dir=rtl + flex-row, DOM order determines visual placement:
+                   * first child sits at inline-start (= right in RTL). Render sidebar first
+                   * so it stays visually on the right in Hebrew layout.
+                   */}
+                  <AppSidebar />
                   {mainColumn}
-                  {isRtl ? <AppSidebar /> : null}
                 </div>
               </div>
             </ScheduleDayProvider>

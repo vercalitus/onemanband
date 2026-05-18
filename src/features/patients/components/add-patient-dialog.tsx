@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { useLocale } from "@/components/providers/locale-provider"
 import type { PatientSummary } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
@@ -25,26 +26,13 @@ const CONTROL =
 
 const TEXTAREA = cn(CONTROL, "min-h-[104px] resize-y py-3 leading-relaxed")
 
-const KUPA_OPTIONS = [
-  "Clalit",
-  "Maccabi",
-  "Leumit",
-  "Meuhedet",
-  "IDF / public",
-  "Self-pay / private",
-] as const
-
-const REFERRAL_OPTIONS = [
-  "Google / web",
-  "Physician referral",
-  "Friend / patient referral",
-  "Walk-in",
-  "Marketing / social",
-  "Other",
-] as const
+const KUPA_IDS = ["clalit", "maccabi", "leumit", "meuhedet", "idf", "selfpay"] as const
+const REFERRAL_IDS = ["google", "physician", "friend", "walkin", "marketing", "other"] as const
 
 const PLAN_PRESETS = [4, 10, 12, 20] as const
 
+type KupahId = (typeof KUPA_IDS)[number]
+type ReferralId = (typeof REFERRAL_IDS)[number]
 type PlanChoice = (typeof PLAN_PRESETS)[number] | "custom"
 
 export function AddPatientDialog({
@@ -56,13 +44,14 @@ export function AddPatientDialog({
   onOpenChange: (open: boolean) => void
   onSave: (patient: PatientSummary) => void
 }) {
+  const { t } = useLocale()
   const [fullName, setFullName] = useState("")
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
   const [dob, setDob] = useState("")
   const [complaint, setComplaint] = useState("")
-  const [kupa, setKupa] = useState<string>(KUPA_OPTIONS[0])
-  const [referral, setReferral] = useState<string>(REFERRAL_OPTIONS[0])
+  const [kupaId, setKupaId] = useState<KupahId>("clalit")
+  const [referralId, setReferralId] = useState<ReferralId>("google")
   const [firstVisit, setFirstVisit] = useState("")
   const [planChoice, setPlanChoice] = useState<PlanChoice>(10)
   const [customPlan, setCustomPlan] = useState("8")
@@ -76,8 +65,8 @@ export function AddPatientDialog({
     setEmail("")
     setDob("")
     setComplaint("")
-    setKupa(KUPA_OPTIONS[0])
-    setReferral(REFERRAL_OPTIONS[0])
+    setKupaId("clalit")
+    setReferralId("google")
     setFirstVisit("")
     setPlanChoice(10)
     setCustomPlan("8")
@@ -96,12 +85,12 @@ export function AddPatientDialog({
     e.preventDefault()
     const name = fullName.trim()
     if (!name) {
-      setError("Full name is required.")
+      setError(t("addPatient.errName"))
       return
     }
     const emailTrim = email.trim()
     if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-      setError("Enter a valid email or leave it empty.")
+      setError(t("addPatient.errEmail"))
       return
     }
 
@@ -113,12 +102,17 @@ export function AddPatientDialog({
         ? `pt-${crypto.randomUUID().slice(0, 10)}`
         : `pt-${Date.now()}`
 
+    const kupaLabel = t(`addPatient.kupa.${kupaId}`)
+    const referralLabel = t(`addPatient.referral.${referralId}`)
+
     const generalParts = [
-      dob && `DOB: ${dob}`,
-      `Kupa: ${kupa}`,
-      `Referral: ${referral}`,
-      `Care plan: ${sessions} sessions`,
-      firstVisit.trim() ? `First visit: ${firstVisit}` : `First visit: ${visitIso} (provisional)`,
+      dob && t("addPatient.notes.partDob", { dob }),
+      t("addPatient.notes.partKupa", { kupa: kupaLabel }),
+      t("addPatient.notes.partReferral", { referral: referralLabel }),
+      t("addPatient.notes.partPlan", { n: sessions }),
+      firstVisit.trim()
+        ? t("addPatient.notes.firstVisitDate", { date: firstVisit })
+        : t("addPatient.notes.firstVisitProvisional", { date: visitIso }),
     ]
 
     const patient: PatientSummary = {
@@ -130,8 +124,8 @@ export function AddPatientDialog({
       lastVisit: visitIso,
       balance: "$0",
       tags: [],
-      medicalHistorySummary: complaint.trim() || "New patient — chief complaint to be refined at first visit.",
-      generalNotes: generalParts.join(" · "),
+      medicalHistorySummary: complaint.trim() || t("addPatient.defaultComplaint"),
+      generalNotes: generalParts.filter(Boolean).join(" · "),
     }
 
     onSave(patient)
@@ -146,7 +140,7 @@ export function AddPatientDialog({
           "flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-xl",
         )}
       >
-        <DialogDescription className="sr-only">Create a new patient chart in the demo registry.</DialogDescription>
+        <DialogDescription className="sr-only">{t("addPatient.srOnly")}</DialogDescription>
 
         <DialogClose
           render={
@@ -154,8 +148,8 @@ export function AddPatientDialog({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="absolute top-5 right-5 z-20 rounded-xl text-white hover:bg-white/15"
-              aria-label="Close"
+              className="absolute top-5 end-5 z-20 rounded-xl text-white hover:bg-white/15"
+              aria-label={t("common.close")}
             />
           }
         >
@@ -165,17 +159,17 @@ export function AddPatientDialog({
         <div className="relative shrink-0 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-4 pt-5 text-white">
           <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
           <DialogHeader className="relative gap-0 space-y-0">
-            <DialogTitle className="font-heading flex items-center gap-2 pr-12 text-xl font-semibold tracking-tight text-white">
+            <DialogTitle className="font-heading flex items-center gap-2 pe-12 text-xl font-semibold tracking-tight text-white">
               <UserPlus className="size-5 shrink-0 text-sky-300" aria-hidden />
-              New patient
+              {t("addPatient.title")}
             </DialogTitle>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-sky-50 ring-1 ring-white/15">
-                Intake draft
+                {t("addPatient.intakeBadge")}
               </span>
               <div className="flex items-center gap-2 font-mono text-xs tabular-nums text-sky-100">
                 <CalendarPlus className="size-4 shrink-0 text-sky-300" aria-hidden />
-                <span>Optional first visit date below</span>
+                <span>{t("addPatient.optionalVisitHint")}</span>
               </div>
             </div>
           </DialogHeader>
@@ -191,44 +185,44 @@ export function AddPatientDialog({
 
             <section className="space-y-4">
               <div>
-                <h3 className="text-sm font-semibold tracking-tight text-slate-900">Personal & profile</h3>
-                <p className="mt-1 text-xs text-slate-500">Basics we need on file before the first encounter.</p>
+                <h3 className="text-sm font-semibold tracking-tight text-slate-900">{t("addPatient.section.personal")}</h3>
+                <p className="mt-1 text-xs text-slate-500">{t("addPatient.section.personalHint")}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label htmlFor="np-name" className={LABEL}>
-                    Full name <span className="text-rose-600">*</span>
+                    {t("addPatient.label.fullName")} <span className="text-rose-600">*</span>
                   </label>
                   <Input id="np-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" required />
                 </div>
                 <div>
                   <label htmlFor="np-phone" className={LABEL}>
-                    Phone
+                    {t("addPatient.label.phone")}
                   </label>
                   <Input id="np-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5" />
                 </div>
                 <div>
                   <label htmlFor="np-email" className={LABEL}>
-                    Email
+                    {t("addPatient.label.email")}
                   </label>
                   <Input id="np-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" />
                 </div>
                 <div className="sm:col-span-2">
                   <label htmlFor="np-dob" className={LABEL}>
-                    Date of birth
+                    {t("addPatient.label.dob")}
                   </label>
                   <Input id="np-dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="mt-1.5" />
                 </div>
               </div>
               <div>
                 <label htmlFor="np-complaint" className={LABEL}>
-                  Chief complaint (short)
+                  {t("addPatient.label.complaint")}
                 </label>
                 <textarea
                   id="np-complaint"
                   value={complaint}
                   onChange={(e) => setComplaint(e.target.value)}
-                  placeholder="What brings them in? One or two sentences."
+                  placeholder={t("addPatient.ph.complaint")}
                   rows={4}
                   className={cn(TEXTAREA, "mt-1.5")}
                 />
@@ -239,45 +233,45 @@ export function AddPatientDialog({
 
             <section className="space-y-4">
               <div>
-                <h3 className="text-sm font-semibold tracking-tight text-slate-900">Coverage, intake & planning</h3>
-                <p className="mt-1 text-xs text-slate-500">How they pay, how they found you, and the first steps on the calendar.</p>
+                <h3 className="text-sm font-semibold tracking-tight text-slate-900">{t("addPatient.section.coverage")}</h3>
+                <p className="mt-1 text-xs text-slate-500">{t("addPatient.section.coverageHint")}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label htmlFor="np-kupa" className={LABEL}>
-                    Kupah / payer
+                    {t("addPatient.label.kupa")}
                   </label>
-                  <select id="np-kupa" value={kupa} onChange={(e) => setKupa(e.target.value)} className={cn(CONTROL, "mt-1.5")}>
-                    {KUPA_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
+                  <select id="np-kupa" value={kupaId} onChange={(e) => setKupaId(e.target.value as KupahId)} className={cn(CONTROL, "mt-1.5")}>
+                    {KUPA_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {t(`addPatient.kupa.${id}`)}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label htmlFor="np-ref" className={LABEL}>
-                    Referral source
+                    {t("addPatient.label.referral")}
                   </label>
-                  <select id="np-ref" value={referral} onChange={(e) => setReferral(e.target.value)} className={cn(CONTROL, "mt-1.5 appearance-none")}>
-                    {REFERRAL_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
+                  <select id="np-ref" value={referralId} onChange={(e) => setReferralId(e.target.value as ReferralId)} className={cn(CONTROL, "mt-1.5 appearance-none")}>
+                    {REFERRAL_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {t(`addPatient.referral.${id}`)}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="sm:col-span-2">
                   <label htmlFor="np-first" className={LABEL}>
-                    First visit (date)
+                    {t("addPatient.label.firstVisit")}
                   </label>
                   <Input id="np-first" type="date" value={firstVisit} onChange={(e) => setFirstVisit(e.target.value)} className="mt-1.5" />
-                  <p className="mt-1.5 text-[11px] text-slate-400">Pick a slot to aim for; scheduling still mock-only in this build.</p>
+                  <p className="mt-1.5 text-[11px] text-slate-400">{t("addPatient.hint.scheduleMock")}</p>
                 </div>
               </div>
 
               <div>
-                <span className={LABEL}>Treatment plan length (sessions)</span>
+                <span className={LABEL}>{t("addPatient.label.planLength")}</span>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {PLAN_PRESETS.map((n) => (
                     <button
@@ -291,7 +285,7 @@ export function AddPatientDialog({
                           : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
                       )}
                     >
-                      {n} sessions
+                      {t("addPatient.plan.sessions", { n })}
                     </button>
                   ))}
                   <button
@@ -304,13 +298,13 @@ export function AddPatientDialog({
                         : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
                     )}
                   >
-                    Custom
+                    {t("addPatient.plan.custom")}
                   </button>
                 </div>
                 {planChoice === "custom" ? (
                   <div className="mt-3 max-w-[10rem]">
                     <label htmlFor="np-custom-plan" className={LABEL}>
-                      Custom count
+                      {t("addPatient.label.customCount")}
                     </label>
                     <Input
                       id="np-custom-plan"
@@ -329,10 +323,10 @@ export function AddPatientDialog({
 
           <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
             <Button type="button" variant="outline" className="h-11 rounded-xl min-w-[6.5rem]" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("addPatient.footer.cancel")}
             </Button>
             <Button type="submit" className="h-11 min-w-[7.5rem] rounded-xl bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800">
-              Save patient
+              {t("addPatient.footer.save")}
             </Button>
           </DialogFooter>
         </form>

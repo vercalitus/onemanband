@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
 
 /**
@@ -30,6 +31,7 @@ export function AddSourceDialog({
   onOpenChange: (open: boolean) => void
   onSave: (input: { name: string; url?: string }) => void
 }) {
+  const { t } = useLocale()
   const [name, setName] = useState("")
   const [url, setUrl] = useState("")
 
@@ -55,7 +57,7 @@ export function AddSourceDialog({
           "flex max-h-[min(90dvh,calc(100dvh-2rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg",
         )}
       >
-        <DialogDescription className="sr-only">Add a new clinical feed source.</DialogDescription>
+        <DialogDescription className="sr-only">{t("addSource.srOnly")}</DialogDescription>
 
         <DialogClose
           render={
@@ -63,8 +65,8 @@ export function AddSourceDialog({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="absolute top-5 right-5 z-20 rounded-xl text-white hover:bg-white/15"
-              aria-label="Close"
+              className="absolute top-5 end-5 z-20 rounded-xl text-white hover:bg-white/15"
+              aria-label={t("common.close")}
             />
           }
         >
@@ -77,8 +79,8 @@ export function AddSourceDialog({
             aria-hidden
           />
           <DialogHeader className="relative gap-0 space-y-0">
-            <DialogTitle className="font-heading pr-12 text-xl font-semibold tracking-tight text-white">
-              Add a source
+            <DialogTitle className="font-heading pe-12 text-xl font-semibold tracking-tight text-white">
+              {t("addSource.title")}
             </DialogTitle>
           </DialogHeader>
         </div>
@@ -91,13 +93,13 @@ export function AddSourceDialog({
                   htmlFor="src-name"
                   className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
                 >
-                  Source name
+                  {t("addSource.label.name")}
                 </label>
                 <Input
                   id="src-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. NEJM"
+                  placeholder={t("addSource.ph.name")}
                   required
                   autoFocus
                   className="h-11 rounded-xl border-slate-200"
@@ -108,18 +110,18 @@ export function AddSourceDialog({
                   htmlFor="src-url"
                   className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
                 >
-                  URL (optional)
+                  {t("addSource.label.url")}
                 </label>
                 <Input
                   id="src-url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://example.com"
+                  placeholder={t("addSource.ph.url")}
                   type="url"
                   className="h-11 rounded-xl border-slate-200"
                 />
                 <p className="text-[11px] text-slate-400">
-                  Live ingestion (RSS / API) is coming later. For now this just records the source.
+                  {t("addSource.hint.ingestion")}
                 </p>
               </div>
             </div>
@@ -132,13 +134,13 @@ export function AddSourceDialog({
               className="h-11 rounded-xl min-w-[6.5rem]"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("addSource.footer.cancel")}
             </Button>
             <Button
               type="submit"
               className="h-11 min-w-[7.5rem] rounded-xl bg-sky-600 px-6 font-semibold text-white hover:bg-sky-700"
             >
-              Add source
+              {t("addSource.footer.save")}
             </Button>
           </DialogFooter>
         </form>

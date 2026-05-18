@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Plus_Jakarta_Sans, Heebo } from "next/font/google";
+import { Assistant, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
 
@@ -8,7 +8,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
 });
 
-const heebo = Heebo({
+const assistant = Assistant({
   variable: "--font-hebrew",
   subsets: ["latin", "hebrew"],
 });
@@ -37,7 +37,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${plusJakartaSans.variable} ${heebo.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plusJakartaSans.variable} ${assistant.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground">
         <AppProviders>{children}</AppProviders>

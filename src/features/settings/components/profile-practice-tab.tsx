@@ -3,6 +3,7 @@
 import { Building2, Clock, User } from "lucide-react"
 import type { ReactNode } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -17,6 +18,7 @@ export function ProfilePracticeTab({
   settings: ClinicSettings
   onChange: (next: ClinicSettings) => void
 }) {
+  const { t } = useLocale()
   const { profile, weekdays } = settings
 
   return (
@@ -26,38 +28,38 @@ export function ProfilePracticeTab({
           <div className="flex items-center gap-2.5">
             <User className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">Professional profile</CardTitle>
-              <CardDescription className="text-sky-100/80">
-                How you appear to patients on invoices and reminders.
-              </CardDescription>
+              <CardTitle className="text-lg font-bold tracking-tight text-white">
+                {t("settings.profile.proCardTitle")}
+              </CardTitle>
+              <CardDescription className="text-sky-100/80">{t("settings.profile.proCardDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className={cn(elevatedCardBodyClass, "grid gap-4 sm:grid-cols-2")}>
-          <Field label="Full name">
+          <Field label={t("settings.profile.fullNameLabel")}>
             <Input
               value={profile.practitionerName}
               onChange={(e) =>
                 onChange({ ...settings, profile: { ...profile, practitionerName: e.target.value } })
               }
-              placeholder="Dr. Jordan Lee"
+              placeholder={t("settings.profile.fullNamePh")}
               className="rounded-xl border-slate-200"
             />
           </Field>
-          <Field label="Professional phone">
+          <Field label={t("settings.profile.phoneLabel")}>
             <Input
               value={profile.phone}
               onChange={(e) => onChange({ ...settings, profile: { ...profile, phone: e.target.value } })}
-              placeholder="+972-50-000-0000"
+              placeholder={t("settings.profile.phonePh")}
               className="rounded-xl border-slate-200"
             />
           </Field>
-          <Field label="Professional email" className="sm:col-span-2">
+          <Field label={t("settings.profile.emailLabel")} className="sm:col-span-2">
             <Input
               type="email"
               value={profile.email}
               onChange={(e) => onChange({ ...settings, profile: { ...profile, email: e.target.value } })}
-              placeholder="care@clinic.example"
+              placeholder={t("settings.profile.emailPh")}
               className="rounded-xl border-slate-200"
             />
           </Field>
@@ -69,23 +71,21 @@ export function ProfilePracticeTab({
           <div className="flex items-center gap-2.5">
             <Building2 className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">Practice & branding</CardTitle>
-              <CardDescription className="text-sky-100/80">
-                Clinic name appears in the sidebar; address is used on invoices.
-              </CardDescription>
+              <CardTitle className="text-lg font-bold tracking-tight text-white">{t("settings.profile.practiceTitle")}</CardTitle>
+              <CardDescription className="text-sky-100/80">{t("settings.profile.practiceDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className={cn(elevatedCardBodyClass, "grid gap-4 sm:grid-cols-2")}>
-          <Field label="Clinic name">
+          <Field label={t("settings.profile.clinicNameLabel")}>
             <Input
               value={profile.clinicName}
               onChange={(e) => onChange({ ...settings, profile: { ...profile, clinicName: e.target.value } })}
-              placeholder="Serene Spine Clinic"
+              placeholder={t("settings.profile.clinicNamePh")}
               className="rounded-xl border-slate-200"
             />
           </Field>
-          <Field label="Clinic logo">
+          <Field label={t("settings.profile.logoLabel")}>
             <div className="flex flex-wrap items-center gap-3">
               {profile.logoDataUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- data URL from user upload
@@ -96,12 +96,12 @@ export function ProfilePracticeTab({
                 />
               ) : (
                 <div className="flex size-14 items-center justify-center rounded-lg border border-dashed border-slate-200 text-[10px] text-slate-400">
-                  No logo
+                  {t("settings.logo.none")}
                 </div>
               )}
               <label className="cursor-pointer">
                 <span className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                  Upload image
+                  {t("settings.logo.upload")}
                 </span>
                 <input
                   type="file"
@@ -111,7 +111,7 @@ export function ProfilePracticeTab({
                     const file = e.target.files?.[0]
                     if (!file) return
                     if (file.size > 400_000) {
-                      alert("Please use an image under 400 KB for this demo.")
+                      alert(t("settings.logo.sizeAlert"))
                       return
                     }
                     const reader = new FileReader()
@@ -129,17 +129,17 @@ export function ProfilePracticeTab({
                   onClick={() => onChange({ ...settings, profile: { ...profile, logoDataUrl: null } })}
                   className="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-rose-600 hover:underline"
                 >
-                  Remove
+                  {t("settings.logo.remove")}
                 </button>
               ) : null}
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">Stored locally in the browser for this demo.</p>
+            <p className="mt-1 text-[11px] text-slate-500">{t("settings.logo.storeHint")}</p>
           </Field>
-          <Field label="Physical address (invoices)" className="sm:col-span-2">
+          <Field label={t("settings.profile.addressLabel")} className="sm:col-span-2">
             <Input
               value={profile.address}
               onChange={(e) => onChange({ ...settings, profile: { ...profile, address: e.target.value } })}
-              placeholder="123 Wellness St, Tel Aviv"
+              placeholder={t("settings.profile.addressPh")}
               className="rounded-xl border-slate-200"
             />
           </Field>
@@ -151,10 +151,8 @@ export function ProfilePracticeTab({
           <div className="flex items-center gap-2.5">
             <Clock className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">Clinic schedule</CardTitle>
-              <CardDescription className="text-sky-100/80">
-                Default hours shown to staff; calendar booking rules can use this later.
-              </CardDescription>
+              <CardTitle className="text-lg font-bold tracking-tight text-white">{t("settings.profile.scheduleTitle")}</CardTitle>
+              <CardDescription className="text-sky-100/80">{t("settings.profile.scheduleDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -162,24 +160,26 @@ export function ProfilePracticeTab({
           <ul className="space-y-3">
             {weekdays.map((day, i) => (
               <li
-                key={day.label}
+                key={day.weekdayIndex}
                 className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex items-center gap-3">
                   <Switch
                     checked={day.open}
-                    aria-label={`${day.label} open`}
+                    aria-label={t(`settings.weekday.${day.weekdayIndex}`)}
                     onCheckedChange={(open) => {
                       const next = [...weekdays]
                       next[i] = { ...next[i], open }
                       onChange({ ...settings, weekdays: next })
                     }}
                   />
-                  <span className="min-w-[100px] text-sm font-semibold text-slate-800">{day.label}</span>
+                  <span className="min-w-[100px] text-sm font-semibold text-slate-800">
+                    {t(`settings.weekday.${day.weekdayIndex}`)}
+                  </span>
                 </div>
                 {day.open ? (
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    <span className="text-xs font-medium text-slate-500">From</span>
+                    <span className="text-xs font-medium text-slate-500">{t("settings.schedule.from")}</span>
                     <Input
                       type="time"
                       value={day.openTime}
@@ -190,7 +190,7 @@ export function ProfilePracticeTab({
                       }}
                       className="w-32 rounded-lg border-slate-200 bg-white font-mono text-sm tabular-nums"
                     />
-                    <span className="text-xs font-medium text-slate-500">To</span>
+                    <span className="text-xs font-medium text-slate-500">{t("settings.schedule.to")}</span>
                     <Input
                       type="time"
                       value={day.closeTime}
@@ -203,7 +203,7 @@ export function ProfilePracticeTab({
                     />
                   </div>
                 ) : (
-                  <span className="text-sm text-slate-400">Closed</span>
+                  <span className="text-sm text-slate-400">{t("settings.schedule.closed")}</span>
                 )}
               </li>
             ))}

@@ -2,6 +2,7 @@
 
 import { Bell, Mail } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -16,6 +17,7 @@ export function NotificationsTab({
   settings: ClinicSettings
   onChange: (next: ClinicSettings) => void
 }) {
+  const { t } = useLocale()
   const { notifications: n } = settings
 
   const patch = (partial: Partial<typeof n>) =>
@@ -28,27 +30,31 @@ export function NotificationsTab({
           <div className="flex items-center gap-2.5">
             <Bell className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">Patient reminders</CardTitle>
-              <CardDescription className="text-sky-100/80">
-                Channel toggles are prefab — hook WhatsApp / SMS providers when you go live.
-              </CardDescription>
+              <CardTitle className="text-lg font-bold tracking-tight text-white">
+                {t("settings.notifications.remindersTitle")}
+              </CardTitle>
+              <CardDescription className="text-sky-100/80">{t("settings.notifications.remindersDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className={cn(elevatedCardBodyClass, "space-y-5")}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="flex items-center gap-3">
-              <Switch checked={n.whatsappEnabled} aria-label="WhatsApp" onCheckedChange={(v) => patch({ whatsappEnabled: v })} />
-              <span className="text-sm font-semibold text-slate-900">WhatsApp reminders</span>
+              <Switch
+                checked={n.whatsappEnabled}
+                aria-label={t("settings.notifications.whatsappAria")}
+                onCheckedChange={(v) => patch({ whatsappEnabled: v })}
+              />
+              <span className="text-sm font-semibold text-slate-900">{t("settings.notifications.whatsappLabel")}</span>
             </div>
-            <div className="flex items-center gap-3 sm:pl-6">
-              <Switch checked={n.smsEnabled} aria-label="SMS" onCheckedChange={(v) => patch({ smsEnabled: v })} />
-              <span className="text-sm font-semibold text-slate-900">SMS reminders</span>
+            <div className="flex items-center gap-3 sm:ps-6">
+              <Switch checked={n.smsEnabled} aria-label={t("settings.notifications.smsAria")} onCheckedChange={(v) => patch({ smsEnabled: v })} />
+              <span className="text-sm font-semibold text-slate-900">{t("settings.notifications.smsLabel")}</span>
             </div>
           </div>
           <div className="grid max-w-xs gap-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500" htmlFor="hours-before">
-              Send how many hours before?
+              {t("settings.notifications.hoursBeforeLabel")}
             </label>
             <Input
               id="hours-before"
@@ -62,7 +68,7 @@ export function NotificationsTab({
           </div>
           <div className="grid gap-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500" htmlFor="template">
-              Message template
+              {t("settings.notifications.templateLabel")}
             </label>
             <textarea
               id="template"
@@ -80,10 +86,8 @@ export function NotificationsTab({
           <div className="flex items-center gap-2.5">
             <Mail className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">Admin insights</CardTitle>
-              <CardDescription className="text-sky-100/80">
-                Automated performance digests for the practitioner — email delivery can be wired later.
-              </CardDescription>
+              <CardTitle className="text-lg font-bold tracking-tight text-white">{t("settings.notifications.insightsTitle")}</CardTitle>
+              <CardDescription className="text-sky-100/80">{t("settings.notifications.insightsDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -92,23 +96,23 @@ export function NotificationsTab({
             <div className="flex items-center gap-3">
               <Switch
                 checked={n.dailyDigest}
-                aria-label="Daily digest"
+                aria-label={t("settings.notifications.digestAria")}
                 onCheckedChange={(dailyDigest) => patch({ dailyDigest })}
               />
               <div>
-                <p className="text-sm font-semibold text-slate-900">Daily digest</p>
-                <p className="text-xs text-slate-500">Morning summary: sessions, revenue pulse, alerts</p>
+                <p className="text-sm font-semibold text-slate-900">{t("settings.notifications.digestTitle")}</p>
+                <p className="text-xs text-slate-500">{t("settings.notifications.digestSub")}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 sm:border-l sm:border-slate-200 sm:pl-8">
+            <div className="flex items-center gap-3 sm:border-s sm:border-slate-200 sm:ps-8">
               <Switch
                 checked={n.weeklyReport}
-                aria-label="Weekly report"
+                aria-label={t("settings.notifications.weeklyAria")}
                 onCheckedChange={(weeklyReport) => patch({ weeklyReport })}
               />
               <div>
-                <p className="text-sm font-semibold text-slate-900">Weekly report</p>
-                <p className="text-xs text-slate-500">Friday rollup: collection, no-shows, trends</p>
+                <p className="text-sm font-semibold text-slate-900">{t("settings.notifications.weeklyTitle")}</p>
+                <p className="text-xs text-slate-500">{t("settings.notifications.weeklySub")}</p>
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { Calendar, CheckCircle2, Receipt } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { todaySchedule } from "@/lib/mock-data"
@@ -40,6 +41,7 @@ export function PatientActionBar({
 }: Props) {
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const router = useRouter()
+  const { t, localeTag } = useLocale()
 
   /** Build a prefilled "next appointment" stub for the dialog. */
   function buildNextAppointmentStub(): ScheduleItem {
@@ -51,7 +53,7 @@ export function PatientActionBar({
     const hhmm = (m: number) =>
       `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`
     const sessionNote = nextSessionNumber
-      ? `Session ${nextSessionNumber} — ${patientName}`
+      ? t("patientChart.sessionStub", { n: nextSessionNumber, name: patientName })
       : patientName
     return {
       id: "",
@@ -79,7 +81,9 @@ export function PatientActionBar({
 
   const hasDebt = outstandingDebt > 0
   const debtLabel = hasDebt
-    ? `₪${outstandingDebt.toLocaleString("he-IL")} outstanding`
+    ? t("patientChart.outstandingDebt", {
+        amount: outstandingDebt.toLocaleString(localeTag),
+      })
     : undefined
 
   return (
@@ -90,17 +94,17 @@ export function PatientActionBar({
           "fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2.5 border-t border-slate-200/80 bg-white/95 p-4 backdrop-blur-md sm:flex-row xl:hidden",
           "shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.14)]",
         )}
-        aria-label="Quick actions"
+        aria-label={t("patientChart.quickActionsAria")}
       >
         {/* Complete Session */}
         <button
           type="button"
           onClick={onCompleteSession}
           className={cn(BTN_BASE, "bg-slate-900 text-white hover:bg-slate-800")}
-          aria-label="Complete current session"
+          aria-label={t("patientChart.completeSessionAria")}
         >
           <CheckCircle2 className="size-5 shrink-0" aria-hidden />
-          Complete Session
+          {t("patientChart.completeSession")}
         </button>
 
         {/* Issue Invoice */}
@@ -113,14 +117,16 @@ export function PatientActionBar({
               ? "border border-amber-200 bg-white text-slate-800 hover:bg-amber-50 shadow-none"
               : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-none",
           )}
-          aria-label={hasDebt ? `Issue invoice — ${debtLabel}` : "Issue invoice"}
+          aria-label={
+            hasDebt ? t("patientChart.issueInvoiceDebtAria", { detail: debtLabel ?? "" }) : t("patientChart.issueInvoiceAria")
+          }
         >
           <Receipt
             className={cn("size-5 shrink-0", hasDebt ? "text-amber-500" : "text-slate-500")}
             aria-hidden
           />
           <span className="flex flex-col items-start leading-none">
-            <span>Issue Invoice</span>
+            <span>{t("patientChart.issueInvoice")}</span>
             {hasDebt && (
               <span className="mt-0.5 text-[11px] font-normal opacity-90">{debtLabel}</span>
             )}
@@ -132,10 +138,10 @@ export function PatientActionBar({
           type="button"
           onClick={() => setScheduleOpen(true)}
           className={cn(BTN_BASE, "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-none")}
-          aria-label="Schedule next appointment"
+          aria-label={t("patientChart.scheduleNextAria")}
         >
           <Calendar className="size-5 shrink-0" aria-hidden />
-          Schedule Next
+          {t("patientChart.scheduleNext")}
         </button>
       </div>
 
@@ -143,7 +149,7 @@ export function PatientActionBar({
       <aside className="hidden xl:flex xl:w-[220px] xl:shrink-0 xl:flex-col xl:gap-3">
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.10)]">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-            Quick actions
+            {t("patientChart.quickActions")}
           </p>
           <div className="flex flex-col gap-2">
             <button
@@ -152,7 +158,7 @@ export function PatientActionBar({
               className="flex w-full items-center gap-2 rounded-xl bg-slate-900 px-3 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 active:scale-[0.98]"
             >
               <CheckCircle2 className="size-4 shrink-0" aria-hidden />
-              Complete Session
+              {t("patientChart.completeSession")}
             </button>
 
             <button
@@ -170,7 +176,7 @@ export function PatientActionBar({
                 aria-hidden
               />
               <span className="flex flex-col items-start leading-none">
-                <span>Issue Invoice</span>
+                <span>{t("patientChart.issueInvoice")}</span>
                 {hasDebt && (
                   <span className="mt-0.5 text-[10px] font-normal text-amber-600">{debtLabel}</span>
                 )}
@@ -183,7 +189,7 @@ export function PatientActionBar({
               className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 active:scale-[0.98]"
             >
               <Calendar className="size-4 shrink-0" aria-hidden />
-              Schedule Next
+              {t("patientChart.scheduleNext")}
             </button>
           </div>
         </div>

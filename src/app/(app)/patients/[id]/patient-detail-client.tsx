@@ -4,6 +4,7 @@ import { notFound, useParams } from "next/navigation"
 import { useState, useCallback } from "react"
 import { Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { cn } from "@/lib/utils"
 import { BillingToast } from "@/features/finances/components/billing-toast"
@@ -16,6 +17,7 @@ import { todaySchedule } from "@/lib/mock-data"
 
 export function PatientDetailClient() {
   const params = useParams()
+  const { t } = useLocale()
   const id =
     typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
@@ -66,11 +68,11 @@ export function PatientDetailClient() {
 
   const handleCompleteSession = () => {
     completeSession(patientLastAppointmentType)
-    showToast(`Session ${totalSessionsDone + 1} completed — timeline updated.`)
+    showToast(t("patientChart.toast.sessionDone", { n: totalSessionsDone + 1 }))
   }
 
   const handleIssueInvoice = () => {
-    showToast("Invoice generated and sent to billing.")
+    showToast(t("patientChart.toast.invoice"))
   }
 
   /** Outstanding debt from mock finance records */
@@ -84,7 +86,7 @@ export function PatientDetailClient() {
   if (!hydrated) {
     return (
       <div className="flex items-center justify-center py-20 text-sm text-slate-400">
-        Loading…
+        {t("patientChart.loading")}
       </div>
     )
   }
@@ -94,7 +96,6 @@ export function PatientDetailClient() {
       <div className="flex gap-6 pb-28 xl:pb-8">
         {/* ── Main column ── */}
         <div className="min-w-0 flex-1 space-y-6 sm:space-y-8">
-          {/* 1. Smart Header with edit mode */}
           <PatientSmartHeader
             patient={patient}
             overrides={contactOverrides}
@@ -105,7 +106,6 @@ export function PatientDetailClient() {
             onSaveOverrides={saveContactOverrides}
           />
 
-          {/* 2. Active Session Area */}
           <section aria-labelledby="session-heading">
             <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -113,14 +113,17 @@ export function PatientDetailClient() {
                   id="session-heading"
                   className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
                 >
-                  Active Session
+                  {t("patientChart.activeSession")}
                 </h2>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[10px] tabular-nums text-slate-400">
-                    Session {totalSessionsDone + 1} of {planTarget}
+                    {t("patientChart.sessionProgress", {
+                      current: totalSessionsDone + 1,
+                      total: planTarget,
+                    })}
                   </span>
                   <span className="inline-flex h-5 items-center rounded-full bg-emerald-50 px-2 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                    Live
+                    {t("patientChart.live")}
                   </span>
                 </div>
               </div>
@@ -132,16 +135,16 @@ export function PatientDetailClient() {
                   <button
                     type="button"
                     onClick={() => setNotesOpen((v) => !v)}
-                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition-colors hover:text-sky-700"
+                    className="flex w-full items-center gap-2 px-4 py-3 text-start text-sm font-semibold text-slate-700 transition-colors hover:text-sky-700"
                     aria-expanded={notesOpen}
                     aria-controls="session-notes-panel"
                   >
                     <StickyNote className="size-4 text-slate-400" aria-hidden />
-                    Session notes
+                    {t("patientChart.sessionNotes")}
                     {notesOpen ? (
-                      <ChevronUp className="ml-auto size-4 text-slate-400" aria-hidden />
+                      <ChevronUp className="ms-auto size-4 text-slate-400" aria-hidden />
                     ) : (
-                      <ChevronDown className="ml-auto size-4 text-slate-400" aria-hidden />
+                      <ChevronDown className="ms-auto size-4 text-slate-400" aria-hidden />
                     )}
                   </button>
 
@@ -156,7 +159,7 @@ export function PatientDetailClient() {
                       <textarea
                         value={sessionNotes}
                         onChange={(e) => setSessionNotes(e.target.value)}
-                        placeholder="Type structured notes, findings, adjustments made…"
+                        placeholder={t("patientChart.sessionNotesPh")}
                         rows={5}
                         className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 placeholder-slate-400 outline-none transition-[border-color,box-shadow] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
                       />
@@ -167,7 +170,6 @@ export function PatientDetailClient() {
             </div>
           </section>
 
-          {/* 3. Unified Timeline */}
           <section aria-labelledby="timeline-heading">
             <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
               <div className="border-b border-slate-100 px-5 py-4">
@@ -175,7 +177,7 @@ export function PatientDetailClient() {
                   id="timeline-heading"
                   className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
                 >
-                  Patient Timeline
+                  {t("patientChart.timelineTitle")}
                 </h2>
               </div>
               <div className="p-5 pb-3">
@@ -192,7 +194,6 @@ export function PatientDetailClient() {
             </div>
           </section>
 
-          {/* General notes — editable */}
           <GeneralNotesCard
             initialValue={contactOverrides.generalNotes ?? patient.generalNotes ?? ""}
             onSave={(v) =>
@@ -201,7 +202,6 @@ export function PatientDetailClient() {
           />
         </div>
 
-        {/* ── Desktop sidebar ── */}
         <PatientActionBar
           outstandingDebt={outstandingDebt}
           onCompleteSession={handleCompleteSession}
@@ -218,7 +218,7 @@ export function PatientDetailClient() {
       <BillingToast
         open={toast.open}
         message={toast.message}
-        onOpenChange={(v) => setToast((t) => ({ ...t, open: v }))}
+        onOpenChange={(v) => setToast((st) => ({ ...st, open: v }))}
       />
     </>
   )
@@ -235,6 +235,7 @@ function GeneralNotesCard({
   initialValue: string
   onSave: (value: string) => void
 }) {
+  const { t } = useLocale()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(initialValue)
 
@@ -253,17 +254,17 @@ function GeneralNotesCard({
       <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-            General Notes
+            {t("patientChart.generalNotes")}
           </h2>
           {!editing ? (
             <button
               type="button"
               onClick={enterEdit}
               className="flex items-center gap-1 rounded-md border border-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition-colors hover:border-sky-200 hover:text-sky-600"
-              aria-label="Edit general notes"
+              aria-label={t("patientChart.editGeneralNotesAria")}
             >
               <Pencil className="size-2.5" aria-hidden />
-              Edit
+              {t("common.edit")}
             </button>
           ) : (
             <div className="flex items-center gap-1">
@@ -273,7 +274,7 @@ function GeneralNotesCard({
                 className="flex items-center gap-1 rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white transition-colors hover:bg-slate-800"
               >
                 <Check className="size-2.5" aria-hidden />
-                Save
+                {t("common.save")}
               </button>
               <button
                 type="button"
@@ -281,7 +282,7 @@ function GeneralNotesCard({
                 className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 transition-colors hover:bg-slate-50"
               >
                 <X className="size-2.5" aria-hidden />
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           )}
@@ -293,12 +294,12 @@ function GeneralNotesCard({
               onChange={(e) => setDraft(e.target.value)}
               rows={4}
               className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 outline-none focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
-              placeholder="Add general notes (preferences, history flags, etc.)…"
+              placeholder={t("patientChart.generalNotesPh")}
             />
           ) : (
             <p className="text-sm leading-relaxed text-slate-500">
               {initialValue || (
-                <span className="italic text-slate-400">No general notes yet.</span>
+                <span className="italic text-slate-400">{t("patientChart.noGeneralNotes")}</span>
               )}
             </p>
           )}

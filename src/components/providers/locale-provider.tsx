@@ -46,7 +46,7 @@ export function useLocale(): LocaleContextValue {
 }
 
 /**
- * Persisted bilingual shell: drives `lang`/`dir`, Hebrew uses Heebo from CSS,
+ * Persisted bilingual shell: drives `lang`/`dir`, Hebrew uses Assistant from CSS,
  * subtle opacity easing when switching locales.
  */
 export function LocaleProvider({ children }: { children: ReactNode }) {

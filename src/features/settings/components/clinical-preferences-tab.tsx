@@ -2,6 +2,7 @@
 
 import { ClipboardList, Layers, Plus, Stethoscope, Trash2 } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,6 +20,7 @@ export function ClinicalPreferencesTab({
   settings: ClinicSettings
   onChange: (next: ClinicSettings) => void
 }) {
+  const { t } = useLocale()
   const { treatmentTypes, carePlans, defaultPlanSessions } = settings
 
   const updateType = (index: number, patch: Partial<(typeof treatmentTypes)[number]>) => {
@@ -34,7 +36,7 @@ export function ClinicalPreferencesTab({
         ...carePlans,
         {
           id: `cp-${Date.now()}`,
-          name: "New package",
+          name: t("settings.clinical.newPackageName"),
           sessions: 6,
           totalPriceIls: 1200,
         },
@@ -53,23 +55,23 @@ export function ClinicalPreferencesTab({
           <div className="flex items-center gap-2.5">
             <Stethoscope className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">Appointment types & pricing</CardTitle>
-              <CardDescription className="text-sky-100/80">
-                Drives calendar colours and default amounts when generating invoices from visits.
-              </CardDescription>
+              <CardTitle className="text-lg font-bold tracking-tight text-white">
+                {t("settings.clinical.typesTitle")}
+              </CardTitle>
+              <CardDescription className="text-sky-100/80">{t("settings.clinical.typesDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className={elevatedCardBodyClass}>
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="w-full min-w-[640px] text-left text-sm">
+            <table className="w-full min-w-[640px] text-start text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  <th className="px-4 py-3">Type key</th>
-                  <th className="px-4 py-3">Display name</th>
-                  <th className="px-4 py-3">Default length</th>
-                  <th className="px-4 py-3">Colour</th>
-                  <th className="px-4 py-3 text-right">Price</th>
+                  <th className="px-4 py-3">{t("settings.clinical.thTypeKey")}</th>
+                  <th className="px-4 py-3">{t("settings.clinical.thDisplayName")}</th>
+                  <th className="px-4 py-3">{t("settings.clinical.thDefaultLength")}</th>
+                  <th className="px-4 py-3">{t("settings.clinical.thColour")}</th>
+                  <th className="px-4 py-3 text-end">{t("settings.clinical.thPrice")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -94,7 +96,7 @@ export function ClinicalPreferencesTab({
                           onChange={(e) => updateType(i, { defaultMinutes: Number(e.target.value) || 5 })}
                           className="h-9 w-20 rounded-lg border-slate-200 font-mono tabular-nums"
                         />
-                        <span className="text-xs text-slate-500">min</span>
+                        <span className="text-xs text-slate-500">{t("settings.clinical.minSuffix")}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -107,20 +109,20 @@ export function ClinicalPreferencesTab({
                       >
                         {PRESETS.map((p) => (
                           <option key={p} value={p}>
-                            {p}
+                            {t(`settings.color.${p}`)}
                           </option>
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-end">
                       <div className="inline-flex items-center justify-end gap-1">
                         <Input
-                          aria-label={`Price for ${row.type}`}
+                          aria-label={t("settings.clinical.priceAria", { type: row.type })}
                           value={String(row.priceIls)}
                           onChange={(e) =>
                             updateType(i, { priceIls: Math.max(0, parseIlsInput(e.target.value)) })
                           }
-                          className="inline-block h-9 w-28 rounded-lg border-slate-200 text-right font-mono tabular-nums"
+                          className="inline-block h-9 w-28 rounded-lg border-slate-200 text-end font-mono tabular-nums"
                         />
                         <span className="text-sm font-medium text-slate-600">₪</span>
                       </div>
@@ -138,10 +140,8 @@ export function ClinicalPreferencesTab({
           <div className="flex items-center gap-2.5">
             <Layers className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">Care plans</CardTitle>
-              <CardDescription className="text-sky-100/80">
-                Package pricing for multi-visit bundles (Finances can reference these later).
-              </CardDescription>
+              <CardTitle className="text-lg font-bold tracking-tight text-white">{t("settings.clinical.plansTitle")}</CardTitle>
+              <CardDescription className="text-sky-100/80">{t("settings.clinical.plansDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -152,7 +152,7 @@ export function ClinicalPreferencesTab({
                 className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
                 htmlFor="default-sessions"
               >
-                Default treatment plan length
+                {t("settings.clinical.defaultPlanLength")}
               </label>
               <div className="flex items-center gap-2">
                 <Input
@@ -169,12 +169,12 @@ export function ClinicalPreferencesTab({
                   }
                   className="h-9 w-24 rounded-lg border-slate-200 font-mono tabular-nums"
                 />
-                <span className="text-sm text-slate-600">sessions</span>
+                <span className="text-sm text-slate-600">{t("settings.clinical.sessionsWord")}</span>
               </div>
             </div>
             <Button type="button" variant="secondary" className="gap-1.5 self-start" onClick={addPlan}>
               <Plus className="size-4" aria-hidden />
-              Add package
+              {t("settings.clinical.addPackage")}
             </Button>
           </div>
 
@@ -209,11 +209,11 @@ export function ClinicalPreferencesTab({
                       }}
                       className="h-9 w-20 rounded-lg border-slate-200 font-mono tabular-nums"
                     />
-                    <span className="text-xs text-slate-500">visits</span>
+                    <span className="text-xs text-slate-500">{t("settings.clinical.visitsWord")}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Input
-                      aria-label="Total price"
+                      aria-label={t("settings.clinical.totalPriceAria")}
                       value={String(plan.totalPriceIls)}
                       onChange={(e) => {
                         const totalPriceIls = Math.max(0, parseIlsInput(e.target.value))
@@ -224,15 +224,15 @@ export function ClinicalPreferencesTab({
                           ),
                         })
                       }}
-                      className="h-9 w-28 rounded-lg border-slate-200 text-right font-mono tabular-nums"
+                      className="h-9 w-28 rounded-lg border-slate-200 text-end font-mono tabular-nums"
                     />
-                    <span className="text-xs font-medium text-slate-500">₪ total</span>
+                    <span className="text-xs font-medium text-slate-500">{t("settings.clinical.ilsTotal")}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => removePlan(plan.id)}
                     className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                    aria-label="Remove package"
+                    aria-label={t("settings.clinical.removePackageAria")}
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -248,18 +248,13 @@ export function ClinicalPreferencesTab({
           <div className="flex items-center gap-2.5">
             <ClipboardList className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">Clinical reference</CardTitle>
-              <CardDescription className="text-sky-100/80">
-                Template tags for reminders: {"{patient_name}"}, {"{time}"}, {"{date}"}, {"{clinic_name}"}.
-              </CardDescription>
+              <CardTitle className="text-lg font-bold tracking-tight text-white">{t("settings.clinical.refTitle")}</CardTitle>
+              <CardDescription className="text-sky-100/80">{t("settings.clinical.refDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className={elevatedCardBodyClass}>
-          <p className="text-sm leading-relaxed text-slate-600">
-            Adjust prices above whenever your fee schedule changes — outstanding mock invoices keep their historic
-            amounts until edited in Billing.
-          </p>
+          <p className="text-sm leading-relaxed text-slate-600">{t("settings.clinical.refHint")}</p>
         </CardContent>
       </Card>
     </div>

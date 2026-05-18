@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ChevronDown, ChevronUp, FileText, Receipt, Trash2 } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
 import type { DocumentRecord, FinanceRecord, TreatmentRecord } from "@/types/domain"
 import { DocumentPreviewModal } from "./document-preview-modal"
@@ -57,18 +58,9 @@ const INVOICE_STATUS_COLORS: Record<string, string> = {
   void: "text-slate-400",
 }
 
-const DOC_TYPE_LABELS: Record<string, string> = {
-  xray: "X-Ray",
-  mri: "MRI",
-  insurance: "Insurance",
-  lab: "Lab",
-  consent: "Consent",
-  other: "Document",
-}
-
-function formatDate(raw: string) {
+function formatDate(raw: string, localeTag: string) {
   try {
-    return new Date(raw).toLocaleDateString("en-GB", {
+    return new Date(raw).toLocaleDateString(localeTag, {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -113,6 +105,7 @@ export function UnifiedTimeline({
   onDeleteTreatment,
   onDeleteCompletedSession,
 }: Props) {
+  const { t, localeTag } = useLocale()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -168,8 +161,8 @@ export function UnifiedTimeline({
       <div className="flex items-center justify-center rounded-xl border border-dashed border-slate-200 py-14">
         <div className="text-center">
           <FileText className="mx-auto mb-3 size-7 text-slate-300" aria-hidden />
-          <p className="text-sm font-semibold text-slate-500">No sessions yet</p>
-          <p className="mt-1 text-xs text-slate-400">Complete a session to start the timeline.</p>
+          <p className="text-sm font-semibold text-slate-500">{t("patientChart.timeline.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-slate-400">{t("patientChart.timeline.emptyHint")}</p>
         </div>
       </div>
     )
@@ -192,7 +185,7 @@ export function UnifiedTimeline({
 
   return (
     <>
-      <ol className="flex flex-col gap-0" aria-label="Patient timeline">
+      <ol className="flex flex-col gap-0" aria-label={t("patientChart.timeline.aria")}>
         {entries.map((entry, idx) => {
           const isLast = idx === entries.length - 1
           const isCompleted = entry.kind === "completed-session"
@@ -211,7 +204,7 @@ export function UnifiedTimeline({
               {!isLast && (
                 <span
                   aria-hidden
-                  className="absolute left-[15px] top-9 h-full w-px bg-sky-100"
+                  className="absolute start-[15px] top-9 h-full w-px bg-sky-100"
                 />
               )}
 
@@ -236,10 +229,10 @@ export function UnifiedTimeline({
                 {/* Date + session badge + delete (top row, well-separated) */}
                 <div className="mb-1 flex items-center gap-2">
                   <p className="font-mono text-[11px] tabular-nums text-slate-400">
-                    {formatDate(entry.date)}
+                    {formatDate(entry.date, localeTag)}
                   </p>
                   <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 font-mono text-[10px] tabular-nums text-slate-400 ring-1 ring-slate-100">
-                    Session {sessionNumber} of {planTarget}
+                    {t("patientChart.timeline.sessionOf", { n: sessionNumber, total: planTarget })}
                   </span>
 
                   {/* Delete — pushed to the far right, separated from the expand chevron */}
@@ -247,15 +240,15 @@ export function UnifiedTimeline({
                     type="button"
                     onClick={() => handleDelete(entry)}
                     className={cn(
-                      "ml-auto flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
+                      "ms-auto flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
                       confirming
                         ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200"
                         : "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
                     )}
-                    aria-label={confirming ? "Confirm delete" : "Delete session"}
+                    aria-label={confirming ? t("patientChart.timeline.confirmDeleteAria") : t("patientChart.timeline.deleteAria")}
                   >
                     <Trash2 className="size-3.5" aria-hidden />
-                    {confirming && <span>Confirm</span>}
+                    {confirming && <span>{t("patientChart.timeline.confirm")}</span>}
                   </button>
                 </div>
 
@@ -272,7 +265,7 @@ export function UnifiedTimeline({
                   <button
                     type="button"
                     onClick={() => hasMore && toggle(entry.id)}
-                    className="flex w-full items-start gap-3 px-4 py-3 text-left"
+                    className="flex w-full items-start gap-3 px-4 py-3 text-start"
                     aria-expanded={expanded}
                   >
                     <div className="min-w-0 flex-1">
@@ -286,7 +279,7 @@ export function UnifiedTimeline({
                     {hasMore && (
                       <span
                         className={cn(
-                          "ml-2 flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors",
+                          "ms-2 flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors",
                           expanded
                             ? "border-sky-200 bg-sky-50 text-sky-600"
                             : "border-slate-200 bg-white text-slate-500 group-hover:border-sky-200 group-hover:bg-sky-50 group-hover:text-sky-600",
@@ -312,12 +305,12 @@ export function UnifiedTimeline({
                       {entry.canvasDataUrl && (
                         <div>
                           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Handwriting snapshot
+                            {t("patientChart.timeline.snapshot")}
                           </p>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={entry.canvasDataUrl}
-                            alt="Session handwriting snapshot"
+                            alt={t("patientChart.timeline.snapshotAlt")}
                             className="w-full rounded-lg border border-slate-100 object-contain"
                           />
                         </div>
@@ -334,7 +327,12 @@ export function UnifiedTimeline({
                               className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
                             >
                               <FileText className="size-3 text-slate-400" aria-hidden />
-                              {DOC_TYPE_LABELS[doc.type] ?? "Doc"} — {doc.name}
+                              {(() => {
+                                const key = `doc.type.${doc.type}` as const
+                                const label = t(key)
+                                const display = label === key ? t("doc.type.other") : label
+                                return `${display} — ${doc.name}`
+                              })()}
                             </button>
                           ))}
                           {entry.relatedFinances.map((fin) => (
@@ -346,7 +344,13 @@ export function UnifiedTimeline({
                               )}
                             >
                               <Receipt className="size-3 text-slate-400" aria-hidden />
-                              {fin.amount} · {fin.invoiceStatus}
+                              {(() => {
+                                const st = fin.invoiceStatus
+                                const sk = `invoice.status.${st}`
+                                const label = t(sk)
+                                const display = label === sk ? st : label
+                                return `${fin.amount} · ${display}`
+                              })()}
                             </span>
                           ))}
                         </div>

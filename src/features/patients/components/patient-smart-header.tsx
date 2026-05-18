@@ -4,6 +4,7 @@ import Link from "next/link"
 import { ArrowLeft, Check, Mail, MapPin, Pencil, Phone, X } from "lucide-react"
 import { useState } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
 import type { PatientSummary } from "@/types/domain"
 import type { PatientContactOverrides } from "../lib/use-patient-cockpit"
@@ -36,6 +37,7 @@ export function PatientSmartHeader({
   onClinicalStatusChange,
   onSaveOverrides,
 }: Props) {
+  const { t } = useLocale()
   const clampedDone = Math.min(totalSessionsDone, planTarget)
   const pct = planTarget > 0 ? Math.round((clampedDone / planTarget) * 100) : 0
 
@@ -79,8 +81,8 @@ export function PatientSmartHeader({
           href="/patients"
           className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-700"
         >
-          <ArrowLeft className="size-3" aria-hidden />
-          Patients
+          <ArrowLeft className="size-3 rtl:rotate-180" aria-hidden />
+          {t("patientChart.breadcrumb")}
         </Link>
       </div>
 
@@ -99,7 +101,7 @@ export function PatientSmartHeader({
                   STATUS_BADGE[patient.status],
                 )}
               >
-                {patient.status}
+                {t(`status.patient.${patient.status}`)}
               </span>
             </div>
 
@@ -111,7 +113,7 @@ export function PatientSmartHeader({
                 }
                 rows={3}
                 className={cn(FIELD_CLASS, "resize-none")}
-                placeholder="Medical history summary…"
+                placeholder={t("patientChart.medicalSummaryPh")}
               />
             ) : (
               <p className="max-w-xl text-sm leading-relaxed text-slate-500">
@@ -124,27 +126,27 @@ export function PatientSmartHeader({
           <div className="shrink-0 space-y-1.5">
             <div className="flex items-center gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                Contact
+                {t("patientChart.contact")}
               </p>
               {!editing ? (
                 <button
                   type="button"
                   onClick={enterEdit}
-                  className="ml-1 flex items-center gap-1 rounded-md border border-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition-colors hover:border-sky-200 hover:text-sky-600"
-                  aria-label="Edit contact info"
+                  className="ms-1 flex items-center gap-1 rounded-md border border-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition-colors hover:border-sky-200 hover:text-sky-600"
+                  aria-label={t("patientChart.editContactAria")}
                 >
                   <Pencil className="size-2.5" aria-hidden />
-                  Edit
+                  {t("common.edit")}
                 </button>
               ) : (
-                <div className="ml-auto flex items-center gap-1">
+                <div className="ms-auto flex items-center gap-1">
                   <button
                     type="button"
                     onClick={saveEdit}
                     className="flex items-center gap-1 rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white transition-colors hover:bg-slate-800"
                   >
                     <Check className="size-2.5" aria-hidden />
-                    Save
+                    {t("common.save")}
                   </button>
                   <button
                     type="button"
@@ -152,7 +154,7 @@ export function PatientSmartHeader({
                     className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 transition-colors hover:bg-slate-50"
                   >
                     <X className="size-2.5" aria-hidden />
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 </div>
               )}
@@ -164,19 +166,19 @@ export function PatientSmartHeader({
                   value={draft.phone}
                   onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))}
                   className={FIELD_CLASS}
-                  placeholder="Phone"
+                  placeholder={t("patientChart.phonePh")}
                 />
                 <input
                   value={draft.email}
                   onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
                   className={FIELD_CLASS}
-                  placeholder="Email"
+                  placeholder={t("patientChart.emailPh")}
                 />
                 <input
                   value={draft.address}
                   onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
                   className={FIELD_CLASS}
-                  placeholder="Address"
+                  placeholder={t("patientChart.addressPh")}
                 />
               </div>
             ) : (
@@ -205,19 +207,19 @@ export function PatientSmartHeader({
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <div className="flex items-baseline gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                Care Plan
+                {t("patientChart.carePlan")}
               </p>
               <p className="font-mono text-sm font-semibold tabular-nums text-slate-800">
                 {clampedDone}
                 <span className="font-normal text-slate-400">/{planTarget}</span>
               </p>
-              <p className="text-[11px] text-slate-400">sessions</p>
+              <p className="text-[11px] text-slate-400">{t("patientChart.sessionsWord")}</p>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
               <div
                 className="h-full rounded-full bg-sky-500 transition-all duration-700"
                 style={{ width: `${pct}%` }}
-                aria-label={`${pct}% of care plan complete`}
+                aria-label={t("patientChart.carePlanProgressAria", { pct })}
               />
             </div>
           </div>
@@ -227,7 +229,7 @@ export function PatientSmartHeader({
           {/* Clinical status */}
           <div className="flex items-center gap-2">
             <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Status
+              {t("patientChart.clinicalStatus")}
             </p>
             {editingStatus ? (
               <input
@@ -243,7 +245,7 @@ export function PatientSmartHeader({
                 }}
                 autoFocus
                 className="w-full max-w-xs rounded-lg border border-sky-200 bg-white px-2.5 py-1 text-sm text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-sky-100"
-                placeholder="Clinical status…"
+                placeholder={t("patientChart.clinicalStatusPh")}
               />
             ) : (
               <button
@@ -252,7 +254,7 @@ export function PatientSmartHeader({
                   setStatusDraft(clinicalStatus)
                   setEditingStatus(true)
                 }}
-                title="Click to edit"
+                title={t("patientChart.editStatusTitle")}
                 className="text-left text-sm text-slate-600 underline-offset-2 hover:text-sky-700 hover:underline"
               >
                 {clinicalStatus}

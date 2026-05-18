@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Eraser, RotateCcw, Save } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
 
 interface Point {
@@ -25,6 +26,7 @@ interface Props {
  * screens (< sm) and shows a friendly nudge instead.
  */
 export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
+  const { t } = useLocale()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
   const currentStroke = useRef<Stroke>([])
@@ -184,8 +186,8 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
     return (
       <div className={cn("flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center", className)}>
         <div>
-          <p className="text-sm font-semibold text-slate-600">Handwriting canvas</p>
-          <p className="mt-1 text-xs text-slate-400">Open on a tablet for stylus / finger drawing.</p>
+          <p className="text-sm font-semibold text-slate-600">{t("patientChart.canvas.mobileTitle")}</p>
+          <p className="mt-1 text-xs text-slate-400">{t("patientChart.canvas.mobileHint")}</p>
         </div>
       </div>
     )
@@ -195,28 +197,28 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
     <div className={cn("flex flex-col gap-2", className)}>
       {/* Toolbar */}
       <div className="flex items-center gap-2">
-        <p className="mr-auto text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Handwritten notes
+        <p className="me-auto text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+          {t("patientChart.canvas.toolbarTitle")}
         </p>
         <button
           type="button"
           onClick={handleUndo}
           disabled={undoStack.length === 0}
           className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="Undo last stroke"
+          aria-label={t("patientChart.canvas.undoAria")}
         >
           <RotateCcw className="size-3.5" aria-hidden />
-          Undo
+          {t("patientChart.canvas.undo")}
         </button>
         <button
           type="button"
           onClick={handleClear}
           disabled={strokes.length === 0}
           className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="Clear canvas"
+          aria-label={t("patientChart.canvas.clearAria")}
         >
           <Eraser className="size-3.5" aria-hidden />
-          Clear
+          {t("patientChart.canvas.clear")}
         </button>
         <button
           type="button"
@@ -227,10 +229,10 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100",
           )}
-          aria-label="Save drawing"
+          aria-label={t("patientChart.canvas.saveAria")}
         >
           <Save className="size-3.5" aria-hidden />
-          {saved ? "Saved" : "Save"}
+          {saved ? t("patientChart.canvas.saved") : t("patientChart.canvas.save")}
         </button>
       </div>
 
@@ -245,7 +247,7 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
           className="h-[320px] w-full cursor-crosshair touch-none sm:h-[400px] lg:h-[440px]"
-          aria-label="Handwriting canvas — draw notes with finger or stylus"
+          aria-label={t("patientChart.canvas.drawAria")}
           style={{ touchAction: "none" }}
         />
       </div>
