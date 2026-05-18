@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { CalendarDays, Clock3, XIcon } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,6 +23,7 @@ import {
   APPOINTMENT_SLOT_MINUTES,
 } from "@/types/domain"
 import { APPOINTMENT_TYPE_OPTIONS } from "@/lib/appointment-types"
+import { localeToBcp47 } from "@/lib/format-locale"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import {
   CALENDAR_HOUR_END,
@@ -82,7 +84,16 @@ export function AppointmentEditDialog({
   allAppointments: ScheduleItem[]
   onSave: (item: ScheduleItem, meta: { isNew: boolean }) => void
 }) {
-  const typeVisual = useAppointmentTypeVisual()
+  const { locale, t } = useLocale()
+  const typeVisualBase = useAppointmentTypeVisual()
+  const typeVisual = useMemo(() => {
+    const next = { ...typeVisualBase }
+    const keys: AppointmentType[] = ["first", "adjustments", "kupa"]
+    for (const k of keys) {
+      next[k] = { ...next[k], label: t(`appt.type.${k}`) }
+    }
+    return next
+  }, [typeVisualBase, t])
   const [error, setError] = useState<string | null>(null)
   const [patientName, setPatientName] = useState("")
   const [treatment, setTreatment] = useState("")
@@ -139,7 +150,7 @@ export function AppointmentEditDialog({
     const endMin = startMin + durationMin
     const dateLabel = (() => {
       try {
-        return new Intl.DateTimeFormat(undefined, {
+        return new Intl.DateTimeFormat(localeToBcp47(locale), {
           weekday: "short",
           day: "numeric",
           month: "short",
@@ -150,12 +161,12 @@ export function AppointmentEditDialog({
     })()
     return {
       line: `${hhmmFromMinutes(startMin)} · ${hhmmFromMinutes(endMin)}`,
-      subtitle: `${durationMin} minute visit`,
+      subtitle: t("appointment.preview.minutes", { n: durationMin }),
       dateLabel,
       startMin,
       endMin,
     }
-  }, [startHour, startMinute, durationMin, date])
+  }, [startHour, startMinute, durationMin, date, locale, t])
 
   const adjustDuration = (delta: number) => {
     setDurationMin((d) => clampDurationMinutes(d + delta))
@@ -167,28 +178,33 @@ export function AppointmentEditDialog({
     const endMin = preview.endMin
 
     if (startMinute % APPOINTMENT_SLOT_MINUTES !== 0) {
-      setError(`Minutes must be in ${APPOINTMENT_SLOT_MINUTES}-minute steps.`)
+      setError(t("appointment.error.minutesStep", { slot: APPOINTMENT_SLOT_MINUTES }))
       return
     }
 
     if (durationMin < MIN_APPOINTMENT_MINUTES || durationMin > MAX_APPOINTMENT_MINUTES) {
-      setError(`Duration must be between ${MIN_APPOINTMENT_MINUTES} and ${MAX_APPOINTMENT_MINUTES} minutes.`)
+      setError(
+        t("appointment.error.durationRange", {
+          min: MIN_APPOINTMENT_MINUTES,
+          max: MAX_APPOINTMENT_MINUTES,
+        }),
+      )
       return
     }
 
     if (durationMin % APPOINTMENT_SLOT_MINUTES !== 0) {
-      setError(`Duration must be a multiple of ${APPOINTMENT_SLOT_MINUTES} minutes.`)
+      setError(t("appointment.error.durationMultiple", { slot: APPOINTMENT_SLOT_MINUTES }))
       return
     }
 
     if (!isWithinCalendarDayWindow(startMin, endMin)) {
-      setError("Appointment must stay within clinic hours (08:00–19:00).")
+      setError(t("appointment.error.hours"))
       return
     }
 
     const name = patientName.trim()
     if (!name) {
-      setError("Patient name is required.")
+      setError(t("appointment.error.name"))
       return
     }
 
@@ -202,17 +218,20 @@ export function AppointmentEditDialog({
     )
     if (conflict) {
       setError(
-        `That time overlaps with ${conflict.patientName} (${conflict.start}–${conflict.end}). Choose a different time.`,
+        t("appointment.error.overlap", {
+          name: conflict.patientName,
+          start: conflict.start,
+          end: conflict.end,
+        }),
       )
       return
     }
 
-    // Compute a friendly day label so the table-style views keep reading naturally.
     const dayLabel = (() => {
       const today = toISODate(new Date())
-      if (date === today) return "Today"
+      if (date === today) return t("calendar.day.today")
       try {
-        return new Intl.DateTimeFormat(undefined, { weekday: "long" }).format(fromISODate(date))
+        return new Intl.DateTimeFormat(localeToBcp47(locale), { weekday: "long" }).format(fromISODate(date))
       } catch {
         return date
       }
@@ -242,7 +261,7 @@ export function AppointmentEditDialog({
             start: hhmmFromMinutes(startMin),
             end: hhmmFromMinutes(endMin),
             status,
-            treatment: treatment.trim() || "Visit",
+            treatment: treatment.trim() || t("appointment.treatmentFallback"),
             appointmentType: apptType,
           }
 
@@ -262,7 +281,7 @@ export function AppointmentEditDialog({
         )}
       >
         <DialogDescription className="sr-only">
-          {mode === "create" ? "Create a new appointment for today." : "Change visit time or details."}
+          {mode === "create" ? t("appointment.create.subtitle") : t("appointment.edit.subtitle")}
         </DialogDescription>
 
         <DialogClose
@@ -272,7 +291,7 @@ export function AppointmentEditDialog({
               variant="ghost"
               size="icon-sm"
               className="absolute top-5 right-5 z-20 rounded-xl text-white hover:bg-white/15"
-              aria-label="Close"
+              aria-label={t("appointment.close")}
             />
           }
         >
@@ -283,7 +302,7 @@ export function AppointmentEditDialog({
           <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
           <DialogHeader className="relative gap-0 space-y-0">
             <DialogTitle className="font-heading pr-12 text-xl font-semibold tracking-tight text-white">
-              {mode === "create" ? "Schedule a slot" : "Update appointment"}
+              {mode === "create" ? t("appointment.scheduleSlot") : t("appointment.update")}
             </DialogTitle>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${typeChip}`}>
@@ -324,25 +343,25 @@ export function AppointmentEditDialog({
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5 sm:col-span-2">
                 <label className={LABEL} htmlFor="appt-patient">
-                  Patient
+                  {t("appointment.field.patient")}
                 </label>
                 <Input
                   id="appt-patient"
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
-                  placeholder="Full name"
+                  placeholder={t("appointment.field.fullName")}
                   className="h-11 rounded-xl border-slate-200 text-base"
                 />
               </div>
               <div className="grid gap-1.5 sm:col-span-2">
                 <label className={LABEL} htmlFor="appt-notes">
-                  Note
+                  {t("appointment.field.note")}
                 </label>
                 <Input
                   id="appt-notes"
                   value={treatment}
                   onChange={(e) => setTreatment(e.target.value)}
-                  placeholder="Brief reason / focus area"
+                  placeholder={t("appointment.field.treatmentPlaceholder")}
                   className="h-11 rounded-xl border-slate-200"
                 />
               </div>
@@ -353,7 +372,7 @@ export function AppointmentEditDialog({
             <div className="grid gap-3">
               <div className="grid gap-1.5">
                 <label className={LABEL} htmlFor="appt-date">
-                  Date
+                  {t("appointment.field.date")}
                 </label>
                 <input
                   id="appt-date"
@@ -363,18 +382,16 @@ export function AppointmentEditDialog({
                   className={CONTROL}
                 />
                 <p className="text-[11px] text-slate-400">
-                  {mode === "edit"
-                    ? "Change the date to move this appointment to another day."
-                    : "Select the day for the new appointment."}
+                  {mode === "edit" ? t("appointment.date.hint.edit") : t("appointment.date.hint.create")}
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <p className={LABEL}>Start time</p>
+                <p className={LABEL}>{t("appointment.field.startTime")}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="grid gap-1">
                     <label className="text-xs font-medium text-slate-500" htmlFor="appt-hour">
-                      Hour
+                      {t("appointment.field.hour")}
                     </label>
                     <select
                       id="appt-hour"
@@ -398,7 +415,7 @@ export function AppointmentEditDialog({
                   </div>
                   <div className="grid gap-1">
                     <label className="text-xs font-medium text-slate-500" htmlFor="appt-min">
-                      Minutes
+                      {t("appointment.field.minutesCol")}
                     </label>
                     <select
                       id="appt-min"
@@ -423,7 +440,7 @@ export function AppointmentEditDialog({
               </div>
 
               <div className="grid gap-2">
-                <p className={LABEL}>Duration</p>
+                <p className={LABEL}>{t("appointment.field.duration")}</p>
                 <div className="flex flex-wrap gap-2">
                   {DURATION_QUICK.map((d) => (
                     <Button
@@ -476,7 +493,7 @@ export function AppointmentEditDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
                   <label className={LABEL} htmlFor="appt-type">
-                    Visit type
+                    {t("appointment.field.visitType")}
                   </label>
                   <select
                     id="appt-type"
@@ -484,16 +501,16 @@ export function AppointmentEditDialog({
                     value={apptType}
                     onChange={(e) => setApptType(e.target.value as AppointmentType)}
                   >
-                    {APPOINTMENT_TYPE_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {typeVisual[t].label}
+                    {APPOINTMENT_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {typeVisual[opt].label}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="grid gap-2">
                   <label className={LABEL} htmlFor="appt-status">
-                    Status
+                    {t("appointment.field.status")}
                   </label>
                   <select
                     id="appt-status"
@@ -503,7 +520,7 @@ export function AppointmentEditDialog({
                   >
                     {STATUS_OPTIONS.map((s) => (
                       <option key={s} value={s}>
-                        {s.replace("_", " ")}
+                        {t(`appt.status.${s}`)}
                       </option>
                     ))}
                   </select>
@@ -514,10 +531,10 @@ export function AppointmentEditDialog({
 
           <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-3 sm:flex-row sm:justify-end sm:gap-3">
             <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("appointment.footer.cancel")}
             </Button>
             <Button type="submit" className="h-11 rounded-xl bg-emerald-700 px-6 font-semibold hover:bg-emerald-800">
-              Save
+              {t("appointment.footer.save")}
             </Button>
           </DialogFooter>
         </form>

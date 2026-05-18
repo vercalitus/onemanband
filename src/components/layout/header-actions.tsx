@@ -1,36 +1,72 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { CalendarPlus, ClipboardList, Plus, Search, UserPlus } from "lucide-react"
 import Link from "next/link"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useAddTask } from "@/components/providers/add-task-provider"
 import { useGlobalAddPatient } from "@/components/providers/global-add-patient-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
+import { localizePatient } from "@/lib/i18n/localized-seed"
+import { patients } from "@/lib/mock-data"
 
-const MOCK_RESULTS = [
-  { type: "Patient", label: "Maya Green", href: "/patients/p1" },
-  { type: "Patient", label: "Noah Stone", href: "/patients/p2" },
-  { type: "Appointment", label: "Today 08:30 — Maya Green", href: "/calendar" },
-  { type: "Appointment", label: "Today 10:15 — Noah Stone", href: "/calendar" },
-  { type: "Billing", label: "Invoice #1042 — $340", href: "/finances" },
-]
+type SearchRow = {
+  label: string
+  href: string
+  typeLabel: string
+}
 
-/** One dialog root only — avoids Base UI / focus issues from nested multiple modals */
-type HeaderModal = null | "search" | "add"
-
+/** Header search/quick-add — typed labels plus demo rows match localized patient names. */
 export function HeaderActions() {
+  const { t, locale, formatMoney } = useLocale()
   const { openAddTask } = useAddTask()
   const { openGlobalAddPatient } = useGlobalAddPatient()
   const { openCreateAppointment } = useScheduleDay()
-  const [modal, setModal] = useState<HeaderModal>(null)
+  const [modal, setModal] = useState<null | "search" | "add">(null)
   const [query, setQuery] = useState("")
+
+  const mockResults = useMemo((): SearchRow[] => {
+    const pMaya =
+      patients.find((p) => p.id === "pt-001") ?? patients[0]
+    const pNoah =
+      patients.find((p) => p.id === "pt-002") ?? patients[1]
+    const maya = localizePatient(pMaya, locale)
+    const noah = localizePatient(pNoah, locale)
+    return [
+      {
+        typeLabel: t("header.search.type.patient"),
+        label: maya.fullName,
+        href: `/patients/${maya.id}`,
+      },
+      {
+        typeLabel: t("header.search.type.patient"),
+        label: noah.fullName,
+        href: `/patients/${noah.id}`,
+      },
+      {
+        typeLabel: t("header.search.type.appointment"),
+        label: t("header.search.sampleApt1", { time: "08:30", name: maya.fullName }),
+        href: "/calendar",
+      },
+      {
+        typeLabel: t("header.search.type.appointment"),
+        label: t("header.search.sampleApt2", { time: "10:15", name: noah.fullName }),
+        href: "/calendar",
+      },
+      {
+        typeLabel: t("header.search.type.billing"),
+        label: t("header.search.sampleBilling", { id: "1042", amount: formatMoney(340) }),
+        href: "/finances",
+      },
+    ]
+  }, [locale, t, formatMoney])
 
   const results =
     query.length > 0
-      ? MOCK_RESULTS.filter((r) => r.label.toLowerCase().includes(query.toLowerCase()))
-      : MOCK_RESULTS
+      ? mockResults.filter((r) => r.label.toLowerCase().includes(query.toLowerCase()))
+      : mockResults
 
   const closeModal = () => {
     setModal(null)
@@ -44,10 +80,10 @@ export function HeaderActions() {
           type="button"
           onClick={() => setModal("search")}
           className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-50 hover:text-sky-900 sm:gap-2 sm:px-4 md:px-5"
-          aria-label="Search"
+          aria-label={t("header.search")}
         >
           <Search className="size-4 shrink-0" />
-          <span className="hidden sm:inline">Search</span>
+          <span className="hidden sm:inline">{t("header.search")}</span>
         </button>
 
         <span className="mx-1 h-5 w-px shrink-0 bg-slate-200" aria-hidden="true" />
@@ -56,12 +92,12 @@ export function HeaderActions() {
           type="button"
           onClick={() => setModal("add")}
           className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent px-2 py-2 text-sm font-medium text-sky-700 outline-none transition-colors hover:bg-sky-50 hover:text-sky-900 sm:gap-2 sm:px-4 md:px-5"
-          aria-label="Add new"
+          aria-label={t("header.add")}
           aria-haspopup="dialog"
           aria-expanded={modal === "add"}
         >
           <Plus className="size-4 shrink-0" />
-          <span className="hidden sm:inline">Add</span>
+          <span className="hidden sm:inline">{t("header.add")}</span>
         </button>
       </div>
 
@@ -77,11 +113,11 @@ export function HeaderActions() {
           className={
             modal === "search"
               ? "gap-0 overflow-hidden rounded-3xl border-slate-100 p-0 shadow-2xl sm:max-w-xl"
-              : "max-w-md gap-0 overflow-hidden rounded-3xl border-slate-200 bg-white p-0 shadow-2xl sm:max-w-md"
+              : "max-w-md gap-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl sm:max-w-md"
           }
         >
           <DialogTitle className="sr-only">
-            {modal === "search" ? "Search" : modal === "add" ? "Add" : "Dialog"}
+            {modal === "search" ? t("header.search.title") : modal === "add" ? t("header.add.title") : ""}
           </DialogTitle>
 
           {modal === "search" && (
@@ -92,7 +128,7 @@ export function HeaderActions() {
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search patients, appointments, invoices..."
+                  placeholder={t("header.dialog.searchPlaceholder")}
                   className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
                 />
                 <kbd className="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[10px] text-slate-400 sm:block">
@@ -101,7 +137,7 @@ export function HeaderActions() {
               </div>
               <div className="max-h-72 overflow-y-auto py-2">
                 {results.length === 0 ? (
-                  <p className="px-5 py-4 text-sm text-slate-400">No results found.</p>
+                  <p className="px-5 py-4 text-sm text-slate-400">{t("header.dialog.noResults")}</p>
                 ) : (
                   results.map((r) => (
                     <Link
@@ -111,7 +147,7 @@ export function HeaderActions() {
                       className="flex items-center gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-slate-50"
                     >
                       <span className="w-20 shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-center text-[10px] font-medium text-slate-500">
-                        {r.type}
+                        {r.typeLabel}
                       </span>
                       <span className="text-slate-800">{r.label}</span>
                     </Link>
@@ -135,8 +171,8 @@ export function HeaderActions() {
                   <UserPlus className="size-6 stroke-[1.6]" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-base font-semibold text-slate-900">Add patient</span>
-                  <span className="mt-0.5 block text-sm text-slate-500">New patient record</span>
+                  <span className="block text-base font-semibold text-slate-900">{t("header.add.patient.title")}</span>
+                  <span className="mt-0.5 block text-sm text-slate-500">{t("header.add.patient.sub")}</span>
                 </span>
               </button>
               <button
@@ -151,8 +187,8 @@ export function HeaderActions() {
                   <CalendarPlus className="size-6 stroke-[1.6]" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-base font-semibold text-slate-900">Add appointment</span>
-                  <span className="mt-0.5 block text-sm text-slate-500">Schedule a visit</span>
+                  <span className="block text-base font-semibold text-slate-900">{t("header.add.appointment.title")}</span>
+                  <span className="mt-0.5 block text-sm text-slate-500">{t("header.add.appointment.sub")}</span>
                 </span>
               </button>
               <button
@@ -167,8 +203,8 @@ export function HeaderActions() {
                   <ClipboardList className="size-6 stroke-[1.6]" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-base font-semibold text-slate-900">Add task</span>
-                  <span className="mt-0.5 block text-sm text-slate-500">Reminder or follow-up</span>
+                  <span className="block text-base font-semibold text-slate-900">{t("header.add.task.title")}</span>
+                  <span className="mt-0.5 block text-sm text-slate-500">{t("header.add.task.sub")}</span>
                 </span>
               </button>
             </div>

@@ -2,13 +2,15 @@
 
 import { useMemo } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { minutesFromHHMM } from "@/lib/appointment-time"
 import { toISODate } from "@/lib/date-helpers"
+import { localizeScheduleRow } from "@/lib/i18n/localized-seed"
+import type { AppointmentType, ScheduleItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
-import type { ScheduleItem } from "@/types/domain"
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const
+const WEEK_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -22,12 +24,7 @@ function sortByStart(list: ScheduleItem[]) {
   return [...list].sort((a, b) => minutesFromHHMM(a.start) - minutesFromHHMM(b.start))
 }
 
-/**
- * Six-row month grid. Each cell shows the day number, up to two appointment
- * chips, and a "+N more" counter. Clicking a cell drops the user back into the
- * day view for that date. Bucketing logic is shared with WeekView (mock data
- * = today only) and replaces transparently when appointments gain a `date`.
- */
+/** Month grid — weekday headers + localized appointment chips when locale is Hebrew. */
 export function MonthView({
   appointments,
   value,
@@ -39,10 +36,17 @@ export function MonthView({
   value: Date
   onSelectDate: (next: Date) => void
   showCanceled: boolean
-  /** Called after a cell click so the parent can switch to Day view. */
   onSwitchToDay: () => void
 }) {
-  const typeVisual = useAppointmentTypeVisual()
+  const { locale, t } = useLocale()
+  const typeVisualBase = useAppointmentTypeVisual()
+  const typeVisual = useMemo(() => {
+    const next = { ...typeVisualBase }
+    const keys: AppointmentType[] = ["first", "adjustments", "kupa"]
+    for (const k of keys) next[k] = { ...next[k], label: t(`appt.type.${k}`) }
+    return next
+  }, [typeVisualBase, t])
+
   const today = useMemo(() => new Date(), [])
   const monthStart = useMemo(() => startOfMonth(value), [value])
 
@@ -63,27 +67,31 @@ export function MonthView({
     [appointments, showCanceled],
   )
 
-  // Bucket appointments by their ISO date so each cell shows only its own day.
+  const localizedFiltered = useMemo(
+    () => filtered.map((a) => localizeScheduleRow(a, locale)),
+    [filtered, locale],
+  )
+
   const byDate = useMemo(() => {
     const map = new Map<string, ScheduleItem[]>()
-    for (const a of filtered) {
+    for (const a of localizedFiltered) {
       const list = map.get(a.date) ?? []
       list.push(a)
       map.set(a.date, list)
     }
     for (const [k, v] of map) map.set(k, sortByStart(v))
     return map
-  }, [filtered])
+  }, [localizedFiltered])
 
   return (
     <div className="overflow-hidden rounded-lg">
       <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/60">
-        {WEEKDAYS.map((d) => (
+        {WEEK_KEYS.map((wk) => (
           <div
-            key={d}
+            key={wk}
             className="px-2 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400"
           >
-            {d}
+            {t(`calendar.week.short.${wk}`)}
           </div>
         ))}
       </div>
@@ -106,7 +114,7 @@ export function MonthView({
                 onSwitchToDay()
               }}
               className={cn(
-                "flex min-h-[100px] flex-col items-stretch gap-1.5 border-b border-r border-slate-100 p-2 text-left transition-colors hover:bg-sky-50/40",
+                "flex min-h-[100px] flex-col items-stretch gap-1.5 border-b border-e border-slate-100 p-2 text-start transition-colors hover:bg-sky-50/40",
                 !inMonth && "bg-slate-50/30 text-slate-300",
                 isSelected && "bg-sky-50/60",
               )}
@@ -129,14 +137,14 @@ export function MonthView({
               </div>
               <div className="flex flex-col gap-0.5">
                 {preview.map((apt) => {
-                  const t = typeVisual[apt.appointmentType]
+                  const tone = typeVisual[apt.appointmentType]
                   return (
                     <span
                       key={apt.id}
                       className={cn(
                         "truncate rounded px-1 py-0.5 text-[10px] font-medium",
-                        t.surface,
-                        t.stripe.replace("border-l-4", "border-l-2"),
+                        tone.surface,
+                        tone.stripe.replace("border-l-4", "border-l-2"),
                       )}
                     >
                       <span className="font-mono tabular-nums">{apt.start}</span> {apt.patientName}
@@ -144,7 +152,9 @@ export function MonthView({
                   )
                 })}
                 {overflow > 0 ? (
-                  <span className="text-[10px] font-medium text-slate-400">+{overflow} more</span>
+                  <span className="text-[10px] font-medium text-slate-400">
+                    {t("calendar.moreSuffix", { count: overflow })}
+                  </span>
                 ) : null}
               </div>
             </button>

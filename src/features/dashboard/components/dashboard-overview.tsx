@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAddTask } from "@/components/providers/add-task-provider"
@@ -22,6 +23,7 @@ import { useTodos } from "@/components/providers/todos-provider"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
+import { localizedPulseMetrics, localizeTodoTitle } from "@/lib/i18n/localized-seed"
 import { dashboardMetrics } from "@/lib/mock-data"
 import type { TodoItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
@@ -61,22 +63,6 @@ const metricAccent = {
   },
 } as const
 
-const clinicPulseItems = [
-  {
-    title: "Monthly utilization",
-    body: "This month’s booked slots are trending full mid-week; lighter Mondays leave room for recalls or admin.",
-  },
-  {
-    title: "Care-plan gaps",
-    body: "Month to date, two patients with open plans have gone 21+ days without a visit — worth a quick outreach.",
-  },
-  {
-    title: "Collections (MTD)",
-    body: "Outstanding balances improved versus last month; one payer invoice still needs escalation before month-end.",
-  },
-] as const
-
-/** Single row in the dashboard todo board — checkbox drives completed without persistence (demo UX). */
 function TodoRow({
   item,
   onToggleComplete,
@@ -84,8 +70,10 @@ function TodoRow({
   item: TodoItem
   onToggleComplete: (id: string) => void
 }) {
+  const { t } = useLocale()
   const done = Boolean(item.completed)
   const dueTrimmed = item.due.trim()
+  const markDoneAria = `${done ? t("dashboard.todo.markNotDone") : t("dashboard.todo.markDone")}: ${item.title}`
 
   return (
     <div
@@ -103,20 +91,20 @@ function TodoRow({
           checked={done}
           onChange={() => onToggleComplete(item.id)}
           className="size-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/30"
-          aria-label={done ? `Mark "${item.title}" not done` : `Mark "${item.title}" done`}
+          aria-label={markDoneAria}
         />
       </label>
       <div className="min-w-0 flex-1">
         <p className={`font-medium ${done ? "text-slate-400 line-through" : "text-slate-900"}`}>{item.title}</p>
         <p className={`text-xs ${done ? "text-slate-400" : "text-slate-500"}`}>
           {dueTrimmed
-            ? `${item.overdue && !done ? "Overdue" : "Due"} ${dueTrimmed}`
-            : "No due time"}
+            ? `${item.overdue && !done ? t("dashboard.todo.overduePrefix") : t("dashboard.todo.duePrefix")} ${dueTrimmed}`
+            : t("dashboard.todo.noDue")}
         </p>
       </div>
       {item.overdue && !done && (
         <Badge variant="outline" className="border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(171,119,93)]">
-          Attention
+          {t("dashboard.badge.attention")}
         </Badge>
       )}
     </div>
@@ -124,6 +112,7 @@ function TodoRow({
 }
 
 export function DashboardOverview() {
+  const { locale, t } = useLocale()
   const { appointments: dayAppointments, setAppointments: setDayAppointments } = useScheduleDay()
   const { todos, toggleComplete } = useTodos()
   const { openAddTask } = useAddTask()
@@ -132,12 +121,29 @@ export function DashboardOverview() {
     setDashboardVisitCount(dayAppointments.length)
   }, [dayAppointments])
 
+  const localizedTodos = useMemo(
+    () => todos.map((item) => localizeTodoTitle(item, locale, (k) => t(k))),
+    [todos, locale, t],
+  )
+
+  const pulseMetrics = useMemo(
+    () => localizedPulseMetrics(dashboardMetrics, locale, (k) => t(k)),
+    [locale, t],
+  )
+
+  const clinicPulseItems = useMemo(() => {
+    return ([1, 2, 3] as const).map((i) => ({
+      title: t(`pulse.obs.${i}.title`),
+      body: t(`pulse.obs.${i}.body`),
+    }))
+  }, [t])
+
   const { reactive, active, completed } = useMemo(() => {
-    const reactive = todos.filter((t) => !t.completed && t.kind === "reactive")
-    const active = todos.filter((t) => !t.completed && t.kind === "active")
-    const completed = todos.filter((t) => t.completed)
+    const reactive = localizedTodos.filter((x) => !x.completed && x.kind === "reactive")
+    const active = localizedTodos.filter((x) => !x.completed && x.kind === "active")
+    const completed = localizedTodos.filter((x) => x.completed)
     return { reactive, active, completed }
-  }, [todos])
+  }, [localizedTodos])
 
   return (
     <div>
@@ -146,7 +152,7 @@ export function DashboardOverview() {
           <CardHeader className={cn(darkCardHeaderClass, "py-3")}>
             <div className="flex items-center gap-2.5">
               <CalendarCheck2 className="size-5 stroke-[1.6] text-sky-400" />
-              <CardTitle className="text-xl font-bold tracking-tight text-white">Today&apos;s Clinic</CardTitle>
+              <CardTitle className="text-xl font-bold tracking-tight text-white">{t("dashboard.todayClinic")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">
@@ -158,16 +164,18 @@ export function DashboardOverview() {
           <CardHeader className={darkCardHeaderClass}>
             <div className="flex items-center gap-2.5">
               <ListTodo className="size-5 stroke-[1.6] text-sky-400" />
-              <CardTitle className="text-xl font-bold tracking-tight text-white">To Do List</CardTitle>
+              <CardTitle className="text-xl font-bold tracking-tight text-white">{t("dashboard.todoBoard")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-5 px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">
             <div className="space-y-2">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">Reactive</p>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {t("dashboard.todo.reactive")}
+              </p>
               <div className="space-y-3">
                 {reactive.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 px-3 py-4 text-center text-xs text-slate-500">
-                    No reactive items right now.
+                    {t("dashboard.todo.noReactive")}
                   </p>
                 ) : (
                   reactive.map((item) => <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />)
@@ -176,11 +184,13 @@ export function DashboardOverview() {
             </div>
 
             <div className="border-t border-slate-100 pt-5">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">Active</p>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {t("dashboard.todo.active")}
+              </p>
               <div className="mt-2 space-y-3">
                 {active.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 px-3 py-4 text-center text-xs text-slate-500">
-                    No active tasks — add one with +.
+                    {t("dashboard.todo.noActive")}
                   </p>
                 ) : (
                   active.map((item) => <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />)
@@ -193,16 +203,18 @@ export function DashboardOverview() {
                 type="button"
                 onClick={openAddTask}
                 className="inline-flex items-center gap-1.5 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
-                aria-label="Add task"
+                aria-label={t("dashboard.todo.add")}
               >
-                <span>Add task</span>
+                <span>{t("dashboard.todo.add")}</span>
                 <Plus className="size-4 shrink-0 stroke-[2] text-sky-600" aria-hidden />
               </button>
             </div>
 
             {completed.length > 0 && (
               <div className="border-t border-slate-100 pt-5">
-                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">Completed</p>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  {t("dashboard.todo.completed")}
+                </p>
                 <div className="mt-2 space-y-3">
                   {completed.map((item) => (
                     <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />
@@ -215,9 +227,11 @@ export function DashboardOverview() {
       </section>
 
       <div className="mt-12 border-t border-slate-200/75 pt-8">
-        <h2 className="mb-5 text-center text-[1.625rem] font-bold leading-snug tracking-tight text-slate-900">Pulse</h2>
+        <h2 className="mb-5 text-center text-[1.625rem] font-bold leading-snug tracking-tight text-slate-900">
+          {t("dashboard.pulse.title")}
+        </h2>
         <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
-          {dashboardMetrics.map((metric) => {
+          {pulseMetrics.map((metric) => {
             const TrendIcon = trendIcon[metric.trend]
             const accent = metricAccent[metric.id as keyof typeof metricAccent]
             const AccentIcon = accent.icon
@@ -262,7 +276,7 @@ export function DashboardOverview() {
             <span className="flex size-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
               <TrendingUp className="size-5 stroke-[1.6]" />
             </span>
-            <h3 className="text-lg font-bold tracking-tight text-slate-900">Observations</h3>
+            <h3 className="text-lg font-bold tracking-tight text-slate-900">{t("dashboard.observations.title")}</h3>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {clinicPulseItems.map((item) => (

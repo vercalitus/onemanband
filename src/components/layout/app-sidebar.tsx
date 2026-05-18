@@ -4,6 +4,8 @@ import { Stethoscope } from "lucide-react"
 
 import { SidebarNavList } from "@/components/layout/sidebar-nav-list"
 import { useClinicProfile } from "@/components/layout/use-clinic-profile"
+import { useLocale } from "@/components/providers/locale-provider"
+import { cn } from "@/lib/utils"
 
 function SidebarMark() {
   return (
@@ -19,9 +21,15 @@ function SidebarMark() {
 
 export function AppSidebar() {
   const profile = useClinicProfile()
+  const { t, isRtl } = useLocale()
 
   return (
-    <aside className="hidden w-72 flex-shrink-0 flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-5 py-6 text-slate-200 lg:flex">
+    <aside
+      className={cn(
+        "hidden w-72 shrink-0 flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-5 py-6 text-slate-200 lg:flex",
+        isRtl ? "border-s border-white/10" : "border-e border-white/10",
+      )}
+    >
       <div className="flex items-center gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5 text-sky-400">
           {profile.logoDataUrl ? (
@@ -35,7 +43,7 @@ export function AppSidebar() {
           <p className="truncate text-sm font-semibold tracking-[0.01em] text-white">
             {profile.clinicName || "Your clinic"}
           </p>
-          <p className="text-xs text-sky-300/90">Medical OS</p>
+          <p className="text-xs text-sky-300/90">{t("nav.tagline")}</p>
         </div>
       </div>
 

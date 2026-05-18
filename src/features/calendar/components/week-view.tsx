@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
 import { minutesFromHHMM } from "@/lib/appointment-time"
 import { toISODate } from "@/lib/date-helpers"
+import { localizeScheduleRow } from "@/lib/i18n/localized-seed"
+import { localeToBcp47 } from "@/lib/format-locale"
+import type { AppointmentType, AppointmentStatus, ScheduleItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
-import type { AppointmentStatus, ScheduleItem } from "@/types/domain"
-
-const DAY_LABEL = new Intl.DateTimeFormat(undefined, { weekday: "short" })
-const DAY_NUMBER = new Intl.DateTimeFormat(undefined, { day: "numeric" })
 
 const statusDot: Record<AppointmentStatus, string> = {
   confirmed: "bg-emerald-400",
@@ -39,12 +39,7 @@ function sortByStart(list: ScheduleItem[]) {
   return [...list].sort((a, b) => minutesFromHHMM(a.start) - minutesFromHHMM(b.start))
 }
 
-/**
- * Seven-column week grid. Mock data only carries times (no date), so we treat
- * the entire mock day as belonging to `today`; other days show as empty. The
- * structure is the production target — once appointments carry dates we just
- * bucket them by day.
- */
+/** Seven-column week grid with localized labels and seeded row text when Hebrew is active. */
 export function WeekView({
   appointments,
   onAppointmentsChange,
@@ -58,7 +53,21 @@ export function WeekView({
   onSelectDate: (next: Date) => void
   showCanceled: boolean
 }) {
-  const typeVisual = useAppointmentTypeVisual()
+  const { locale, t } = useLocale()
+  const typeVisualBase = useAppointmentTypeVisual()
+  const typeVisual = useMemo(() => {
+    const next = { ...typeVisualBase }
+    const keys: AppointmentType[] = ["first", "adjustments", "kupa"]
+    for (const k of keys) next[k] = { ...next[k], label: t(`appt.type.${k}`) }
+    return next
+  }, [typeVisualBase, t])
+
+  const dayLabelFmt = useMemo(
+    () => new Intl.DateTimeFormat(localeToBcp47(locale), { weekday: "short" }),
+    [locale],
+  )
+  const dayNumberFmt = useMemo(() => new Intl.DateTimeFormat(localeToBcp47(locale), { day: "numeric" }), [locale])
+
   const today = useMemo(() => new Date(), [])
   const weekStart = useMemo(() => startOfWeek(value), [value])
   const days = useMemo(
@@ -76,15 +85,19 @@ export function WeekView({
     [appointments, showCanceled],
   )
 
-  // Bucket appointments into their calendar day using each item's ISO `date`.
+  const localizedFiltered = useMemo(
+    () => filtered.map((a) => localizeScheduleRow(a, locale)),
+    [filtered, locale],
+  )
+
   const cellsByDay = useMemo(() => {
     const map = new Map<string, ScheduleItem[]>()
     for (const d of days) {
       const iso = toISODate(d)
-      map.set(d.toDateString(), sortByStart(filtered.filter((a) => a.date === iso)))
+      map.set(d.toDateString(), sortByStart(localizedFiltered.filter((a) => a.date === iso)))
     }
     return map
-  }, [days, filtered])
+  }, [days, localizedFiltered])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [activeAppointment, setActiveAppointment] = useState<ScheduleItem | null>(null)
@@ -105,7 +118,7 @@ export function WeekView({
                 isSelected ? "text-sky-700" : "text-slate-500 hover:text-slate-900",
               )}
             >
-              <span className="uppercase tracking-wider text-[10px] text-slate-400">{DAY_LABEL.format(d)}</span>
+              <span className="uppercase tracking-wider text-[10px] text-slate-400">{dayLabelFmt.format(d)}</span>
               <span
                 className={cn(
                   "mt-0.5 flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold",
@@ -116,7 +129,7 @@ export function WeekView({
                       : "text-slate-700",
                 )}
               >
-                {DAY_NUMBER.format(d)}
+                {dayNumberFmt.format(d)}
               </span>
             </button>
           )
@@ -130,24 +143,25 @@ export function WeekView({
             return (
               <div key={d.toDateString()} className="flex min-h-[200px] flex-col gap-2 rounded-xl bg-slate-50/50 p-2 md:min-h-[220px] md:gap-2.5 md:p-2.5">
                 {list.length === 0 ? (
-                  <p className="my-auto px-1 text-center text-[11px] text-slate-300">No visits</p>
+                  <p className="my-auto px-1 text-center text-[11px] text-slate-300">{t("calendar.noVisits")}</p>
                 ) : (
                   list.map((apt) => {
-                    const typeStyle = typeVisual[apt.appointmentType]
+                    const tone = typeVisual[apt.appointmentType]
                     const debt = hasOutstandingBalance(apt.patientId)
                     const isCancelled = apt.status === "cancelled"
+                    const canonical = appointments.find((a) => a.id === apt.id) ?? apt
                     return (
                       <button
                         key={apt.id}
                         type="button"
                         onClick={() => {
-                          setActiveAppointment(apt)
+                          setActiveAppointment(canonical)
                           setDialogOpen(true)
                         }}
                         className={cn(
-                          "flex min-h-[68px] flex-col items-stretch gap-1 rounded-xl border px-2.5 py-2 text-left transition-shadow hover:shadow-sm focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none",
-                          typeStyle.surface,
-                          typeStyle.stripe,
+                          "flex min-h-[68px] flex-col items-stretch gap-1 rounded-xl border px-2.5 py-2 text-start transition-shadow hover:shadow-sm focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none",
+                          tone.surface,
+                          tone.stripe,
                           isCancelled && "opacity-60",
                         )}
                       >
@@ -167,7 +181,9 @@ export function WeekView({
                                 debt ? "bg-rose-500" : "bg-emerald-500",
                               )}
                               aria-hidden
-                              title={debt ? "Outstanding balance" : "Balance settled"}
+                              title={
+                                debt ? t("dashboard.patient.debtTitle") : t("dashboard.patient.settledTitle")
+                              }
                             />
                             <span className={cn("size-1.5 rounded-full", statusDot[apt.status])} aria-hidden />
                           </span>

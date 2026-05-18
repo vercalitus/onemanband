@@ -13,6 +13,7 @@ import {
   Wallet,
 } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { SidePanel } from "@/components/ui/side-panel"
@@ -40,10 +41,11 @@ import {
   elevatedCardBodyClass,
   elevatedCardClass,
 } from "@/lib/clinic-card-styles"
-import { formatCurrency, PREVIOUS_MONTH_REVENUE } from "@/lib/mock-finances"
+import { PREVIOUS_MONTH_REVENUE } from "@/lib/mock-finances"
 import { cn } from "@/lib/utils"
 
 export default function BillingPage() {
+  const { t, formatMoney, isRtl } = useLocale()
   const {
     invoices,
     pendingInvoices,
@@ -67,7 +69,7 @@ export default function BillingPage() {
   const monthlyRevenue = useMemo(() => computeMonthlyRevenue(invoices), [invoices])
   const monthlyDelta = useMemo(() => computeMonthlyDeltaPct(monthlyRevenue), [monthlyRevenue])
   const collectionRate = useMemo(() => computeCollectionRate(invoices), [invoices])
-  const snapshots = useMemo(() => computePatientSnapshots(invoices), [invoices])
+  const snapshots = useMemo(() => computePatientSnapshots(invoices, formatMoney), [invoices, formatMoney])
 
   const balanceByPatient = useMemo(() => {
     const m = new Map<string, number>()
@@ -120,29 +122,32 @@ export default function BillingPage() {
       {/* KPI strip */}
       <section className="grid gap-4 md:grid-cols-3">
         <KpiCard
-          label="Outstanding balance"
-          value={formatCurrency(outstanding)}
+          label={t("finances.kpi.outstanding")}
+          value={formatMoney(outstanding)}
           icon={Wallet}
-          context={`${pendingInvoices.length} invoice${pendingInvoices.length === 1 ? "" : "s"} awaiting payment`}
+          context={t("finances.kpi.invoicesAwaiting", { count: pendingInvoices.length })}
         />
         <KpiCard
-          label="Monthly revenue"
-          value={formatCurrency(monthlyRevenue)}
+          label={t("finances.kpi.monthlyRevenue")}
+          value={formatMoney(monthlyRevenue)}
           icon={CircleDollarSign}
           delta={monthlyDelta}
-          context={`vs ${formatCurrency(PREVIOUS_MONTH_REVENUE)} last month`}
+          context={t("finances.kpi.vsLastMonth", { amount: formatMoney(PREVIOUS_MONTH_REVENUE) })}
           contextMonospace
         />
         <KpiCard
-          label="Collection rate"
+          label={t("finances.kpi.collectionRate")}
           value={collectionRate === null ? "—" : `${collectionRate}%`}
           icon={Percent}
-          context="Paid / collectible"
+          context={t("finances.kpi.paidCollectible")}
           footer={
             collectionRate === null ? null : (
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className="h-full rounded-full bg-sky-500 transition-all"
+                  className={cn(
+                    "h-full rounded-full bg-sky-500 transition-all",
+                    isRtl && "ms-auto",
+                  )}
                   style={{ width: `${collectionRate}%` }}
                   aria-hidden
                 />
@@ -163,7 +168,7 @@ export default function BillingPage() {
           )}
         >
           <BarChart3 className="size-3.5 stroke-[2]" aria-hidden />
-          Advanced Insights
+          {t("finances.advancedInsights")}
         </button>
       </div>
 
@@ -173,9 +178,13 @@ export default function BillingPage() {
           <CardHeader className={cn(darkCardHeaderClass, "gap-3 py-4")}>
             <div className="flex items-center gap-2.5">
               <Receipt className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-              <CardTitle className="text-xl font-bold tracking-tight text-white">Invoices</CardTitle>
+              <CardTitle className="text-xl font-bold tracking-tight text-white">
+                {t("finances.card.invoices")}
+              </CardTitle>
               <span className="text-xs font-medium text-white/50">
-                {pendingCount === 0 ? "Nothing pending" : `${pendingCount} pending action`}
+                {pendingCount === 0
+                  ? t("finances.card.pendingSummary.none")
+                  : t("finances.card.pendingSummary.some", { count: pendingCount })}
               </span>
             </div>
           </CardHeader>
@@ -183,14 +192,14 @@ export default function BillingPage() {
             <Tabs defaultValue="pending" className="gap-5">
               <TabsList className="bg-white shadow-[0_1px_3px_-1px_rgba(15,23,42,0.06)] ring-1 ring-slate-100">
                 <TabsTrigger value="pending">
-                  Pending action
-                  <span className="ml-1.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                  {t("finances.tab.pending")}
+                  <span className="ms-1.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                     {pendingCount}
                   </span>
                 </TabsTrigger>
                 <TabsTrigger value="history">
-                  History
-                  <span className="ml-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                  {t("finances.tab.history")}
+                  <span className="ms-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
                     {historyInvoices.length}
                   </span>
                 </TabsTrigger>
@@ -199,15 +208,15 @@ export default function BillingPage() {
               <TabsContent value="pending" className="space-y-3">
                 <div className="relative max-w-md">
                   <Search
-                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                    className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
                     aria-hidden
                   />
                   <Input
                     value={pendingQuery}
                     onChange={(e) => setPendingQuery(e.target.value)}
-                    placeholder="Search pending by patient or invoice ID"
-                    className="h-10 rounded-xl border-slate-200 bg-white pl-9 text-sm"
-                    aria-label="Search pending invoices and visits"
+                    placeholder={t("finances.search.pending")}
+                    className="h-10 rounded-xl border-slate-200 bg-white ps-9 text-sm"
+                    aria-label={t("finances.search.pending")}
                   />
                 </div>
 
@@ -229,22 +238,19 @@ export default function BillingPage() {
                       onMarkPaid={() => {
                         markInvoicePaid(inv.id)
                         setBillingToastMessage(
-                          `Marked paid — invoice archived to history (${inv.patientName}).`,
+                          t("finances.toast.markPaid", { patientName: inv.patientName }),
                         )
                         setBillingToastOpen(true)
                       }}
                     />
                   ))}
                   {pendingCount === 0 && (
-                    <EmptyState
-                      title="All caught up!"
-                      body="No pending invoices."
-                    />
+                    <EmptyState title={t("finances.empty.caughtUp.title")} body={t("finances.empty.caughtUp.body")} />
                   )}
                   {pendingCount > 0 && filteredPendingCount === 0 && (
                     <EmptyState
-                      title="No matches"
-                      body={`Nothing in pending matches "${pendingQuery.trim()}".`}
+                      title={t("finances.empty.noMatches.title")}
+                      body={t("finances.empty.pendingNoMatch", { q: pendingQuery.trim() })}
                     />
                   )}
                 </div>
@@ -254,15 +260,15 @@ export default function BillingPage() {
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
                   <div className="relative min-w-0 max-w-md flex-1">
                     <Search
-                      className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
                       aria-hidden
                     />
                     <Input
                       value={historyQuery}
                       onChange={(e) => setHistoryQuery(e.target.value)}
-                      placeholder="Search by patient, invoice ID, or date"
-                      className="h-10 rounded-xl border-slate-200 bg-white pl-9 text-sm"
-                      aria-label="Search invoice history"
+                      placeholder={t("finances.search.history")}
+                      className="h-10 rounded-xl border-slate-200 bg-white ps-9 text-sm"
+                      aria-label={t("finances.search.history")}
                     />
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
@@ -286,7 +292,7 @@ export default function BillingPage() {
                       )}
                     >
                       <FileText className="size-3.5 stroke-[2]" aria-hidden />
-                      Export PDF
+                      {t("finances.export.pdf")}
                     </button>
                   </div>
                 </div>
@@ -294,11 +300,11 @@ export default function BillingPage() {
                 <div className="space-y-2.5">
                   {filteredHistory.length === 0 ? (
                     <EmptyState
-                      title="No matches"
+                      title={t("finances.empty.noMatches.title")}
                       body={
-                        historyQuery
-                          ? `Nothing in history matches "${historyQuery.trim()}".`
-                          : "No history yet."
+                        historyQuery.trim()
+                          ? t("finances.empty.historyNoMatch", { q: historyQuery.trim() })
+                          : t("finances.empty.historyEmpty")
                       }
                     />
                   ) : (
@@ -322,7 +328,7 @@ export default function BillingPage() {
               <div className="flex items-center gap-2.5">
                 <Plug className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
                 <CardTitle className="text-base font-bold tracking-tight text-white">
-                  Integration
+                  {t("finances.card.integration")}
                 </CardTitle>
               </div>
             </CardHeader>
@@ -340,8 +346,8 @@ export default function BillingPage() {
       <SidePanel
         open={insightsOpen}
         onOpenChange={setInsightsOpen}
-        title="Advanced Insights"
-        description="Paid revenue split, projected collections from the calendar, and trends."
+        title={t("finances.side.title")}
+        description={t("finances.side.description")}
       >
         <InsightsPanel invoices={invoices} />
       </SidePanel>

@@ -6,6 +6,7 @@ import { Menu, Stethoscope } from "lucide-react"
 
 import { SidebarNavList } from "@/components/layout/sidebar-nav-list"
 import { Button } from "@/components/ui/button"
+import { useLocale } from "@/components/providers/locale-provider"
 
 /**
  * Mobile / tablet navigation drawer. The overlay must render via a portal to
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button"
  * z-index keeps the sheet above all in-app chrome (headers, bottom bars, z-50 UIs).
  */
 export function MobileNav() {
+  const { t } = useLocale()
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -42,12 +44,12 @@ export function MobileNav() {
       id="mobile-app-nav"
       role="dialog"
       aria-modal="true"
-      aria-label="Main menu"
+      aria-label={t("mobile.drawerAria")}
     >
       <button
         type="button"
         className="absolute inset-0 bg-black/45 backdrop-blur-[3px]"
-        aria-label="Close menu"
+        aria-label={t("mobile.closeOverlay")}
         onClick={() => setOpen(false)}
       />
       <aside
@@ -59,8 +61,8 @@ export function MobileNav() {
             <Stethoscope className="size-4.5" />
           </div>
           <div>
-            <p className="text-sm font-semibold tracking-[0.01em] text-white">Serene Spine Clinic</p>
-            <p className="text-xs text-sky-300/90">Medical OS</p>
+            <p className="text-sm font-semibold tracking-[0.01em] text-white">{t("mobile.clinicName")}</p>
+            <p className="text-xs text-sky-300/90">{t("mobile.clinicSubtitle")}</p>
           </div>
         </div>
 
@@ -78,7 +80,7 @@ export function MobileNav() {
         variant="outline"
         size="icon-sm"
         className="shrink-0 border-slate-200 text-sky-700 shadow-none lg:hidden"
-        aria-label="Open menu"
+        aria-label={t("header.openMenu")}
         aria-expanded={open}
         aria-controls="mobile-app-nav"
         onClick={() => setOpen(true)}

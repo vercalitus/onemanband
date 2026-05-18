@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { XIcon } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -29,6 +30,7 @@ export function AddTaskDialog({
   onOpenChange: (open: boolean) => void
   onSave: (input: { title: string; due: string }) => void
 }) {
+  const { t } = useLocale()
   const [title, setTitle] = useState("")
   const [due, setDue] = useState("")
 
@@ -55,7 +57,7 @@ export function AddTaskDialog({
           "flex max-h-[min(90dvh,calc(100dvh-2rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg",
         )}
       >
-        <DialogDescription className="sr-only">Add a new task to your active list.</DialogDescription>
+        <DialogDescription className="sr-only">{t("addTask.description")}</DialogDescription>
 
         <DialogClose
           render={
@@ -64,7 +66,7 @@ export function AddTaskDialog({
               variant="ghost"
               size="icon-sm"
               className="absolute top-5 right-5 z-20 rounded-xl text-white hover:bg-white/15"
-              aria-label="Close"
+              aria-label={t("addTask.close")}
             />
           }
         >
@@ -78,7 +80,7 @@ export function AddTaskDialog({
           />
           <DialogHeader className="relative gap-0 space-y-0">
             <DialogTitle className="font-heading pr-12 text-xl font-semibold tracking-tight text-white">
-              Add active task
+              {t("addTask.title")}
             </DialogTitle>
           </DialogHeader>
         </div>
@@ -91,13 +93,13 @@ export function AddTaskDialog({
                   htmlFor="todo-title"
                   className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
                 >
-                  Title
+                  {t("addTask.field.title")}
                 </label>
                 <Input
                   id="todo-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Call insurer about claim"
+                  placeholder={t("addTask.placeholder.title")}
                   required
                   autoFocus
                   className="h-11 rounded-xl border-slate-200"
@@ -108,7 +110,7 @@ export function AddTaskDialog({
                   htmlFor="todo-due"
                   className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
                 >
-                  Due time (optional)
+                  {t("addTask.field.due")}
                 </label>
                 <Input
                   id="todo-due"
@@ -128,13 +130,13 @@ export function AddTaskDialog({
               className="h-11 rounded-xl min-w-[6.5rem]"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("addTask.footer.cancel")}
             </Button>
             <Button
               type="submit"
               className="h-11 min-w-[7.5rem] rounded-xl bg-sky-600 px-6 font-semibold text-white hover:bg-sky-700"
             >
-              Save task
+              {t("addTask.footer.save")}
             </Button>
           </DialogFooter>
         </form>

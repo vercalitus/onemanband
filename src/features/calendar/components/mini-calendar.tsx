@@ -1,12 +1,11 @@
 "use client"
 
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
+import { localeToBcp47 } from "@/lib/format-locale"
 import { cn } from "@/lib/utils"
-
-const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"] as const
-const MONTH_FORMATTER = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" })
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -16,10 +15,7 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
-/**
- * Lightweight month picker — keeps the dependency footprint down (no date-fns)
- * and stays in sync with the scheduler's `value`. Used in the calendar sidebar.
- */
+/** Sidebar month picker — month title + narrow weekday row follow active locale. */
 export function MiniCalendar({
   value,
   onChange,
@@ -27,14 +23,28 @@ export function MiniCalendar({
 }: {
   value: Date
   onChange: (next: Date) => void
-  /** Dates that should show a small dot under the day cell (e.g. days with appointments). */
   highlightDates?: Date[]
 }) {
+  const { locale, t } = useLocale()
   const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(value))
   const today = useMemo(() => new Date(), [])
 
-  // Build the 6-row × 7-col grid of dates that should appear in the view.
-  // Leading/trailing cells come from the prev/next month so the grid is uniform.
+  useEffect(() => {
+    setViewMonth(startOfMonth(value))
+  }, [value])
+
+  const tag = localeToBcp47(locale)
+  const monthTitleFmt = useMemo(() => new Intl.DateTimeFormat(tag, { month: "long", year: "numeric" }), [tag])
+  const narrowWeekdays = useMemo(() => {
+    const ref = new Date(2024, 5, 2)
+    const fmt = new Intl.DateTimeFormat(tag, { weekday: "narrow" })
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(ref)
+      d.setDate(ref.getDate() + i)
+      return fmt.format(d)
+    })
+  }, [tag])
+
   const cells = useMemo(() => {
     const first = startOfMonth(viewMonth)
     const startDow = first.getDay()
@@ -62,16 +72,16 @@ export function MiniCalendar({
         <button
           type="button"
           onClick={goPrev}
-          aria-label="Previous month"
+          aria-label={t("calendar.mini.prevMonth")}
           className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
         >
           <ChevronLeft className="size-4" aria-hidden />
         </button>
-        <p className="text-sm font-semibold tracking-tight text-slate-900">{MONTH_FORMATTER.format(viewMonth)}</p>
+        <p className="text-sm font-semibold tracking-tight text-slate-900">{monthTitleFmt.format(viewMonth)}</p>
         <button
           type="button"
           onClick={goNext}
-          aria-label="Next month"
+          aria-label={t("calendar.mini.nextMonth")}
           className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
         >
           <ChevronRight className="size-4" aria-hidden />
@@ -79,8 +89,8 @@ export function MiniCalendar({
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-        {WEEKDAYS.map((d, i) => (
-          <span key={`${d}-${i}`}>{d}</span>
+        {narrowWeekdays.map((d, i) => (
+          <span key={i}>{d}</span>
         ))}
       </div>
 
@@ -107,7 +117,7 @@ export function MiniCalendar({
                     : "hover:bg-slate-100",
               )}
               aria-pressed={isSelected}
-              aria-label={d.toDateString()}
+              aria-label={d.toLocaleDateString(tag)}
             >
               {d.getDate()}
               {hasEvents && !isSelected ? (

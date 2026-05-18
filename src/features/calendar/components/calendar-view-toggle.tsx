@@ -1,19 +1,13 @@
 "use client"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
 
 export type CalendarView = "day" | "week" | "month"
 
-const VIEWS: { value: CalendarView; label: string }[] = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-]
+const VIEWS: CalendarView[] = ["day", "week", "month"]
 
-/**
- * Segmented control that switches the scheduler between Day / Week / Month.
- * Kept stateless so the parent owns the active view + URL/state if needed.
- */
+/** Day / Week / Month segment — labels from i18n. */
 export function CalendarViewToggle({
   value,
   onChange,
@@ -21,21 +15,23 @@ export function CalendarViewToggle({
   value: CalendarView
   onChange: (view: CalendarView) => void
 }) {
+  const { t } = useLocale()
+
   return (
     <div
       role="tablist"
-      aria-label="Calendar view"
+      aria-label={t("calendar.aria.calendarView")}
       className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-0.5"
     >
       {VIEWS.map((view) => {
-        const active = view.value === value
+        const active = view === value
         return (
           <button
-            key={view.value}
+            key={view}
             type="button"
             role="tab"
             aria-selected={active}
-            onClick={() => onChange(view.value)}
+            onClick={() => onChange(view)}
             className={cn(
               "rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-colors",
               active
@@ -43,7 +39,7 @@ export function CalendarViewToggle({
                 : "text-slate-500 hover:text-slate-900",
             )}
           >
-            {view.label}
+            {t(`calendar.view.${view}`)}
           </button>
         )
       })}

@@ -4,9 +4,29 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { navigationIcons, navigationItems } from "@/lib/navigation"
 import type { NavItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
+
+function navKeyForHref(href: string) {
+  switch (href) {
+    case "/dashboard":
+      return "nav.dashboard"
+    case "/patients":
+      return "nav.patients"
+    case "/calendar":
+      return "nav.calendar"
+    case "/finances":
+      return "nav.finances"
+    case "/clinical-feed":
+      return "nav.clinicalFeed"
+    case "/settings":
+      return "nav.settings"
+    default:
+      return "nav.dashboard"
+  }
+}
 
 type SidebarNavListProps = {
   onItemClick?: () => void
@@ -17,11 +37,13 @@ function SidebarNavLink({
   pathname,
   onItemClick,
   tier,
+  label,
 }: {
   item: NavItem
   pathname: string
   onItemClick?: () => void
   tier: "primary" | "secondary"
+  label: string
 }) {
   const Icon = navigationIcons[item.icon]
   const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -59,12 +81,12 @@ function SidebarNavLink({
               : "text-sm font-semibold text-white",
           )}
         >
-          {item.label}
+          {label}
         </p>
       </div>
       <ChevronRight
         className={cn(
-          "ml-auto shrink-0 stroke-[1.75] transition-transform text-sky-400/40",
+          "ms-auto shrink-0 stroke-[1.75] transition-transform text-sky-400/40 rtl:-scale-x-100",
           secondary ? "mt-px size-3" : "mt-0.5 size-3.5",
           isActive && "translate-x-0.5 text-sky-400",
         )}
@@ -75,18 +97,33 @@ function SidebarNavLink({
 
 export function SidebarNavList({ onItemClick }: SidebarNavListProps) {
   const pathname = usePathname()
+  const { t } = useLocale()
   const primaryItems = navigationItems.filter((i) => i.href !== "/settings")
   const secondaryItems = navigationItems.filter((i) => i.href === "/settings")
 
   return (
     <>
       {primaryItems.map((item) => (
-        <SidebarNavLink key={item.href} item={item} pathname={pathname} onItemClick={onItemClick} tier="primary" />
+        <SidebarNavLink
+          key={item.href}
+          item={item}
+          pathname={pathname}
+          onItemClick={onItemClick}
+          tier="primary"
+          label={t(navKeyForHref(item.href))}
+        />
       ))}
       {secondaryItems.length > 0 ? (
         <div className="mt-2 border-t border-white/[0.08] pt-1">
           {secondaryItems.map((item) => (
-            <SidebarNavLink key={item.href} item={item} pathname={pathname} onItemClick={onItemClick} tier="secondary" />
+            <SidebarNavLink
+              key={item.href}
+              item={item}
+              pathname={pathname}
+              onItemClick={onItemClick}
+              tier="secondary"
+              label={t(navKeyForHref(item.href))}
+            />
           ))}
         </div>
       ) : null}

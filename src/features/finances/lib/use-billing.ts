@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import {
   seedIntegration,
   seedInvoices,
   seedUninvoicedVisits,
 } from "@/lib/mock-finances"
-import { formatIls } from "@/lib/format-ils"
 import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
 import type {
   BillingInvoice,
@@ -27,6 +27,7 @@ const STORAGE_KEY_INTEGRATION = "billing.integration.v1"
  * the server fetch and the same shape stays.
  */
 export function useBilling() {
+  const { formatMoney } = useLocale()
   const [invoices, setInvoices] = useState<BillingInvoice[]>(seedInvoices)
   const [uninvoicedVisits, setUninvoicedVisits] = useState<UninvoicedVisit[]>(
     seedUninvoicedVisits,
@@ -88,10 +89,10 @@ export function useBilling() {
       prev.map((v) => {
         const p = getTreatmentPriceIls(v.treatmentType)
         if (p == null) return v
-        return { ...v, suggestedAmount: p, suggestedDisplayAmount: formatIls(p) }
+        return { ...v, suggestedAmount: p, suggestedDisplayAmount: formatMoney(p) }
       }),
     )
-  }, [])
+  }, [formatMoney])
 
   useEffect(() => {
     if (!hydrated) return
@@ -99,6 +100,17 @@ export function useBilling() {
     window.addEventListener("clinic-settings-saved", syncVisitPricesFromSettings)
     return () => window.removeEventListener("clinic-settings-saved", syncVisitPricesFromSettings)
   }, [hydrated, syncVisitPricesFromSettings])
+
+  /** Keep serialized display strings aligned with locale (ILS vs USD formatting). */
+  useEffect(() => {
+    if (!hydrated) return
+    setInvoices((prev) =>
+      prev.map((inv) => ({ ...inv, displayAmount: formatMoney(inv.amount) })),
+    )
+    setUninvoicedVisits((prev) =>
+      prev.map((v) => ({ ...v, suggestedDisplayAmount: formatMoney(v.suggestedAmount) })),
+    )
+  }, [hydrated, formatMoney])
 
   /**
    * Convert an uninvoiced visit into an "issued" invoice. The visit then
@@ -123,7 +135,7 @@ export function useBilling() {
           dueAt: dueDate.toISOString().slice(0, 10),
           paidAt: null,
           amount: unit,
-          displayAmount: formatIls(unit),
+          displayAmount: formatMoney(unit),
           status: "issued",
           paymentStatus: "pending",
           treatmentType: visit.treatmentType,
@@ -134,7 +146,7 @@ export function useBilling() {
         return prev.filter((v) => v.id !== visitId)
       })
     },
-    [integration.provider],
+    [integration.provider, formatMoney],
   )
 
   /**

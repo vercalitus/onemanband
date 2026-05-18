@@ -2,11 +2,12 @@
 
 import Link from "next/link"
 import { FolderOpen, Plus } from "lucide-react"
-import { type ReactNode, useMemo, useState } from "react"
+import { type ReactNode, useCallback, useMemo, useState } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { AppointmentStatus, ScheduleItem } from "@/types/domain"
+import type { AppointmentStatus, AppointmentType, ScheduleItem } from "@/types/domain"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
@@ -18,24 +19,11 @@ import {
   snapMinutesToSlotNearest,
 } from "@/lib/appointment-time"
 import { toISODate } from "@/lib/date-helpers"
+import { localizeScheduleRow } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 
 const DAY_START_MIN = CALENDAR_HOUR_START * 60
 const DAY_END_MIN = CALENDAR_HOUR_END * 60
-
-/**
- * Lightweight status tone — we render status as a small text label/dot in the
- * top-right of the card. The card's main fill is driven by appointment _type_,
- * not status, so colors don't fight each other.
- */
-const statusTone: Record<AppointmentStatus, { dot: string; label: string; text: string }> = {
-  confirmed: { dot: "bg-emerald-400", label: "Confirmed", text: "text-emerald-700" },
-  scheduled: { dot: "bg-sky-400", label: "Scheduled", text: "text-sky-700" },
-  checked_in: { dot: "bg-indigo-400", label: "Checked in", text: "text-indigo-700" },
-  completed: { dot: "bg-slate-300", label: "Done", text: "text-slate-500" },
-  cancelled: { dot: "bg-rose-300", label: "Cancelled", text: "text-rose-500" },
-  no_show: { dot: "bg-orange-300", label: "No show", text: "text-orange-600" },
-}
 
 function sortByStart(list: ScheduleItem[]) {
   return [...list].sort((a, b) => minutesFromHHMM(a.start) - minutesFromHHMM(b.start))
@@ -45,18 +33,18 @@ function hourOf(hhmm: string): number {
   return Math.floor(minutesFromHHMM(hhmm) / 60)
 }
 
-/** One horizontal divider when the chronological list crosses “now”; keeps the timeline scannable without a left hour rail. */
-function NowDivider() {
+function NowDivider({ label, aria }: { label: string; aria: string }) {
   return (
-    <div className="flex items-center gap-2 py-1.5" role="separator" aria-label="Current time">
-      <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-wider text-sky-600">Now</span>
+    <div className="flex items-center gap-2 py-1.5" role="separator" aria-label={aria}>
+      <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-wider text-sky-600">
+        {label}
+      </span>
       <div className="h-px min-w-0 flex-1 bg-sky-400" />
       <span className="size-2 shrink-0 rounded-full bg-sky-500" aria-hidden />
     </div>
   )
 }
 
-/** Subtle hour separator inserted when the next appointment moves into a new hour. */
 function HourDivider({ hour }: { hour: number }) {
   const label = `${String(hour).padStart(2, "0")}:00`
   return (
@@ -77,30 +65,58 @@ export function DayCalendarView({
 }: {
   appointments: ScheduleItem[]
   onAppointmentsChange: (next: ScheduleItem[]) => void
-  /** Calendar day to render. Falls back to "today" so existing callers (dashboard) behave as before. */
   selectedDate?: Date
-  /** When false, cancelled appointments are filtered out of the list (used by /calendar). */
   showCanceled?: boolean
-  /** Hide the trailing "Add appointment" CTA when an external button already exists. */
   showAddButton?: boolean
-  /** Override scroll-area height — calendar page wants a taller viewport than the dashboard widget. */
   heightClassName?: string
 }) {
-  const typeVisual = useAppointmentTypeVisual()
+  const { locale, t } = useLocale()
+  const typeVisualBase = useAppointmentTypeVisual()
+
+  const typeVisual = useMemo(() => {
+    const types: AppointmentType[] = ["first", "adjustments", "kupa"]
+    const out = { ...typeVisualBase }
+    for (const k of types) {
+      out[k] = { ...out[k], label: t(`appt.type.${k}`) }
+    }
+    return out
+  }, [typeVisualBase, t])
+
+  const statusTone = useMemo(
+    (): Record<AppointmentStatus, { dot: string; label: string; text: string }> => ({
+      confirmed: { dot: "bg-emerald-400", label: t("appt.status.confirmed"), text: "text-emerald-700" },
+      scheduled: { dot: "bg-sky-400", label: t("appt.status.scheduled"), text: "text-sky-700" },
+      checked_in: { dot: "bg-indigo-400", label: t("appt.status.checked_in"), text: "text-indigo-700" },
+      completed: { dot: "bg-slate-300", label: t("appt.status.completed"), text: "text-slate-500" },
+      cancelled: { dot: "bg-rose-300", label: t("appt.status.cancelled"), text: "text-rose-500" },
+      no_show: { dot: "bg-orange-300", label: t("appt.status.no_show"), text: "text-orange-600" },
+    }),
+    [t],
+  )
+
+  const localized = useMemo(
+    () => appointments.map((a) => localizeScheduleRow(a, locale)),
+    [appointments, locale],
+  )
+
   const effectiveISO = useMemo(() => toISODate(selectedDate ?? new Date()), [selectedDate])
   const todayISO = toISODate(new Date())
   const isViewingToday = effectiveISO === todayISO
 
   const visible = useMemo(() => {
-    const sameDay = appointments.filter((a) => a.date === effectiveISO)
+    const sameDay = localized.filter((a) => a.date === effectiveISO)
     const list = showCanceled ? sameDay : sameDay.filter((a) => a.status !== "cancelled")
     return sortByStart(list)
-  }, [appointments, effectiveISO, showCanceled])
+  }, [localized, effectiveISO, showCanceled])
 
   const now = new Date()
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
-  // The "Now" divider only makes sense when the user is looking at today's column.
   const showNowLine = isViewingToday && currentMinutes >= DAY_START_MIN && currentMinutes < DAY_END_MIN
+
+  const resolveCanonical = useCallback(
+    (row: ScheduleItem) => appointments.find((a) => a.id === row.id) ?? row,
+    [appointments],
+  )
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("edit")
@@ -108,17 +124,20 @@ export function DayCalendarView({
   const [defaultStartMinutes, setDefaultStartMinutes] = useState<number | undefined>(undefined)
   const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined)
 
-  const openEdit = (apt: ScheduleItem) => {
-    setDialogMode("edit")
-    setActiveAppointment(apt)
-    setDefaultStartMinutes(undefined)
-    setDefaultDate(undefined)
-    setDialogOpen(true)
-  }
+  const openEdit = useCallback(
+    (displayRow: ScheduleItem) => {
+      const apt = resolveCanonical(displayRow)
+      setDialogMode("edit")
+      setActiveAppointment(apt)
+      setDefaultStartMinutes(undefined)
+      setDefaultDate(undefined)
+      setDialogOpen(true)
+    },
+    [resolveCanonical],
+  )
 
   const openCreateDefault = () => {
     const defaultDuration = 15
-    // If looking at a non-today date, use the day's start; otherwise snap from "now".
     const baseMinutes = isViewingToday ? currentMinutes : DAY_START_MIN + 60
     const snapped = snapMinutesToSlotNearest(baseMinutes)
     const clamped = clampStartForDuration(snapped, defaultDuration)
@@ -129,12 +148,12 @@ export function DayCalendarView({
     setDialogOpen(true)
   }
 
-  /** Renders appointments as equal-height tiles so brief visits stay as readable as long ones while order still follows clock time. */
-  const tiles = () => {
+  const renderTiles = () => {
     let markerPlaced = false
     let prevEnd: number | null = null
     let prevHour: number | null = null
     const nodes: ReactNode[] = []
+    const nowLabel = t("dashboard.timeline.now")
 
     visible.forEach((apt, idx) => {
       const startMin = minutesFromHHMM(apt.start)
@@ -144,17 +163,16 @@ export function DayCalendarView({
       if (showNowLine && !markerPlaced) {
         const gapStart = prevEnd ?? DAY_START_MIN
         if (currentMinutes >= gapStart && currentMinutes < startMin) {
-          nodes.push(<NowDivider key={`now-gap-${apt.id}`} />)
+          nodes.push(<NowDivider key={`now-gap-${apt.id}`} label={nowLabel} aria={nowLabel} />)
           markerPlaced = true
         }
       }
 
       if (showNowLine && !markerPlaced && currentMinutes >= startMin && currentMinutes < endMin) {
-        nodes.push(<NowDivider key={`now-in-${apt.id}`} />)
+        nodes.push(<NowDivider key={`now-in-${apt.id}`} label={nowLabel} aria={nowLabel} />)
         markerPlaced = true
       }
 
-      // Subtle hour rule between cards that cross into a new hour (skip before first card).
       if (idx > 0 && prevHour !== null && startHour !== prevHour) {
         nodes.push(<HourDivider key={`hour-${apt.id}`} hour={startHour} />)
       }
@@ -170,7 +188,7 @@ export function DayCalendarView({
           role="button"
           tabIndex={0}
           className={cn(
-            "mb-2 flex min-h-[96px] cursor-pointer gap-3 overflow-hidden rounded-xl border px-3 py-3 pr-4 transition-shadow focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none",
+            "mb-2 flex min-h-[96px] cursor-pointer gap-3 overflow-hidden rounded-xl border px-3 py-3 pe-4 transition-shadow focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none",
             typeStyle.surface,
             typeStyle.stripe,
             "shadow-sm hover:z-10 hover:shadow-md",
@@ -190,7 +208,7 @@ export function DayCalendarView({
               debt ? "bg-rose-500" : "bg-emerald-500",
             )}
             aria-hidden
-            title={debt ? "Outstanding balance" : "Balance settled"}
+            title={debt ? t("dashboard.patient.debtTitle") : t("dashboard.patient.settledTitle")}
           />
           <div className="flex min-w-0 flex-1 flex-col justify-between gap-1">
             <div className="flex flex-wrap items-start justify-between gap-2 gap-y-1">
@@ -205,7 +223,12 @@ export function DayCalendarView({
                 <time dateTime={`${apt.end}`}>{apt.end}</time>
               </p>
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                <span className={cn("inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider", status.text)}>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider",
+                    status.text,
+                  )}
+                >
                   <span className={cn("size-1.5 rounded-full", status.dot)} aria-hidden />
                   {status.label}
                 </span>
@@ -219,11 +242,11 @@ export function DayCalendarView({
               <Link
                 href={`/patients/${apt.patientId}?tab=records`}
                 className="shrink-0 text-slate-400 transition-colors hover:text-sky-600"
-                title="Medical records"
+                title={t("dashboard.patient.recordsLink")}
                 onClick={(e) => e.stopPropagation()}
               >
                 <FolderOpen className="size-4 stroke-[1.6]" aria-hidden />
-                <span className="sr-only">Open chart for {apt.patientName}</span>
+                <span className="sr-only">{t("dashboard.patient.openChart", { name: apt.patientName })}</span>
               </Link>
             </div>
             <p className="line-clamp-2 text-xs leading-snug text-slate-600">{apt.treatment}</p>
@@ -236,7 +259,7 @@ export function DayCalendarView({
     })
 
     if (showNowLine && !markerPlaced && currentMinutes >= (prevEnd ?? DAY_START_MIN) && currentMinutes < DAY_END_MIN) {
-      nodes.push(<NowDivider key="now-trailing" />)
+      nodes.push(<NowDivider key="now-trailing" label={nowLabel} aria={nowLabel} />)
     }
 
     if (nodes.length === 0) {
@@ -245,7 +268,7 @@ export function DayCalendarView({
           key="empty"
           className="my-6 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400"
         >
-          No appointments for this day.
+          {t("dashboard.day.empty")}
         </p>,
       )
     }
@@ -257,7 +280,7 @@ export function DayCalendarView({
     <>
       <ScrollArea className={heightClassName}>
         <div className="scroll-pb-24">
-          <div className="pr-3">{tiles()}</div>
+          <div className="pr-3">{renderTiles()}</div>
           {showAddButton ? (
             <Button
               type="button"
@@ -266,8 +289,8 @@ export function DayCalendarView({
               className="mt-1 mb-10 w-full border-dashed border-slate-200 text-sky-700 hover:bg-sky-50/60"
               onClick={openCreateDefault}
             >
-              <Plus className="mr-2 size-4 shrink-0" aria-hidden />
-              Add appointment
+              <Plus className="me-2 size-4 shrink-0" aria-hidden />
+              {t("dashboard.day.addAppointment")}
             </Button>
           ) : null}
         </div>

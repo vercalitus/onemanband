@@ -1,5 +1,5 @@
 import { patients } from "@/lib/mock-data"
-import { formatCurrency, PREVIOUS_MONTH_REVENUE } from "@/lib/mock-finances"
+import { PREVIOUS_MONTH_REVENUE } from "@/lib/mock-finances"
 import type {
   BillingInvoice,
   BillingPatientSnapshot,
@@ -78,6 +78,7 @@ export function sumProjectedRevenue(visits: ProjectedCalendarVisit[]): number {
  */
 export function computeRevenueByTreatment(
   invoices: BillingInvoice[],
+  treatmentLabels: Record<BillingTreatmentType, string>,
 ): Array<{ type: BillingTreatmentType; label: string; revenue: number; share: number }> {
   const totals: Record<BillingTreatmentType, number> = { first: 0, adjustments: 0, kupa: 0 }
   for (const inv of invoices) {
@@ -93,19 +94,19 @@ export function computeRevenueByTreatment(
   }> = [
     {
       type: "first",
-      label: "First Visit",
+      label: treatmentLabels.first,
       revenue: totals.first,
       share: sum === 0 ? 0 : Math.round((totals.first / sum) * 100),
     },
     {
       type: "adjustments",
-      label: "Adjustments",
+      label: treatmentLabels.adjustments,
       revenue: totals.adjustments,
       share: sum === 0 ? 0 : Math.round((totals.adjustments / sum) * 100),
     },
     {
       type: "kupa",
-      label: "Kupa",
+      label: treatmentLabels.kupa,
       revenue: totals.kupa,
       share: sum === 0 ? 0 : Math.round((totals.kupa / sum) * 100),
     },
@@ -117,7 +118,10 @@ export function computeRevenueByTreatment(
  * Per-patient balance snapshot. Positive = patient owes us; negative = credit
  * on file. Sorted by largest debt first so the debtors list stays useful.
  */
-export function computePatientSnapshots(invoices: BillingInvoice[]): BillingPatientSnapshot[] {
+export function computePatientSnapshots(
+  invoices: BillingInvoice[],
+  formatMoney: (value: number) => string,
+): BillingPatientSnapshot[] {
   const map = new Map<string, BillingPatientSnapshot>()
   for (const inv of invoices) {
     const open =
@@ -128,7 +132,7 @@ export function computePatientSnapshots(invoices: BillingInvoice[]): BillingPati
         patientId: inv.patientId,
         patientName: inv.patientName,
         balance: 0,
-        displayBalance: formatCurrency(0),
+        displayBalance: formatMoney(0),
         lastVisit: PATIENT_INDEX.get(inv.patientId)?.lastVisit ?? null,
         status: PATIENT_INDEX.get(inv.patientId)?.status ?? "active",
       })
@@ -140,26 +144,10 @@ export function computePatientSnapshots(invoices: BillingInvoice[]): BillingPati
       patientId: inv.patientId,
       patientName: inv.patientName,
       balance,
-      displayBalance: formatCurrency(balance),
+      displayBalance: formatMoney(balance),
       lastVisit: PATIENT_INDEX.get(inv.patientId)?.lastVisit ?? null,
       status: PATIENT_INDEX.get(inv.patientId)?.status ?? "active",
     })
   }
   return [...map.values()].sort((a, b) => b.balance - a.balance)
-}
-
-/**
- * Returns ISO date "X time ago" formatted relative to now. Tiny formatter to
- * avoid pulling in date-fns just for this widget.
- */
-export function formatRelative(iso: string): string {
-  const then = new Date(iso).getTime()
-  const diffMs = Date.now() - then
-  const mins = Math.round(diffMs / 60_000)
-  if (mins < 1) return "just now"
-  if (mins < 60) return `${mins} min ago`
-  const hrs = Math.round(mins / 60)
-  if (hrs < 24) return `${hrs} hr ago`
-  const days = Math.round(hrs / 24)
-  return `${days} day${days === 1 ? "" : "s"} ago`
 }

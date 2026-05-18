@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Library, Newspaper, Plus, Search } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { AddSourceDialog } from "@/features/clinical-feed/components/add-source-dialog"
@@ -14,9 +15,11 @@ import {
   elevatedCardBodyClass,
   elevatedCardClass,
 } from "@/lib/clinic-card-styles"
+import { localizeNewsArticle } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 
 export default function ClinicalFeedPage() {
+  const { locale, t } = useLocale()
   const {
     sources,
     articleCountBySource,
@@ -40,64 +43,75 @@ export default function ClinicalFeedPage() {
 
   const selectedSource = selectedSourceId ? sources.find((s) => s.id === selectedSourceId) ?? null : null
 
+  const articlesForLocale = useMemo(
+    () => filteredArticles.map((a) => localizeNewsArticle(a, locale)),
+    [filteredArticles, locale],
+  )
+
   const headerTitle = showSavedOnly
-    ? "Saved articles"
+    ? t("clinical.title.saved")
     : selectedSource
       ? selectedSource.name
-      : "Clinical Feed"
+      : t("clinical.title.feed")
 
-  const subtitle = (() => {
-    if (showSavedOnly)
-      return savedCount === 0
-        ? "No bookmarks yet"
-        : filteredArticles.length === 0 && query.trim()
-          ? `No bookmarks match "${query.trim()}"`
-          : filteredArticles.length === 1
-            ? "1 saved article"
-            : `${filteredArticles.length} saved articles`
-    if (filteredArticles.length === 0) return query.trim() ? "No matching articles" : "No articles"
-    if (filteredArticles.length === 1) return "1 article"
-    return `${filteredArticles.length} articles${selectedSource ? "" : " · all sources"}`
-  })()
+  const subtitle = useMemo(() => {
+    const q = query.trim()
+    if (showSavedOnly) {
+      if (savedCount === 0) return t("clinical.subtitle.savedNone")
+      if (filteredArticles.length === 0 && q) return t("clinical.subtitle.savedNoMatch", { q })
+      if (filteredArticles.length === 1) return t("clinical.subtitle.savedOne")
+      return t("clinical.subtitle.savedMany", { n: filteredArticles.length })
+    }
+    if (filteredArticles.length === 0) return q ? t("clinical.subtitle.noneQuery") : t("clinical.subtitle.none")
+    if (filteredArticles.length === 1) return t("clinical.subtitle.one")
+    return selectedSource
+      ? t("clinical.subtitle.many", { n: filteredArticles.length })
+      : t("clinical.subtitle.manyAllSources", { n: filteredArticles.length })
+  }, [
+    showSavedOnly,
+    savedCount,
+    filteredArticles.length,
+    query,
+    selectedSource,
+    t,
+  ])
+
+  const emptyMessage = useMemo(() => {
+    const q = query.trim()
+    if (showSavedOnly && savedCount === 0 && !q) return t("clinical.empty.savedIntro")
+    if (showSavedOnly && savedCount > 0 && filteredArticles.length === 0 && q) {
+      return t("clinical.empty.savedNoMatchBookmarks", { q })
+    }
+    if (q) return t("clinical.empty.noQueryResults", { q })
+    return showSavedOnly ? t("clinical.empty.savedFiltered") : t("clinical.empty.trySource")
+  }, [showSavedOnly, savedCount, filteredArticles.length, query, t])
 
   function clearFilters() {
     setQuery("")
     selectAllSources()
   }
 
-  const emptyMessage = (() => {
-    if (showSavedOnly && savedCount === 0 && !query.trim()) {
-      return "You haven’t saved any articles yet. Tap the bookmark icon on a card to add it."
-    }
-    if (showSavedOnly && savedCount > 0 && filteredArticles.length === 0 && query.trim()) {
-      return `Nothing in your bookmarks matches “${query.trim()}”.`
-    }
-    if (query.trim()) return `Nothing found for “${query.trim()}”.`
-    return showSavedOnly ? "No saved articles match the current filters." : "No articles to show. Try a different source."
-  })()
-
   return (
     <div className="grid gap-6 md:gap-8 xl:grid-cols-[260px_1fr]">
       <aside className="space-y-4">
         <Card className={elevatedCardClass}>
-          {/* Grid header: CardAction lands in column 2, same row as the title */}
           <CardHeader className={cn(darkCardHeaderClass, "gap-2 py-3")}>
             <div className="flex min-w-0 items-center gap-2.5">
               <Library className="size-5 shrink-0 stroke-[1.6] text-sky-400" aria-hidden />
-              <CardTitle className="text-base font-bold tracking-tight text-white">Sources</CardTitle>
+              <CardTitle className="text-base font-bold tracking-tight text-white">{t("clinical.sourcesTitle")}</CardTitle>
             </div>
             <CardAction>
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
-                aria-label="Add source"
+                aria-label={t("clinical.addSourceAria")}
                 className={cn(
                   "inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/70 bg-transparent px-2.5 py-1",
                   "text-xs font-semibold text-white transition-colors hover:border-white hover:bg-white/10",
                 )}
               >
                 <Plus className="size-3.5 stroke-[2.2]" aria-hidden />
-                Add
+                {t("clinical.addShort")}
               </button>
             </CardAction>
           </CardHeader>
@@ -133,26 +147,26 @@ export default function ClinicalFeedPage() {
 
               <div className="relative w-full sm:w-[min(100%,18rem)]">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/60"
+                  className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-white/60"
                   aria-hidden
                 />
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search articles"
+                  placeholder={t("clinical.search.placeholder")}
                   className={cn(
-                    "h-9 rounded-xl border border-white bg-transparent pl-9 text-sm text-white shadow-none",
+                    "h-9 rounded-xl border border-white bg-transparent ps-9 text-sm text-white shadow-none",
                     "placeholder:text-white/60",
                     "focus-visible:border-white focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-0 focus-visible:ring-offset-transparent",
                   )}
-                  aria-label="Search articles"
+                  aria-label={t("clinical.search.placeholder")}
                 />
               </div>
             </div>
           </CardHeader>
 
           <CardContent className={cn(elevatedCardBodyClass, "bg-slate-50/60 py-6")}>
-            {filteredArticles.length === 0 ? (
+            {articlesForLocale.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
                 <p className="text-sm text-slate-500">{emptyMessage}</p>
                 {(query.trim() || selectedSourceId || showSavedOnly) && (
@@ -161,13 +175,13 @@ export default function ClinicalFeedPage() {
                     onClick={clearFilters}
                     className="mt-3 text-sm font-medium text-sky-700 hover:text-sky-900"
                   >
-                    Clear filters
+                    {t("clinical.clearFilters")}
                   </button>
                 )}
               </div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-2 sm:gap-7 xl:grid-cols-3 xl:gap-8">
-                {filteredArticles.map((article) => (
+                {articlesForLocale.map((article) => (
                   <FeedCard
                     key={article.id}
                     article={article}

@@ -1,11 +1,15 @@
 "use client"
 
-import { formatCurrency, projectedCalendarWeek } from "@/lib/mock-finances"
+import { useMemo } from "react"
+
+import { useLocale } from "@/components/providers/locale-provider"
 import {
   computeMonthlyRevenue,
   computeRevenueByTreatment,
   sumProjectedRevenue,
 } from "@/features/finances/lib/derive-billing"
+import { localeToBcp47 } from "@/lib/format-locale"
+import { projectedCalendarWeek } from "@/lib/mock-finances"
 import { cn } from "@/lib/utils"
 import type { BillingInvoice, BillingTreatmentType } from "@/types/domain"
 
@@ -15,47 +19,57 @@ const TYPE_TONE: Record<BillingTreatmentType, string> = {
   kupa: "bg-amber-500",
 }
 
-function formatWeekRangeLabel(): string {
-  const start = new Date()
-  const end = new Date()
-  end.setDate(end.getDate() + 6)
-  const fmt = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" })
-  return `${fmt.format(start)} – ${fmt.format(end)}`
-}
-
-/**
- * Insights drawer content — revenue split by treatment type for the current
- * month. Bars are pure flex/width divs so we don't pull in a chart library
- * for a single visualisation.
- */
+/** Insights drawer — currency + copy follow locale; progress bars align in RTL. */
 export function InsightsPanel({ invoices }: { invoices: BillingInvoice[] }) {
-  const rows = computeRevenueByTreatment(invoices)
+  const { locale, isRtl, formatMoney, t } = useLocale()
+
+  const treatmentLabels = useMemo(
+    () =>
+      ({
+        first: t("billing.treatment.first"),
+        adjustments: t("billing.treatment.adjustments"),
+        kupa: t("billing.treatment.kupa"),
+      }) satisfies Record<BillingTreatmentType, string>,
+    [t],
+  )
+
+  const rows = computeRevenueByTreatment(invoices, treatmentLabels)
   const monthly = computeMonthlyRevenue(invoices)
   const maxRevenue = Math.max(...rows.map((r) => r.revenue), 1)
   const projectedTotal = sumProjectedRevenue(projectedCalendarWeek)
   const projectedCount = projectedCalendarWeek.length
 
+  const rangeLabel = useMemo(() => {
+    const start = new Date()
+    const end = new Date()
+    end.setDate(end.getDate() + 6)
+    const fmt = new Intl.DateTimeFormat(localeToBcp47(locale), {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    })
+    return `${fmt.format(start)} – ${fmt.format(end)}`
+  }, [locale])
+
+  const typeCount = rows.filter((r) => r.revenue > 0).length
+
   return (
     <div className="space-y-6">
       <section className="rounded-2xl bg-slate-50 p-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Paid this month
+          {t("insights.paidThisMonth")}
         </p>
         <p className="mt-2 font-mono text-3xl font-semibold tabular-nums text-slate-900">
-          {formatCurrency(monthly)}
+          {formatMoney(monthly)}
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          Across {rows.filter((r) => r.revenue > 0).length} treatment types.
-        </p>
+        <p className="mt-1 text-xs text-slate-500">{t("insights.acrossTypes", { count: typeCount })}</p>
       </section>
 
       <section>
         <h3 className="font-heading text-sm font-semibold tracking-tight text-slate-900">
-          Revenue by treatment type
+          {t("insights.revenueByType")}
         </h3>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Share of paid invoices in the current month.
-        </p>
+        <p className="mt-0.5 text-xs text-slate-500">{t("insights.revenueByTypeSub")}</p>
 
         <ul className="mt-4 space-y-3.5">
           {rows.map((row) => {
@@ -65,15 +79,17 @@ export function InsightsPanel({ invoices }: { invoices: BillingInvoice[] }) {
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="text-sm font-medium text-slate-800">{row.label}</p>
                   <p className="font-mono text-sm font-semibold tabular-nums text-slate-900">
-                    {formatCurrency(row.revenue)}
-                    <span className="ml-2 text-[11px] font-normal text-slate-400">
-                      {row.share}%
-                    </span>
+                    {formatMoney(row.revenue)}
+                    <span className="ms-2 text-[11px] font-normal text-slate-400">{row.share}%</span>
                   </p>
                 </div>
                 <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className={cn("h-full rounded-full transition-all", TYPE_TONE[row.type])}
+                    className={cn(
+                      "h-full rounded-full transition-[width] duration-300 ease-out",
+                      TYPE_TONE[row.type],
+                      isRtl && "ms-auto",
+                    )}
                     style={{ width: `${widthPct}%` }}
                     aria-hidden
                   />
@@ -86,22 +102,19 @@ export function InsightsPanel({ invoices }: { invoices: BillingInvoice[] }) {
 
       <section className="rounded-2xl border border-slate-200/80 bg-white p-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Projected revenue
+          {t("insights.projectedRevenue")}
         </p>
         <p className="mt-2 font-mono text-3xl font-semibold tabular-nums text-slate-900">
-          {formatCurrency(projectedTotal)}
+          {formatMoney(projectedTotal)}
         </p>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Based on {projectedCount} scheduled visits in the next 7 days ({formatWeekRangeLabel()}). Uses
-          the same calendar mock as the scheduler.
+          {t("insights.projectedBlurb", { count: projectedCount, range: rangeLabel })}
         </p>
       </section>
 
       <section className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-xs text-slate-500">
-        <p className="font-semibold text-slate-700">Roadmap</p>
-        <p className="mt-1 leading-relaxed">
-          Cohort retention, payer mix, and yearly trend lines can plug in once live data is wired.
-        </p>
+        <p className="font-semibold text-slate-700">{t("insights.roadmap.title")}</p>
+        <p className="mt-1 leading-relaxed">{t("insights.roadmap.body")}</p>
       </section>
     </div>
   )

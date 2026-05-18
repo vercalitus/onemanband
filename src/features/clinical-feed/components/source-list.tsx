@@ -3,6 +3,7 @@
 import { BookOpen, BookmarkCheck, Library, Trash2 } from "lucide-react"
 import type { ReactNode } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
 import type { ClinicalSource } from "@/types/domain"
 
@@ -34,10 +35,12 @@ export function SourceList({
   onSelectSource: (id: string) => void
   onRemoveCustom: (id: string) => void
 }) {
+  const { t } = useLocale()
+
   return (
     <ul className="flex flex-col gap-0.5" role="list">
       <SourceRow
-        label="Saved"
+        label={t("clinical.source.saved")}
         count={savedCount}
         active={showSavedOnly}
         onClick={onSelectSaved}
@@ -47,7 +50,7 @@ export function SourceList({
       <li className="my-1 h-px bg-slate-100" aria-hidden />
 
       <SourceRow
-        label="All sources"
+        label={t("clinical.source.allSources")}
         count={totalCount}
         active={!showSavedOnly && selectedSourceId === null}
         onClick={onSelectAllSources}
@@ -78,7 +81,7 @@ export function SourceList({
                       ? "text-white/60 hover:bg-white/10 hover:text-white"
                       : "text-slate-300 hover:bg-rose-50 hover:text-rose-600",
                   )}
-                  aria-label={`Remove ${s.name}`}
+                  aria-label={t("clinical.source.remove", { name: s.name })}
                   onClick={(e) => {
                     e.stopPropagation()
                     onRemoveCustom(s.id)
