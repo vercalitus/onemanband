@@ -2,14 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-import { treatmentsByPatient, documentsByPatient, financesByPatient } from "@/lib/mock-data"
+import { useLocale } from "@/components/providers/locale-provider"
+import {
+  localizeDocumentRecord,
+  localizeFinanceRecord,
+  localizeTreatmentRecord,
+} from "@/lib/i18n/localized-seed"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
+import type { Locale } from "@/lib/i18n/types"
+import { treatmentsByPatient, documentsByPatient, financesByPatient } from "@/lib/mock-data"
 import type { AppointmentType, TreatmentRecord, DocumentRecord, FinanceRecord } from "@/types/domain"
 
 export interface CompletedSession {
   id: string
   completedAt: string
-  /** e.g. "Session 3 of 10 — Adjustments" */
+  /** e.g. localized "Session 3 of 10 — Adjustments" or Hebrew equivalent */
   title: string
   sessionNotes: string
   canvasDataUrl: string | null
@@ -23,30 +30,14 @@ export interface PatientContactOverrides {
   generalNotes?: string
 }
 
-const DEFAULT_CLINICAL_STATUS =
+const DEFAULT_CLINICAL_EN =
   "Gradual improvement in cervical range of motion, focus on workplace posture"
 
-/** Previously shipped default in Hebrew — migrate to English so cached localStorage updates. */
+const DEFAULT_CLINICAL_HE =
+  "שיפור הדרגתי בטווח התנועה הצווארית; דגש על יציבה במקום העבודה"
+
 const LEGACY_CLINICAL_STATUS_HE =
   "שיפור הדרגתי בטווח תנועה צווארי, דגש על יציבה בעבודה"
-
-/**
- * If the user still has the old Hebrew default from localStorage, replace it once.
- */
-function migrateClinicalStatus(patientId: string, stored: string): string {
-  const trimmed = stored.trim()
-  if (trimmed === LEGACY_CLINICAL_STATUS_HE.trim()) {
-    writeField(patientId, "clinicalStatus", DEFAULT_CLINICAL_STATUS)
-    return DEFAULT_CLINICAL_STATUS
-  }
-  return stored
-}
-
-const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
-  first: "First Visit",
-  adjustments: "Adjustments",
-  kupa: "Kupa",
-}
 
 function storageKey(patientId: string, field: string) {
   return `patient.${patientId}.${field}`
@@ -68,8 +59,20 @@ function writeField(patientId: string, field: string, value: unknown) {
   } catch {}
 }
 
+/** Map stored defaults across locales without persisting until the user edits. */
+function normalizeClinicalRead(stored: string | null | undefined, locale: Locale): string {
+  const t = (stored ?? "").trim()
+  if (t === "" || t === LEGACY_CLINICAL_STATUS_HE.trim()) {
+    return locale === "he" ? DEFAULT_CLINICAL_HE : DEFAULT_CLINICAL_EN
+  }
+  if (locale === "he" && t === DEFAULT_CLINICAL_EN) return DEFAULT_CLINICAL_HE
+  if (locale === "en" && t === DEFAULT_CLINICAL_HE) return DEFAULT_CLINICAL_EN
+  return stored ?? (locale === "he" ? DEFAULT_CLINICAL_HE : DEFAULT_CLINICAL_EN)
+}
+
 export function usePatientCockpit(patientId: string) {
-  const [clinicalStatus, setClinicalStatusRaw] = useState(DEFAULT_CLINICAL_STATUS)
+  const { t, locale } = useLocale()
+  const [clinicalStatus, setClinicalStatusRaw] = useState(DEFAULT_CLINICAL_EN)
   const [sessionNotes, setSessionNotesRaw] = useState("")
   const [canvasDataUrl, setCanvasDataUrlRaw] = useState<string | null>(null)
   const [completedSessions, setCompletedSessionsRaw] = useState<CompletedSession[]>([])
@@ -80,8 +83,9 @@ export function usePatientCockpit(patientId: string) {
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    const rawClinical = readField(patientId, "clinicalStatus", DEFAULT_CLINICAL_STATUS)
-    setClinicalStatusRaw(migrateClinicalStatus(patientId, rawClinical))
+    const rawClinical = readField<string | null>(patientId, "clinicalStatus", null)
+    setClinicalStatusRaw(normalizeClinicalRead(rawClinical, locale))
+
     setSessionNotesRaw(readField(patientId, "sessionNotes", ""))
     setCanvasDataUrlRaw(readField(patientId, "canvasDataUrl", null))
     setCompletedSessionsRaw(readField(patientId, "completedSessions", []))
@@ -90,7 +94,7 @@ export function usePatientCockpit(patientId: string) {
     setContactOverridesRaw(readField(patientId, "contactOverrides", {}))
     setLastAppointmentTypeRaw(readField(patientId, "lastAppointmentType", "adjustments"))
     setHydrated(true)
-  }, [patientId])
+  }, [patientId, locale])
 
   const setClinicalStatus = useCallback(
     (value: string) => {
@@ -132,20 +136,24 @@ export function usePatientCockpit(patientId: string) {
     [patientId],
   )
 
-  /** Raw mock records, filtered by soft-deleted IDs */
   const treatmentRecords: TreatmentRecord[] = useMemo(() => {
     const all = treatmentsByPatient[patientId] ?? []
-    return all.filter((r) => !deletedTreatmentIds.includes(r.id))
-  }, [patientId, deletedTreatmentIds])
+    return all
+      .filter((r) => !deletedTreatmentIds.includes(r.id))
+      .map((r) => localizeTreatmentRecord(r, locale))
+  }, [patientId, deletedTreatmentIds, locale])
 
   const documentRecords: DocumentRecord[] = useMemo(() => {
     const all = documentsByPatient[patientId] ?? []
-    return all.filter((r) => !deletedDocumentIds.includes(r.id))
-  }, [patientId, deletedDocumentIds])
+    return all
+      .filter((r) => !deletedDocumentIds.includes(r.id))
+      .map((r) => localizeDocumentRecord(r, locale))
+  }, [patientId, deletedDocumentIds, locale])
 
   const financeRecords: FinanceRecord[] = useMemo(() => {
-    return financesByPatient[patientId] ?? []
-  }, [patientId])
+    const all = financesByPatient[patientId] ?? []
+    return all.map((r) => localizeFinanceRecord(r, locale))
+  }, [patientId, locale])
 
   const planTarget = useMemo(() => {
     try {
@@ -157,15 +165,15 @@ export function usePatientCockpit(patientId: string) {
 
   const totalSessionsDone = treatmentRecords.length + completedSessions.length
 
-  /**
-   * Complete the active session: creates a titled timeline entry using the
-   * current sequence number and appointment type, then clears the workspace.
-   */
   const completeSession = useCallback(
     (appointmentType: AppointmentType = "adjustments") => {
       const sessionNumber = totalSessionsDone + 1
-      const typeLabel = APPOINTMENT_TYPE_LABELS[appointmentType]
-      const title = `Session ${sessionNumber} of ${planTarget} — ${typeLabel}`
+      const typeLabel = t(`billing.treatment.${appointmentType}`)
+      const title = t("patientChart.sessionCompleteTitle", {
+        n: sessionNumber,
+        total: planTarget,
+        type: typeLabel,
+      })
 
       const entry: CompletedSession = {
         id: `cs-${Date.now()}`,
@@ -189,13 +197,13 @@ export function usePatientCockpit(patientId: string) {
       planTarget,
       sessionNotes,
       canvasDataUrl,
+      setLastAppointmentType,
       setSessionNotes,
       setCanvasDataUrl,
-      setLastAppointmentType,
+      t,
     ],
   )
 
-  /** Soft-delete a mock TreatmentRecord */
   const deleteTreatmentRecord = useCallback(
     (id: string) => {
       setDeletedTreatmentIds((prev) => {
@@ -207,7 +215,6 @@ export function usePatientCockpit(patientId: string) {
     [patientId],
   )
 
-  /** Remove a CompletedSession from the timeline */
   const deleteCompletedSession = useCallback(
     (id: string) => {
       setCompletedSessionsRaw((prev) => {
@@ -219,7 +226,6 @@ export function usePatientCockpit(patientId: string) {
     [patientId],
   )
 
-  /** Soft-delete a mock DocumentRecord */
   const deleteDocumentRecord = useCallback(
     (id: string) => {
       setDeletedDocumentIds((prev) => {

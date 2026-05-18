@@ -1,10 +1,15 @@
+import type { TranslateFn } from "@/lib/i18n/dictionary"
 import type { Locale } from "@/lib/i18n/types"
 import type {
+  AppointmentType,
+  DocumentRecord,
+  FinanceRecord,
   NewsArticle,
   PatientSummary,
   PulseMetric,
   ScheduleItem,
   TodoItem,
+  TreatmentRecord,
 } from "@/types/domain"
 import type { WaitlistEntry } from "@/lib/mock-data"
 
@@ -32,7 +37,7 @@ const HE_SCHEDULE: Record<string, SchedPatch> = {
     dayLabel: "היום",
   },
   "apt-5": {
-    patientName: "סופיה רוזן",
+    patientName: "סופיה ריד",
     treatment: "קופה — ניירת יישור אגן וסריקה קצרה",
     dayLabel: "היום",
   },
@@ -62,7 +67,7 @@ const HE_SCHEDULE: Record<string, SchedPatch> = {
     dayLabel: "היום",
   },
   "apt-11": {
-    patientName: "סופיה רוזן",
+    patientName: "סופיה ריד",
     treatment: "דפוס כיפוף מפרק הירך + הנחיות רצפת אגן",
     dayLabel: "היום",
   },
@@ -87,59 +92,121 @@ const HE_SCHEDULE: Record<string, SchedPatch> = {
     dayLabel: "היום",
   },
   "apt-16": {
-    patientName: "סופיה רוזן",
+    patientName: "סופיה ריד",
     treatment: "תחזוקת עמוד שדרה — בוטל על ידי המטופלת",
     dayLabel: "היום",
   },
   "week-1": { patientName: "ניר כהן", treatment: "סקירת MRI", dayLabel: "מחר" },
-  "week-2": { patientName: "סופיה רוזן", treatment: "יישור אגן", dayLabel: "מחר" },
+  "week-2": { patientName: "סופיה ריד", treatment: "יישור אגן", dayLabel: "מחר" },
   "week-3": { patientName: "איתמר ברק", treatment: "נקודת שיקום", dayLabel: "מחר" },
 }
 
 const HE_PATIENT: Record<string, Partial<PatientSummary>> = {
   "pt-001": {
     fullName: "מאיה כהן",
+    phone: "+972-50-104-2201",
+    email: "maya.cohen@example.co.il",
     address: "הסידק 14, תל אביב",
     tags: ["עמוד צווארי", "ביטוח"],
     medicalHistorySummary:
-      "כאב צוואר חוזר אחרי עבודה מרחוק; מתיחה מימין בצוואר ושלד עליון. צילום צוואר (אפריל 2026): צמצום קל C5–C6. ללא אלרגיות. משקיע טוב במוביליזציה ותרגילי בית.",
-    generalNotes: "תזכורות בוואטסאפ ובוקר.",
+      "כאב צוואר חוזר אחרי מאמץ ממושך בעבודה מרחוק; מוצג בעיקר כמתיחה צד ימני בצוואר ובשריר ה‑טרפז הצווארי עם הפניות לאזור התת־עֶרק. בדימות קודמת (צילום צוואר, אפריל 2026): צנחן קלה ב‑C5–C6 ללא ממצאים חריגים חדים. דיווח על ללא אלרגיות. המטופלת פעילה, ללא רקע לבבי או מערכתי מהותי, ומגיבה היטב למוביליזציה ידנית בשילוב תרגילי תנועה ביתיים.",
+    generalNotes:
+      "מעדיפה תזכורות בוואטסאפ ותורים בוקר מוקדם. בשליחת תרגילי הבית הבאים יש להביא את דף ההתעמלות מהביקור.",
   },
   "pt-002": {
     fullName: "נח שחר",
+    phone: "+972-50-204-1108",
+    email: "noah.shahar@example.co.il",
     address: "הירקון 38, תל אביב",
     tags: ["מעקב חוב", "מותני"],
-    medicalHistorySummary: "כאב מותני עם MRI בקובץ. המשך הושהה בגלל נסיעות.",
-    generalNotes: "לחדש כשהביטוח מאשר.",
+    medicalHistorySummary: "כאב מותני עם MRI בקובץ. ההמשך הושהה בגלל נסיעות.",
+    generalNotes: "לחדש טיפול כשאישור הביטוח יתקבל.",
   },
   "pt-003": {
-    fullName: "ליה ארז",
+    fullName: "אווה הרט",
+    phone: "+972-50-338-5099",
+    email: "ava.hart@example.co.il",
     address: "כיכר דיזנגוף 7, תל אביב",
     tags: ["שוחרר"],
-    medicalHistorySummary: "סדרת שישה טיפולים הושלמה עם הרחבת טווח תנועה.",
-    generalNotes: "להשלים בדיקת שמירת מסמכים.",
+    medicalHistorySummary: "סדרת שישה טיפולים הושלמה עם שיפור מתמשך בטווח תנועה.",
+    generalNotes: "להשלים בדיקת שמירת מסמכים לפני ארכוב.",
   },
   "pt-004": {
-    fullName: "ניר לוי",
+    fullName: "ליעם כרטר",
+    phone: "+972-52-418-2214",
+    email: "liam.carter@example.co.il",
     address: "בן יהודה 22, חיפה",
     tags: ["MRI", "מעקב"],
-    medicalHistorySummary: "MRI לביקור אי־נוחות בית־חזה ויציבה.",
-    generalNotes: "מעדיף סיכומים קצרים וזמני צהריים.",
+    medicalHistorySummary: "ביקור לסקירת MRI בשל אי־נוחות בית־חזה המחמירה ביציבה.",
+    generalNotes: "מעדיף סיכומים קצרים אחרי ביקורים וזמני תורים בצהריים.",
   },
   "pt-005": {
-    fullName: "סופיה רוזן",
+    fullName: "סופיה ריד",
+    phone: "+972-50-672-8810",
+    email: "sofia.reed@example.co.il",
     address: "רוטשילד 55, תל אביב",
     tags: ["יישור אגן"],
-    medicalHistorySummary: "תוכנית יישור אגן מתמשכת עם מעקב אחר תרגילי בית.",
-    generalNotes: "תזכורת: דואל ואז SMS.",
+    medicalHistorySummary: "תוכנית יישור אגן מתמשכת עם מצוינות בביצוע תרגילי בית.",
+    generalNotes: "תזכורות: תחילה דואל, ואם אין מענה — SMS.",
   },
   "pt-006": {
-    fullName: "איתמר ברק",
+    fullName: "איתמר בלייק",
+    phone: "+972-50-800-2331",
+    email: "ethan.blake@example.co.il",
     address: "אלנבי 3, ירושלים",
     tags: ["שיקום", "מעקב חוב"],
-    medicalHistorySummary: "שיקום הופסק בגלל לוח לא יציב.",
-    generalNotes: "לחזור כשמתפנה; וואטסאפ מתאים.",
+    medicalHistorySummary: "רצף נקודות השיקום הופסק כל עוד לוח הזמנים אינו יציב.",
+    generalNotes: "לחדש קשר כשמתפנה; מעדיף צ׳ק־אין בוואטסאפ.",
   },
+}
+
+/** Demo treatment rows — localized copy for Hebrew UI only */
+const HE_TREATMENT: Record<string, Partial<Pick<TreatmentRecord, "title" | "note" | "practitioner">>> = {
+  "tr-001": {
+    practitioner: "ד\"ר ריברה",
+    title: "הערכה צווארית ראשונית",
+    note: "הגבלה בסיבוב שמאל, רגישות סביב C5–C7; נקבע תוכנית תרגילי בית.",
+  },
+  "tr-002": {
+    practitioner: "ד\"ר ריברה",
+    title: "מעקב טיפול ידני",
+    note: "הכאב ירד מ־7/10 ל־4/10. להמשיך התאמות ארגונומיות וחימום תנועתי.",
+  },
+  "tr-003": {
+    practitioner: "ד\"ר סלואן",
+    title: "סקירת מותני",
+    note: "תסמינים יציבים. הטיפול מושהה עד לאישור מבוטח.",
+  },
+  "tr-004": {
+    practitioner: "ד\"ר ריברה",
+    title: "סיכום שיחרור",
+    note: "המטופלת השלימה תוכנית עם שיפור מתמשך בניידות.",
+  },
+}
+
+const HE_DOC: Record<string, Partial<Pick<DocumentRecord, "name" | "source">>> = {
+  "doc-001": {
+    name: "צילום צוואר — אפריל 2026",
+    source: "אחסון — הדמיה",
+  },
+  "doc-002": {
+    name: "אישור ביטוח",
+    source: "אחסון — גבייה",
+  },
+  "doc-003": {
+    name: "MRI מותני — פברואר 2026",
+    source: "אחסון — הדמיה",
+  },
+  "doc-004": {
+    name: "הערת שיחרור חתומה",
+    source: "אחסון — תיעוד",
+  },
+}
+
+const HE_FIN: Record<string, Partial<Pick<FinanceRecord, "description">>> = {
+  "fin-001": { description: "חשבונית ביקור INV-2402" },
+  "fin-002": { description: "חבילת טיפול INV-2390" },
+  "fin-003": { description: "יעוץ סיום INV-2281" },
 }
 
 const HE_NEWS: Record<string, Partial<Pick<NewsArticle, "title" | "summary" | "keyword">>> = {
@@ -186,7 +253,7 @@ const HE_WAIT: Record<
 > = {
   "wl-001": { patientName: "נח שחר", reason: "מעקב מותני", availability: "בוקר ימים ב׳–ד׳" },
   "wl-002": {
-    patientName: "סופיה רוזן",
+    patientName: "סופיה ריד",
     reason: "ביקור יישור אגן",
     availability: "אחרי הצהריים בכל יום עבודה",
   },
@@ -196,7 +263,7 @@ const HE_WAIT: Record<
     availability: "ערבי חמישי",
   },
   "wl-004": {
-    patientName: "איתמר ברק",
+    patientName: "איתמר בלייק",
     reason: "חידוש שיקום",
     availability: "גמיש",
   },
@@ -212,6 +279,52 @@ export function localizePatient(row: PatientSummary, locale: Locale): PatientSum
   if (locale !== "he") return row
   const o = HE_PATIENT[row.id]
   return o ? { ...row, ...o } : row
+}
+
+export function localizeTreatmentRecord(row: TreatmentRecord, locale: Locale): TreatmentRecord {
+  if (locale !== "he") return row
+  const o = HE_TREATMENT[row.id]
+  return o ? { ...row, ...o } : row
+}
+
+export function localizeDocumentRecord(row: DocumentRecord, locale: Locale): DocumentRecord {
+  if (locale !== "he") return row
+  const o = HE_DOC[row.id]
+  return o ? { ...row, ...o } : row
+}
+
+export function localizeFinanceRecord(row: FinanceRecord, locale: Locale): FinanceRecord {
+  if (locale !== "he") return row
+  const o = HE_FIN[row.id]
+  return o ? { ...row, ...o } : row
+}
+
+const COMPLETED_SESSION_TITLE_EN = /^Session (\d+) of (\d+) — (.+)$/u
+
+const SESSION_TYPE_LABEL_TO_KEY: Record<string, AppointmentType> = {
+  "First Visit": "first",
+  Adjustments: "adjustments",
+  Kupa: "kupa",
+}
+
+/**
+ * Completed sessions persist their title string; remap saved English headings
+ * to Hebrew using the billing type labels when locale is Hebrew.
+ */
+export function localizeCompletedSessionTitle(
+  title: string,
+  locale: Locale,
+  t: TranslateFn,
+): string {
+  if (locale !== "he") return title
+  const m = COMPLETED_SESSION_TITLE_EN.exec(title.trim())
+  if (!m) return title
+  const n = Number(m[1])
+  const total = Number(m[2])
+  const rawType = m[3].trim()
+  const ap = SESSION_TYPE_LABEL_TO_KEY[rawType]
+  const typeLabel = ap ? t(`billing.treatment.${ap}`) : rawType
+  return t("patientChart.sessionCompleteTitle", { n, total, type: typeLabel })
 }
 
 export function localizeNewsArticle(row: NewsArticle, locale: Locale): NewsArticle {

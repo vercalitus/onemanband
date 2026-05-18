@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { createDefaultClinicSettings } from "@/lib/clinic-settings-defaults"
+import {
+  applyHebrewClinicOverlay,
+  invertHebrewClinicOverlay,
+} from "@/lib/i18n/localized-clinic-settings"
 import { readClinicSettings, writeClinicSettings } from "@/lib/clinic-settings-storage"
 import type { ClinicSettings } from "@/types/clinic-settings"
 
@@ -11,16 +16,18 @@ function stableStringify(s: ClinicSettings): string {
 }
 
 export function useClinicSettings() {
+  const { locale } = useLocale()
   const [settings, setSettings] = useState<ClinicSettings>(createDefaultClinicSettings)
   const [baseline, setBaseline] = useState<ClinicSettings | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    const s = readClinicSettings()
-    setSettings(s)
-    setBaseline(s)
+    const raw = readClinicSettings()
+    const view = locale === "he" ? applyHebrewClinicOverlay(raw) : raw
+    setSettings(view)
+    setBaseline(view)
     setHydrated(true)
-  }, [])
+  }, [locale])
 
   const isDirty = useMemo(() => {
     if (!baseline) return false
@@ -28,9 +35,10 @@ export function useClinicSettings() {
   }, [settings, baseline])
 
   const save = useCallback(() => {
-    writeClinicSettings(settings)
+    const toStore = locale === "he" ? invertHebrewClinicOverlay(settings) : settings
+    writeClinicSettings(toStore)
     setBaseline(settings)
-  }, [settings])
+  }, [settings, locale])
 
   const discard = useCallback(() => {
     if (baseline) setSettings(baseline)

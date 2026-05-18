@@ -4,6 +4,7 @@ import { useState } from "react"
 import { ChevronDown, ChevronUp, FileText, Receipt, Trash2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { localizeCompletedSessionTitle } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 import type { DocumentRecord, FinanceRecord, TreatmentRecord } from "@/types/domain"
 import { DocumentPreviewModal } from "./document-preview-modal"
@@ -78,9 +79,13 @@ function ClinicalNoteLine({ note, expanded }: { note: string; expanded: boolean 
 
   return (
     <div className="mt-1 space-y-0.5">
-      <p className="text-[13px] font-medium leading-snug text-slate-700">{summary}</p>
+      <p dir="auto" className="text-[13px] font-medium leading-snug text-slate-700">
+        {summary}
+      </p>
       {expanded && detail && (
-        <p className="text-[12px] leading-relaxed text-slate-400">{detail}</p>
+        <p dir="auto" className="text-[12px] leading-relaxed text-slate-400">
+          {detail}
+        </p>
       )}
     </div>
   )
@@ -105,7 +110,7 @@ export function UnifiedTimeline({
   onDeleteTreatment,
   onDeleteCompletedSession,
 }: Props) {
-  const { t, localeTag } = useLocale()
+  const { t, localeTag, locale } = useLocale()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -191,6 +196,10 @@ export function UnifiedTimeline({
           const isCompleted = entry.kind === "completed-session"
           const expanded = expandedIds.has(entry.id)
           const sessionNumber = sessionNumberMap.get(entry.id) ?? 0
+          const titleShown =
+            isCompleted
+              ? localizeCompletedSessionTitle(entry.title, locale, t)
+              : entry.title
           const hasMore =
             entry.note.search(/\.\s/) !== -1 ||
             entry.relatedDocs.length > 0 ||
@@ -269,7 +278,7 @@ export function UnifiedTimeline({
                     aria-expanded={expanded}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-800">{entry.title}</p>
+                      <p className="text-sm font-semibold text-slate-800">{titleShown}</p>
                       {entry.note && (
                         <ClinicalNoteLine note={entry.note} expanded={expanded} />
                       )}

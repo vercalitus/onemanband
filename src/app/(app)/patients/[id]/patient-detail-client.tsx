@@ -1,11 +1,12 @@
 "use client"
 
 import { notFound, useParams } from "next/navigation"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
+import { localizePatient } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 import { BillingToast } from "@/features/finances/components/billing-toast"
 import { PatientSmartHeader } from "@/features/patients/components/patient-smart-header"
@@ -17,14 +18,18 @@ import { todaySchedule } from "@/lib/mock-data"
 
 export function PatientDetailClient() {
   const params = useParams()
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const id =
     typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
   const merged = useMergedPatients()
   const patient = merged.find((entry) => entry.id === id)
+  const displayPatient = useMemo(
+    () => (patient ? localizePatient(patient, locale) : patient),
+    [patient, locale],
+  )
 
-  if (!patient || !id) notFound()
+  if (!patient || !displayPatient || !id) notFound()
 
   const {
     hydrated,
@@ -97,7 +102,7 @@ export function PatientDetailClient() {
         {/* ── Main column ── */}
         <div className="min-w-0 flex-1 space-y-6 sm:space-y-8">
           <PatientSmartHeader
-            patient={patient}
+            patient={displayPatient}
             overrides={contactOverrides}
             totalSessionsDone={totalSessionsDone}
             planTarget={planTarget}
@@ -195,7 +200,7 @@ export function PatientDetailClient() {
           </section>
 
           <GeneralNotesCard
-            initialValue={contactOverrides.generalNotes ?? patient.generalNotes ?? ""}
+            initialValue={contactOverrides.generalNotes ?? displayPatient.generalNotes ?? ""}
             onSave={(v) =>
               saveContactOverrides({ ...contactOverrides, generalNotes: v })
             }
@@ -207,7 +212,7 @@ export function PatientDetailClient() {
           onCompleteSession={handleCompleteSession}
           onIssueInvoice={handleIssueInvoice}
           patientId={id}
-          patientName={patient.fullName}
+          patientName={displayPatient.fullName}
           documentRecords={documentRecords}
           onDeleteDocument={deleteDocumentRecord}
           lastAppointmentType={patientLastAppointmentType}

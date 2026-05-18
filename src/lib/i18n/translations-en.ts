@@ -533,6 +533,7 @@ export const EN_MESSAGES: Record<string, string> = {
   "patientChart.emailPh": "Email",
   "patientChart.addressPh": "Address",
   "patientChart.sessionStub": "Session {n} — {name}",
+  "patientChart.sessionCompleteTitle": "Session {n} of {total} — {type}",
   "patientChart.quickActionsAria": "Quick actions",
   "patientChart.completeSession": "Complete Session",
   "patientChart.completeSessionAria": "Complete current session",
