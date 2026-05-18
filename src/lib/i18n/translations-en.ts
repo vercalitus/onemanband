@@ -228,6 +228,9 @@ export const EN_MESSAGES: Record<string, string> = {
   "history.status.paid": "Paid",
   "history.status.void": "Void",
 
+  "finances.history.paidOn": "Paid {date}",
+  "finances.history.voidedOn": "Voided {date}",
+
   "mobile.clinicName": "Serene Spine Clinic",
   "mobile.clinicSubtitle": "Medical OS",
 

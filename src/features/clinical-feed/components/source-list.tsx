@@ -122,7 +122,7 @@ function SourceRow({
         onClick={onClick}
         aria-pressed={active}
         className={cn(
-          "group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors",
+          "group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-start transition-colors",
           active
             ? "bg-slate-900 text-white shadow-sm"
             : "text-slate-700 hover:bg-slate-50",

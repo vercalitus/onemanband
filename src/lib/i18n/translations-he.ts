@@ -211,6 +211,9 @@ export const HE_MESSAGES: Record<string, string> = {
   "history.status.paid": "שולם",
   "history.status.void": "בוטל",
 
+  "finances.history.paidOn": "שולם ב־{date}",
+  "finances.history.voidedOn": "בוטל ב־{date}",
+
   "metric.visits.value": "342",
   "metric.visits.delta": "+11%",
   "metric.capacity.value": "78%",

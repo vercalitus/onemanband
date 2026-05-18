@@ -129,7 +129,8 @@ export function HeaderActions() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={t("header.dialog.searchPlaceholder")}
-                  className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  dir="auto"
+                  className="min-w-0 flex-1 bg-transparent text-start text-sm text-slate-800 outline-none placeholder:text-slate-400"
                 />
                 <kbd className="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[10px] text-slate-400 sm:block">
                   ESC
@@ -137,19 +138,19 @@ export function HeaderActions() {
               </div>
               <div className="max-h-72 overflow-y-auto py-2">
                 {results.length === 0 ? (
-                  <p className="px-5 py-4 text-sm text-slate-400">{t("header.dialog.noResults")}</p>
+                  <p className="px-5 py-4 text-start text-sm text-slate-400">{t("header.dialog.noResults")}</p>
                 ) : (
                   results.map((r) => (
                     <Link
                       key={r.href + r.label}
                       href={r.href}
                       onClick={() => closeModal()}
-                      className="flex items-center gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-slate-50"
+                      className="flex items-center gap-3 px-5 py-2.5 text-start text-sm transition-colors hover:bg-slate-50"
                     >
                       <span className="w-20 shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-center text-[10px] font-medium text-slate-500">
                         {r.typeLabel}
                       </span>
-                      <span className="text-slate-800">{r.label}</span>
+                      <span className="min-w-0 flex-1 text-slate-800">{r.label}</span>
                     </Link>
                   ))
                 )}
@@ -161,7 +162,7 @@ export function HeaderActions() {
             <div className="flex flex-col gap-2 p-4 pt-5">
               <button
                 type="button"
-                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-sky-200 hover:bg-sky-50/50"
+                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-start transition-colors hover:border-sky-200 hover:bg-sky-50/50"
                 onClick={() => {
                   closeModal()
                   openGlobalAddPatient()
@@ -170,14 +171,14 @@ export function HeaderActions() {
                 <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
                   <UserPlus className="size-6 stroke-[1.6]" />
                 </span>
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1 text-start">
                   <span className="block text-base font-semibold text-slate-900">{t("header.add.patient.title")}</span>
                   <span className="mt-0.5 block text-sm text-slate-500">{t("header.add.patient.sub")}</span>
                 </span>
               </button>
               <button
                 type="button"
-                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-sky-200 hover:bg-sky-50/50"
+                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-start transition-colors hover:border-sky-200 hover:bg-sky-50/50"
                 onClick={() => {
                   closeModal()
                   openCreateAppointment()
@@ -186,14 +187,14 @@ export function HeaderActions() {
                 <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
                   <CalendarPlus className="size-6 stroke-[1.6]" />
                 </span>
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1 text-start">
                   <span className="block text-base font-semibold text-slate-900">{t("header.add.appointment.title")}</span>
                   <span className="mt-0.5 block text-sm text-slate-500">{t("header.add.appointment.sub")}</span>
                 </span>
               </button>
               <button
                 type="button"
-                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left transition-colors hover:border-sky-200 hover:bg-sky-50/50"
+                className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-start transition-colors hover:border-sky-200 hover:bg-sky-50/50"
                 onClick={() => {
                   closeModal()
                   openAddTask()
@@ -202,7 +203,7 @@ export function HeaderActions() {
                 <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
                   <ClipboardList className="size-6 stroke-[1.6]" />
                 </span>
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1 text-start">
                   <span className="block text-base font-semibold text-slate-900">{t("header.add.task.title")}</span>
                   <span className="mt-0.5 block text-sm text-slate-500">{t("header.add.task.sub")}</span>
                 </span>

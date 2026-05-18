@@ -255,7 +255,7 @@ export function PatientSmartHeader({
                   setEditingStatus(true)
                 }}
                 title={t("patientChart.editStatusTitle")}
-                className="text-left text-sm text-slate-600 underline-offset-2 hover:text-sky-700 hover:underline"
+                className="text-start text-sm text-slate-600 underline-offset-2 hover:text-sky-700 hover:underline"
               >
                 {clinicalStatus}
               </button>

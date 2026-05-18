@@ -1,29 +1,24 @@
+"use client"
+
 import { CheckCircle2, Slash } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { BalanceBadge } from "@/features/finances/components/balance-badge"
 import { PatientNameLink } from "@/features/finances/components/patient-name-link"
 import { cn } from "@/lib/utils"
 import type { BillingInvoice } from "@/types/domain"
 
-const TREATMENT_LABEL: Record<string, string> = {
-  first: "First Visit",
-  adjustments: "Adjustments",
-  kupa: "Kupa",
-}
-
-const DATE_FMT = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-})
-
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, localeTag: string): string {
   if (!value) return "—"
   try {
     const d = value.length === 10 ? new Date(`${value}T00:00:00`) : new Date(value)
-    return DATE_FMT.format(d)
+    return new Intl.DateTimeFormat(localeTag, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(d)
   } catch {
-    return value
+    return value ?? "—"
   }
 }
 
@@ -38,7 +33,16 @@ export function HistoryRow({
   invoice: BillingInvoice
   patientBalance: number
 }) {
+  const { t, localeTag } = useLocale()
   const isVoid = invoice.status === "void"
+  const treatmentKey = `billing.treatment.${invoice.treatmentType}`
+  const treatmentTranslated = t(treatmentKey)
+  const treatmentLabel =
+    treatmentTranslated === treatmentKey ? invoice.treatmentType : treatmentTranslated
+  const meta = isVoid
+    ? t("finances.history.voidedOn", { date: formatDate(invoice.issuedAt, localeTag) })
+    : t("finances.history.paidOn", { date: formatDate(invoice.paidAt, localeTag) })
+
   return (
     <div
       className={cn(
@@ -52,7 +56,7 @@ export function HistoryRow({
         aria-hidden
       />
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 text-start">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <PatientNameLink
             patientId={invoice.patientId}
@@ -63,12 +67,11 @@ export function HistoryRow({
           <BalanceBadge balance={patientBalance} />
         </div>
         <p className="mt-0.5 truncate text-xs text-slate-500">
-          {invoice.id} · {TREATMENT_LABEL[invoice.treatmentType]} ·{" "}
-          {isVoid ? `Voided ${formatDate(invoice.issuedAt)}` : `Paid ${formatDate(invoice.paidAt)}`}
+          {invoice.id} · {treatmentLabel} · {meta}
         </p>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 text-right">
+      <div className="flex shrink-0 items-center gap-2 text-end">
         <span
           className={cn(
             "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]",
@@ -80,7 +83,7 @@ export function HistoryRow({
           ) : (
             <CheckCircle2 className="size-3 stroke-[2.4]" aria-hidden />
           )}
-          {isVoid ? "Void" : "Paid"}
+          {isVoid ? t("history.status.void") : t("history.status.paid")}
         </span>
         <p
           className={cn(
