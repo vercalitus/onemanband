@@ -3,17 +3,20 @@ import { formatIls } from "@/lib/format-ils"
 
 const EN_TAG = "en-US"
 const HE_TAG = "he-IL"
+const AR_TAG = "ar"
 
 export function localeToBcp47(locale: Locale): string {
-  return locale === "he" ? HE_TAG : EN_TAG
+  if (locale === "he") return HE_TAG
+  if (locale === "ar") return AR_TAG
+  return EN_TAG
 }
 
 /**
- * Monetary display: Hebrew uses ₪ formatting (matches clinic pricing tooling);
+ * Monetary display: Hebrew and Arabic use ₪ formatting (matches clinic pricing);
  * English keeps legacy mock "$" shorthand for seeded demo rows.
  */
 export function formatMoney(value: number, locale: Locale): string {
-  if (locale === "he") return formatIls(value)
+  if (locale === "he" || locale === "ar") return formatIls(value)
   const sign = value < 0 ? "-" : ""
   const abs = Math.abs(value)
   const formatted = abs.toLocaleString(EN_TAG, { maximumFractionDigits: 0 })
@@ -40,6 +43,11 @@ export function formatVisitsTodayLabel(locale: Locale, count: number): string {
   if (locale === "he") {
     if (count === 1) return "ביקור אחד היום"
     return `${count} ביקורים היום`
+  }
+  if (locale === "ar") {
+    if (count === 1) return "زيارة واحدة اليوم"
+    if (count === 2) return "زيارتان اليوم"
+    return `${count} زيارات اليوم`
   }
   return count === 1 ? "1 visit today" : `${count} visits today`
 }

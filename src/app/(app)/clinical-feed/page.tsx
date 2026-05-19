@@ -15,7 +15,6 @@ import {
   elevatedCardBodyClass,
   elevatedCardClass,
 } from "@/lib/clinic-card-styles"
-import { localizeNewsArticle } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 
 export default function ClinicalFeedPage() {
@@ -37,16 +36,11 @@ export default function ClinicalFeedPage() {
     toggleSaved,
     isSaved,
     totalCount,
-  } = useClinicalFeed()
+  } = useClinicalFeed(locale)
 
   const [addOpen, setAddOpen] = useState(false)
 
   const selectedSource = selectedSourceId ? sources.find((s) => s.id === selectedSourceId) ?? null : null
-
-  const articlesForLocale = useMemo(
-    () => filteredArticles.map((a) => localizeNewsArticle(a, locale)),
-    [filteredArticles, locale],
-  )
 
   const headerTitle = showSavedOnly
     ? t("clinical.title.saved")
@@ -166,7 +160,7 @@ export default function ClinicalFeedPage() {
           </CardHeader>
 
           <CardContent className={cn(elevatedCardBodyClass, "bg-slate-50/60 py-6")}>
-            {articlesForLocale.length === 0 ? (
+            {filteredArticles.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
                 <p className="text-sm text-slate-500">{emptyMessage}</p>
                 {(query.trim() || selectedSourceId || showSavedOnly) && (
@@ -181,7 +175,7 @@ export default function ClinicalFeedPage() {
               </div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-2 sm:gap-7 xl:grid-cols-3 xl:gap-8">
-                {articlesForLocale.map((article) => (
+                {filteredArticles.map((article) => (
                   <FeedCard
                     key={article.id}
                     article={article}

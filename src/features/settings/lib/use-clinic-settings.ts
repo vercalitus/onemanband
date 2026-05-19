@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale } from "@/components/providers/locale-provider"
 import { createDefaultClinicSettings } from "@/lib/clinic-settings-defaults"
 import {
-  applyHebrewClinicOverlay,
-  invertHebrewClinicOverlay,
+  applyLocaleClinicOverlay,
+  invertLocaleClinicOverlay,
 } from "@/lib/i18n/localized-clinic-settings"
 import { readClinicSettings, writeClinicSettings } from "@/lib/clinic-settings-storage"
 import type { ClinicSettings } from "@/types/clinic-settings"
@@ -23,7 +23,7 @@ export function useClinicSettings() {
 
   useEffect(() => {
     const raw = readClinicSettings()
-    const view = locale === "he" ? applyHebrewClinicOverlay(raw) : raw
+    const view = applyLocaleClinicOverlay(raw, locale)
     setSettings(view)
     setBaseline(view)
     setHydrated(true)
@@ -35,7 +35,7 @@ export function useClinicSettings() {
   }, [settings, baseline])
 
   const save = useCallback(() => {
-    const toStore = locale === "he" ? invertHebrewClinicOverlay(settings) : settings
+    const toStore = invertLocaleClinicOverlay(settings, locale)
     writeClinicSettings(toStore)
     setBaseline(settings)
   }, [settings, locale])

@@ -36,8 +36,33 @@ const DEFAULT_CLINICAL_EN =
 const DEFAULT_CLINICAL_HE =
   "שיפור הדרגתי בטווח התנועה הצווארית; דגש על יציבה במקום העבודה"
 
+const DEFAULT_CLINICAL_AR =
+  "تحسّن تدريجي في مدى حركة الرقبة؛ التركيز على وضعية الجسم في مكان العمل"
+
 const LEGACY_CLINICAL_STATUS_HE =
   "שיפור הדרגתי בטווח תנועה צווארי, דגש על יציבה בעבודה"
+
+function defaultClinicalForLocale(locale: Locale): string {
+  if (locale === "he") return DEFAULT_CLINICAL_HE
+  if (locale === "ar") return DEFAULT_CLINICAL_AR
+  return DEFAULT_CLINICAL_EN
+}
+
+/** Map stored defaults across locales without persisting until the user edits. */
+function normalizeClinicalRead(stored: string | null | undefined, locale: Locale): string {
+  const t = (stored ?? "").trim()
+  const defaults = [DEFAULT_CLINICAL_EN, DEFAULT_CLINICAL_HE, DEFAULT_CLINICAL_AR, LEGACY_CLINICAL_STATUS_HE.trim()]
+  if (t === "" || defaults.includes(t)) {
+    return defaultClinicalForLocale(locale)
+  }
+  if (locale === "he" && t === DEFAULT_CLINICAL_EN) return DEFAULT_CLINICAL_HE
+  if (locale === "he" && t === DEFAULT_CLINICAL_AR) return DEFAULT_CLINICAL_HE
+  if (locale === "ar" && t === DEFAULT_CLINICAL_EN) return DEFAULT_CLINICAL_AR
+  if (locale === "ar" && t === DEFAULT_CLINICAL_HE) return DEFAULT_CLINICAL_AR
+  if (locale === "en" && t === DEFAULT_CLINICAL_HE) return DEFAULT_CLINICAL_EN
+  if (locale === "en" && t === DEFAULT_CLINICAL_AR) return DEFAULT_CLINICAL_EN
+  return stored ?? defaultClinicalForLocale(locale)
+}
 
 function storageKey(patientId: string, field: string) {
   return `patient.${patientId}.${field}`
@@ -57,17 +82,6 @@ function writeField(patientId: string, field: string, value: unknown) {
   try {
     window.localStorage.setItem(storageKey(patientId, field), JSON.stringify(value))
   } catch {}
-}
-
-/** Map stored defaults across locales without persisting until the user edits. */
-function normalizeClinicalRead(stored: string | null | undefined, locale: Locale): string {
-  const t = (stored ?? "").trim()
-  if (t === "" || t === LEGACY_CLINICAL_STATUS_HE.trim()) {
-    return locale === "he" ? DEFAULT_CLINICAL_HE : DEFAULT_CLINICAL_EN
-  }
-  if (locale === "he" && t === DEFAULT_CLINICAL_EN) return DEFAULT_CLINICAL_HE
-  if (locale === "en" && t === DEFAULT_CLINICAL_HE) return DEFAULT_CLINICAL_EN
-  return stored ?? (locale === "he" ? DEFAULT_CLINICAL_HE : DEFAULT_CLINICAL_EN)
 }
 
 export function usePatientCockpit(patientId: string) {

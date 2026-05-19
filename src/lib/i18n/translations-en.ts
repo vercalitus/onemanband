@@ -4,6 +4,7 @@ export const EN_MESSAGES: Record<string, string> = {
   /** Locale switcher */
   "locale.english": "English",
   "locale.hebrew": "עברית",
+  "locale.arabic": "Arabic",
   "locale.menuLabel": "Language",
   "locale.active": "Current language",
 
@@ -577,4 +578,19 @@ export const EN_MESSAGES: Record<string, string> = {
   "patientChart.docPreview.body":
     "Connect cloud storage (Supabase Storage) to enable inline file previews.",
   "patientChart.docPreview.storedAt": "The document is stored at:",
+
+  /** Shared chrome */
+  "common.closePanel": "Close panel",
+  "common.sidePanelDescription": "Side panel",
+
+  /** Route error fallback (client boundary) */
+  "error.title": "Something went wrong",
+  "error.devFallback":
+    "Unknown error (check the terminal where `next dev` is running).",
+  "error.prodBody": "Please try again or go back to the dashboard.",
+  "error.digest": "Error ID: {digest}",
+  "error.tryAgain": "Try again",
+  "error.backDashboard": "Back to dashboard",
+  "error.devTip":
+    "Tip: the real stack trace appears in the terminal running next dev or next start, not only in the browser.",
 }

@@ -1,6 +1,9 @@
 /** Hebrew overrides — merges over English catalogue in dictionary.ts */
 
 export const HE_MESSAGES: Record<string, string> = {
+  "locale.english": "אנגלית",
+  "locale.hebrew": "עברית",
+  "locale.arabic": "ערבית",
   "locale.menuLabel": "שפה",
   "locale.active": "שפה נוכחית",
 
@@ -36,7 +39,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "mobile.menuTitle": "המרפאה שלך",
 
   "metric.visits.label": "ביקורים חודשיים",
-  "metric.capacity.label": "ניצול תסקיר טיפול",
+  "metric.capacity.label": "ניצול קיבולת טיפול",
   "metric.capacity.delta": "+4 נ.ז. מהחודש שעבר",
   "metric.revenue.label": "הכנסה חודשית",
   "metric.revenue.value": "₪275,000",
@@ -65,7 +68,7 @@ export const HE_MESSAGES: Record<string, string> = {
     "השבועות האמצעיים בשבוע כמעט מלאים; בימי שני השחרור מאפשר מקום למעקב תזכורות או מנהליות.",
   "pulse.obs.2.title": "חוסרים בתוכניות טיפול",
   "pulse.obs.2.body":
-    "עד לימים אלה חולים בשתיים עם תוכניות פתוחות לא התייצבו מעל 21 יום — כדאי יצירת קשר מהיר.",
+    "נכון לעכשיו, שני מטופלים עם תוכניות טיפול פתוחות לא הגיעו מעל 21 יום — כדאי ליצור קשר מהיר.",
   "pulse.obs.3.title": "גבייה (חודש הנוכחי)",
   "pulse.obs.3.body":
     "יתרות לגבייה השתפרו לעומת החודש שעבר; חשבונית אחת מול גורם משלם עדיין דורשת מעקב לפני סוף החודש.",
@@ -150,7 +153,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "patients.relative.yearsAgo": "לפני {n} שנים",
   "patients.relative.oneYearAgo": "לפני שנה",
   "patients.filter.active": "פעיל (ביקור עתידי)",
-  "patients.filter.relevant": "רלוונטי יותר",
+  "patients.filter.relevant": "עדיין רלוונטי",
   "patients.filter.frozen": "מוקפא",
   "patients.filter.past": "בעבר",
 
@@ -196,8 +199,8 @@ export const HE_MESSAGES: Record<string, string> = {
   "finances.badge.settled": "סגור",
 
   "finances.pending.suggested": "הצעה",
-  "finances.pending.generate": "ליצור חשבונית",
-  "finances.pending.issued": "הוצא",
+  "finances.pending.generate": "הפקת חשבונית",
+  "finances.pending.issued": "הופקה",
   "finances.pending.overdueLabel": "באיחור",
   "finances.pending.pendingLabel": "בהמתנה",
   "finances.pending.pastDue": "יעד חלף",
@@ -267,7 +270,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "clinical.empty.savedIntro":
     "טרם שמרת כתבות — לחץ על סימניית הסימנייה בכרטיס כדי לשמור.",
   "clinical.empty.savedNoMatchBookmarks": "לא נמצאו סימניות מתאימות ל־\"{q}\".",
-  "clinical.empty.noQueryResults": "לא נמצא תוצאות עבור \"{q}\".",
+  "clinical.empty.noQueryResults": "לא נמצאו תוצאות עבור \"{q}\".",
   "clinical.empty.savedFiltered": "אין כתבות שמורות בהתאם למסננים.",
   "clinical.empty.trySource": "אין כתבות להצגה — נסה מקור אחר.",
   "clinical.clearFilters": "ניקוי מסננים",
@@ -422,7 +425,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "settings.integrations.calendarDesc":
     "סנכרון ליומן אישי כדי שהחוסמים יעברו אתכם (מצב דמו בלבד).",
   "settings.integrations.googleTitle": "יומן Google",
-  "settings.integrations.googleSub": "ייצוג תורים כ חסימות \"עסוק\"",
+  "settings.integrations.googleSub": "סימון זמני תור כ־\"עסוק\" ביומן",
   "settings.integrations.googleAria": "יומן Google",
   "settings.integrations.outlookTitle": "Outlook",
   "settings.integrations.outlookSub": "Microsoft 365 / Outlook.com",
@@ -454,7 +457,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "addPatient.optionalVisitHint": "אופציונלי: תאריך לביקור ראשון למטה",
   "addPatient.errName": "שם מלא נדרש.",
   "addPatient.errEmail": "הזינו דואר תקף או השאירו ריק.",
-  "addPatient.section.personal": "אישיות ופרופיל",
+  "addPatient.section.personal": "פרטים אישיים",
   "addPatient.section.personalHint": "מה שחייב בקובץ לפני המפגש הראשון.",
   "addPatient.label.fullName": "שם מלא",
   "addPatient.label.phone": "טלפון",
@@ -578,4 +581,16 @@ export const HE_MESSAGES: Record<string, string> = {
   "patientChart.docPreview.body":
     "חיבור לאחסון בענן (למשל Supabase Storage) יאפשר תצוגה מובנית של הקבצים.",
   "patientChart.docPreview.storedAt": "המסמך נשמר בנתיב:",
+
+  "common.closePanel": "סגירת לוח",
+  "common.sidePanelDescription": "לוח צד",
+
+  "error.title": "משהו השתבש",
+  "error.devFallback": "שגיאה לא ידועה (בדקו את המסוף שבו רצה `next dev`).",
+  "error.prodBody": "נסו שוב או חזרו ללוח הבקרה.",
+  "error.digest": "מזהה שגיאה: {digest}",
+  "error.tryAgain": "נסו שוב",
+  "error.backDashboard": "חזרה ללוח הבקרה",
+  "error.devTip":
+    "טיפ: המחסנית המלאה מופיעה בטרמינל שבו מריצים את השרת (next dev או next start), לא רק בדפדפן.",
 }

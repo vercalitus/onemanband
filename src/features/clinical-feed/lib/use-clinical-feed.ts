@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { localizeClinicalSource, localizeNewsArticle } from "@/lib/i18n/localized-seed"
+import type { Locale } from "@/lib/i18n/types"
 import { clinicalSources as defaultSources, newsFeed } from "@/lib/mock-data"
 import type { ClinicalSource, NewsArticle } from "@/types/domain"
 
@@ -22,7 +24,7 @@ const STORAGE_KEY_SAVED = "clinical-feed.saved-ids.v1"
  */
 export type ClinicalFeedFilter = string | null
 
-export function useClinicalFeed() {
+export function useClinicalFeed(locale: Locale) {
   const [customSources, setCustomSources] = useState<ClinicalSource[]>([])
   const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set())
   /** When true, feed shows bookmarked articles only (ignores sidebar source picker). */
@@ -63,9 +65,15 @@ export function useClinicalFeed() {
     } catch {}
   }, [savedIds])
 
+  const articlesForLocale = useMemo(
+    () => newsFeed.map((a) => localizeNewsArticle(a, locale)),
+    [locale],
+  )
+
   const sources = useMemo<ClinicalSource[]>(
-    () => [...defaultSources, ...customSources],
-    [customSources],
+    () =>
+      [...defaultSources.map((s) => localizeClinicalSource(s, locale)), ...customSources],
+    [customSources, locale],
   )
 
   /** Counts per-source so the sidebar can show a small number next to each. */
@@ -77,7 +85,7 @@ export function useClinicalFeed() {
 
   const filteredArticles = useMemo<NewsArticle[]>(() => {
     const q = query.trim().toLowerCase()
-    return newsFeed.filter((a) => {
+    return articlesForLocale.filter((a) => {
       if (showSavedOnly && !savedIds.has(a.id)) return false
       if (!showSavedOnly && selectedSourceId && a.sourceId !== selectedSourceId) return false
       if (!q) return true
@@ -88,7 +96,7 @@ export function useClinicalFeed() {
         a.keyword.toLowerCase().includes(q)
       )
     })
-  }, [query, selectedSourceId, showSavedOnly, savedIds])
+  }, [articlesForLocale, query, selectedSourceId, showSavedOnly, savedIds])
 
   const savedCount = savedIds.size
 

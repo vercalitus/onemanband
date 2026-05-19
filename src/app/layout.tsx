@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Assistant, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Assistant, Geist_Mono, IBM_Plex_Sans_Arabic, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
 
@@ -13,14 +13,21 @@ const assistant = Assistant({
   subsets: ["latin", "hebrew"],
 });
 
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
+});
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Clinic Management & EMR",
-  description: "Secure clinic operations, patient records, scheduling, and billing workspace.",
+  title: "ניהול מרפאה ותיעוד רפואי · Clinic EMR",
+  description:
+    "מערכת ניהול מרפאה: תיקי מטופלים, יומן, גבייה ועוד. Secure clinic workspace for records, scheduling, and billing.",
 }
 
 export const viewport = {
@@ -37,7 +44,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${plusJakartaSans.variable} ${assistant.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plusJakartaSans.variable} ${assistant.variable} ${ibmPlexSansArabic.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground">
         <AppProviders>{children}</AppProviders>

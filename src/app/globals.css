@@ -140,6 +140,18 @@
   html[lang="he"] .font-mono {
     font-family: var(--font-geist-mono), ui-monospace, monospace;
   }
+
+  html[lang="ar"] body,
+  html[lang="ar"] {
+    font-family: var(--font-arabic), var(--font-sans), system-ui, sans-serif;
+  }
+
+  html[lang="ar"] code,
+  html[lang="ar"] kbd,
+  html[lang="ar"] pre,
+  html[lang="ar"] .font-mono {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+  }
   body {
     @apply bg-background text-foreground;
     background-color: oklch(0.978 0.006 230);

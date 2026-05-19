@@ -1,7 +1,19 @@
 import type { TranslateFn } from "@/lib/i18n/dictionary"
 import type { Locale } from "@/lib/i18n/types"
+import { isLocalizedSeedLocale } from "@/lib/i18n/locale-utils"
+import {
+  AR_CLINICAL_SOURCE_DISPLAY,
+  AR_DOC,
+  AR_FIN,
+  AR_NEWS,
+  AR_PATIENT,
+  AR_SCHEDULE,
+  AR_TREATMENT,
+  AR_WAIT,
+} from "@/lib/i18n/localized-seed-ar"
 import type {
   AppointmentType,
+  ClinicalSource,
   DocumentRecord,
   FinanceRecord,
   NewsArticle,
@@ -12,6 +24,28 @@ import type {
   TreatmentRecord,
 } from "@/types/domain"
 import type { WaitlistEntry } from "@/lib/mock-data"
+
+/** Sidebar + article chips: Hebrew display names while keeping recognizable international brands */
+const HE_CLINICAL_SOURCE_DISPLAY: Record<string, string> = {
+  "src-pubmed": "PubMed",
+  "src-cochrane": "ספריית קוקרן",
+  "src-jospt": "JOSPT",
+  "src-bjsm": "כתב עת בריטי לרפואת ספורט",
+  "src-ops": "סיכום תפעול מרפאה",
+}
+
+function clinicalSourceDisplay(locale: Locale, sourceId: string): string | undefined {
+  if (locale === "he") return HE_CLINICAL_SOURCE_DISPLAY[sourceId]
+  if (locale === "ar") return AR_CLINICAL_SOURCE_DISPLAY[sourceId]
+  return undefined
+}
+
+export function localizeClinicalSource(source: ClinicalSource, locale: Locale): ClinicalSource {
+  if (!isLocalizedSeedLocale(locale)) return source
+  if (source.custom) return source
+  const name = clinicalSourceDisplay(locale, source.id)
+  return name ? { ...source, name } : source
+}
 
 type SchedPatch = Partial<Pick<ScheduleItem, "patientName" | "treatment" | "dayLabel">>
 
@@ -270,32 +304,37 @@ const HE_WAIT: Record<
 }
 
 export function localizeScheduleRow(item: ScheduleItem, locale: Locale): ScheduleItem {
-  if (locale !== "he") return item
-  const o = HE_SCHEDULE[item.id]
+  if (!isLocalizedSeedLocale(locale)) return item
+  const map = locale === "he" ? HE_SCHEDULE : AR_SCHEDULE
+  const o = map[item.id]
   return o ? { ...item, ...o } : item
 }
 
 export function localizePatient(row: PatientSummary, locale: Locale): PatientSummary {
-  if (locale !== "he") return row
-  const o = HE_PATIENT[row.id]
+  if (!isLocalizedSeedLocale(locale)) return row
+  const map = locale === "he" ? HE_PATIENT : AR_PATIENT
+  const o = map[row.id]
   return o ? { ...row, ...o } : row
 }
 
 export function localizeTreatmentRecord(row: TreatmentRecord, locale: Locale): TreatmentRecord {
-  if (locale !== "he") return row
-  const o = HE_TREATMENT[row.id]
+  if (!isLocalizedSeedLocale(locale)) return row
+  const map = locale === "he" ? HE_TREATMENT : AR_TREATMENT
+  const o = map[row.id]
   return o ? { ...row, ...o } : row
 }
 
 export function localizeDocumentRecord(row: DocumentRecord, locale: Locale): DocumentRecord {
-  if (locale !== "he") return row
-  const o = HE_DOC[row.id]
+  if (!isLocalizedSeedLocale(locale)) return row
+  const map = locale === "he" ? HE_DOC : AR_DOC
+  const o = map[row.id]
   return o ? { ...row, ...o } : row
 }
 
 export function localizeFinanceRecord(row: FinanceRecord, locale: Locale): FinanceRecord {
-  if (locale !== "he") return row
-  const o = HE_FIN[row.id]
+  if (!isLocalizedSeedLocale(locale)) return row
+  const map = locale === "he" ? HE_FIN : AR_FIN
+  const o = map[row.id]
   return o ? { ...row, ...o } : row
 }
 
@@ -309,14 +348,14 @@ const SESSION_TYPE_LABEL_TO_KEY: Record<string, AppointmentType> = {
 
 /**
  * Completed sessions persist their title string; remap saved English headings
- * to Hebrew using the billing type labels when locale is Hebrew.
+ * to the active locale using billing type labels.
  */
 export function localizeCompletedSessionTitle(
   title: string,
   locale: Locale,
   t: TranslateFn,
 ): string {
-  if (locale !== "he") return title
+  if (!isLocalizedSeedLocale(locale)) return title
   const m = COMPLETED_SESSION_TITLE_EN.exec(title.trim())
   if (!m) return title
   const n = Number(m[1])
@@ -328,19 +367,22 @@ export function localizeCompletedSessionTitle(
 }
 
 export function localizeNewsArticle(row: NewsArticle, locale: Locale): NewsArticle {
-  if (locale !== "he") return row
-  const o = HE_NEWS[row.id]
-  return o ? { ...row, ...o } : row
+  if (!isLocalizedSeedLocale(locale)) return row
+  const newsMap = locale === "he" ? HE_NEWS : AR_NEWS
+  const merged = newsMap[row.id] ? { ...row, ...newsMap[row.id] } : { ...row }
+  const src = clinicalSourceDisplay(locale, row.sourceId) ?? merged.source
+  return { ...merged, source: src }
 }
 
 export function localizeWaitlistEntry(row: WaitlistEntry, locale: Locale): WaitlistEntry {
-  if (locale !== "he") return row
-  const o = HE_WAIT[row.id]
+  if (!isLocalizedSeedLocale(locale)) return row
+  const map = locale === "he" ? HE_WAIT : AR_WAIT
+  const o = map[row.id]
   return o ? { ...row, ...o } : row
 }
 
 export function localizeTodoTitle(row: TodoItem, locale: Locale, tr: (k: string) => string): TodoItem {
-  if (locale !== "he") return row
+  if (!isLocalizedSeedLocale(locale)) return row
   const key = `todo.${row.id}`
   const next = tr(key)
   return next === key ? row : { ...row, title: next }

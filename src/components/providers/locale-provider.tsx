@@ -11,6 +11,12 @@ import {
 } from "react"
 
 import { createTranslator, type TranslateFn } from "@/lib/i18n/dictionary"
+import {
+  isRtlLocale,
+  localeToDirection,
+  localeToHtmlLang,
+  parseStoredLocale,
+} from "@/lib/i18n/locale-utils"
 import type { Direction, Locale } from "@/lib/i18n/types"
 import { LOCALE_STORAGE_KEY } from "@/lib/i18n/types"
 import {
@@ -46,8 +52,8 @@ export function useLocale(): LocaleContextValue {
 }
 
 /**
- * Persisted bilingual shell: drives `lang`/`dir`, Hebrew uses Assistant from CSS,
- * subtle opacity easing when switching locales.
+ * Persisted trilingual shell: drives `lang`/`dir`, locale fonts from CSS,
+ * subtle opacity easing when switching languages.
  */
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false)
@@ -57,17 +63,17 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true)
     try {
-      const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-      if (saved === "he" || saved === "en") setLocaleState(saved)
+      const saved = parseStoredLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY))
+      if (saved) setLocaleState(saved)
     } catch {
       /**/
     }
   }, [])
 
   const persistDom = useCallback((next: Locale) => {
-    const dir: Direction = next === "he" ? "rtl" : "ltr"
+    const dir = localeToDirection(next)
     const root = document.documentElement
-    root.lang = next === "he" ? "he" : "en"
+    root.lang = localeToHtmlLang(next)
     root.dir = dir
     root.dataset.locale = next
     document.body.dataset.locale = next
@@ -99,6 +105,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const t = useMemo(() => createTranslator(locale), [locale])
   const localeTag = useMemo(() => localeToBcp47(locale), [locale])
+  const dir = localeToDirection(locale)
+  const isRtl = isRtlLocale(locale)
 
   const formatMoney = useCallback((n: number) => formatMoneyFmt(n, locale), [locale])
 
@@ -119,8 +127,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const value = useMemo<LocaleContextValue>(
     () => ({
       locale,
-      dir: locale === "he" ? "rtl" : "ltr",
-      isRtl: locale === "he",
+      dir,
+      isRtl,
       localeTag,
       setLocale,
       t,
@@ -132,6 +140,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     }),
     [
       locale,
+      dir,
+      isRtl,
       localeTag,
       setLocale,
       t,

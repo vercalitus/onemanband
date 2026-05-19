@@ -41,7 +41,7 @@ export function AppSidebar() {
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-[0.01em] text-white">
-            {profile.clinicName || "Your clinic"}
+            {profile.clinicName || t("mobile.menuTitle")}
           </p>
           <p className="text-xs text-sky-300/90">{t("nav.tagline")}</p>
         </div>

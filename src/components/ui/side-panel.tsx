@@ -4,6 +4,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { XIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +33,7 @@ export function SidePanel({
   side?: "left" | "right"
   widthClassName?: string
 }) {
+  const { t } = useLocale()
   const isRight = side === "right"
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -67,7 +69,7 @@ export function SidePanel({
                   </DialogPrimitive.Description>
                 ) : (
                   <DialogPrimitive.Description className="sr-only">
-                    Side panel
+                    {t("common.sidePanelDescription")}
                   </DialogPrimitive.Description>
                 )}
               </div>
@@ -78,7 +80,7 @@ export function SidePanel({
                     variant="ghost"
                     size="icon-sm"
                     className="shrink-0 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                    aria-label="Close panel"
+                    aria-label={t("common.closePanel")}
                   />
                 }
               >

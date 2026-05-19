@@ -2,6 +2,8 @@
 
 import { useEffect } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
+
 export default function AppRouteError({
   error,
   reset,
@@ -9,6 +11,8 @@ export default function AppRouteError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const { t } = useLocale()
+
   useEffect(() => {
     console.error("[app error]", error)
   }, [error])
@@ -17,14 +21,14 @@ export default function AppRouteError({
 
   return (
     <div className="mx-auto flex min-h-[50vh] max-w-lg flex-col justify-center gap-4 px-6 py-16">
-      <h1 className="text-xl font-semibold text-slate-900">Something went wrong</h1>
+      <h1 className="text-xl font-semibold text-slate-900">{t("error.title")}</h1>
       <p className="text-sm text-slate-600">
         {isDev
-          ? error.message || "Unknown error (check the terminal where `next dev` is running)."
-          : "Please try again or go back to the dashboard."}
+          ? error.message || t("error.devFallback")
+          : t("error.prodBody")}
       </p>
       {error.digest ? (
-        <p className="font-mono text-xs text-slate-400">Error ID: {error.digest}</p>
+        <p className="font-mono text-xs text-slate-400">{t("error.digest", { digest: error.digest })}</p>
       ) : null}
       <div className="flex flex-wrap gap-3">
         <button
@@ -32,21 +36,16 @@ export default function AppRouteError({
           onClick={() => reset()}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800"
         >
-          Try again
+          {t("error.tryAgain")}
         </button>
         <a
           href="/dashboard"
           className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
         >
-          Back to dashboard
+          {t("error.backDashboard")}
         </a>
       </div>
-      {isDev ? (
-        <p className="text-xs text-slate-500">
-          Tip: the real stack trace appears in the terminal running <code className="rounded bg-slate-100 px-1">next dev</code> or{" "}
-          <code className="rounded bg-slate-100 px-1">next start</code>, not only in the browser.
-        </p>
-      ) : null}
+      {isDev ? <p className="text-xs text-slate-500">{t("error.devTip")}</p> : null}
     </div>
   )
 }
