@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OneManBand
 
-## Getting Started
+Single-provider chiropractic clinic workspace — patient records, scheduling, billing, and practice settings. Trilingual UI (English, Hebrew, Arabic) with RTL support.
 
-First, run the development server:
+**Live:** https://onemanband.vercel.app/
+
+## Features
+
+- **Dashboard** — today's schedule, tasks, clinic pulse metrics
+- **Patients** — CRM, treatment timeline, documents, session notes
+- **Calendar** — week/month views, waitlist, 5-minute appointment grid
+- **Billing** — invoices, balances, revenue insights (ILS)
+- **Clinical Feed** — curated clinical headlines and sources
+- **Settings** — practice profile, hours, treatment types, integration placeholders
+
+## Stack
+
+Next.js 15 · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · Supabase (schema ready; app currently uses mock data)
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Optional: copy `.env.example` to `.env.local` and add Supabase keys when working on backend integration.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Other commands
 
-## Learn More
+```bash
+npm run dev:3003       # Dev on port 3003
+npm run dev:fresh      # Clean cache + dev (helps on Windows)
+npm run build          # Production build
+npm run lint           # ESLint
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/app/(app)/     # Routes (dashboard, patients, calendar, …)
+src/features/      # Domain modules (components + hooks)
+src/components/    # Shared layout, providers, UI primitives
+src/lib/           # Mock data, i18n, utilities, Supabase clients
+src/types/         # Domain and settings types
+supabase/          # Postgres schema, migrations, seed
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## For AI agents
 
-## Deploy on Vercel
+See **[AGENTS.md](./AGENTS.md)** for architecture, data-layer status, domain rules, i18n, deploy workflow, and conventions. That file is the canonical onboarding doc for coding agents.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Pushes to `main` deploy automatically to Vercel. Manual CLI deploy:
+
+```bash
+npm run deploy:prod
+```
