@@ -1,3 +1,4 @@
+import { formatIls } from "@/lib/format-ils"
 import type {
   BillingInvoice,
   ProjectedCalendarVisit,
@@ -6,14 +7,12 @@ import type {
 } from "@/types/domain"
 
 /**
- * Format a number as the clinic's display currency. Centralised so KPI cards,
- * invoice rows, and insight charts all show the same shape ("$120" / "$1,240").
+ * Format a number as the clinic's display currency (Israeli shekel).
+ * Centralised so KPI cards, invoice rows, and insight charts all show the
+ * same shape ("₪120" / "₪1,240").
  */
 export function formatCurrency(value: number): string {
-  const sign = value < 0 ? "-" : ""
-  const abs = Math.abs(value)
-  const formatted = abs.toLocaleString(undefined, { maximumFractionDigits: 0 })
-  return `${sign}$${formatted}`
+  return formatIls(value)
 }
 
 /**

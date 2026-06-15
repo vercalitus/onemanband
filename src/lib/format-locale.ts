@@ -12,18 +12,14 @@ export function localeToBcp47(locale: Locale): string {
 }
 
 /**
- * Monetary display: Hebrew and Arabic use ₪ formatting (matches clinic pricing);
- * English keeps legacy mock "$" shorthand for seeded demo rows.
+ * Monetary display: the clinic operates in Israeli shekels, so every locale
+ * renders ₪ (matches clinic pricing). Locale-independent by design.
  */
-export function formatMoney(value: number, locale: Locale): string {
-  if (locale === "he" || locale === "ar") return formatIls(value)
-  const sign = value < 0 ? "-" : ""
-  const abs = Math.abs(value)
-  const formatted = abs.toLocaleString(EN_TAG, { maximumFractionDigits: 0 })
-  return `${sign}$${formatted}`
+export function formatMoney(value: number): string {
+  return formatIls(value)
 }
 
-/** Parse mock balance strings such as "$120", "$460", "$0". */
+/** Parse mock balance strings such as "₪120", "₪460", "₪0". */
 export function parseMockBalanceToNumber(raw: string): number {
   const n = Number.parseFloat(raw.replace(/[^0-9.-]/g, ""))
   return Number.isFinite(n) ? n : 0

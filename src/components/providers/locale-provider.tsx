@@ -108,7 +108,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const dir = localeToDirection(locale)
   const isRtl = isRtlLocale(locale)
 
-  const formatMoney = useCallback((n: number) => formatMoneyFmt(n, locale), [locale])
+  const formatMoney = useCallback((n: number) => formatMoneyFmt(n), [])
 
   const formatBalanceDisplay = useCallback(
     (raw: string) => formatMoney(parseMockBalanceToNumber(raw)),

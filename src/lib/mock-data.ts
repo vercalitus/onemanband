@@ -19,8 +19,8 @@ export const dashboardMetrics: PulseMetric[] = [
     delta: "+4 pp MoM",
     trend: "up",
   },
-  { id: "revenue", label: "Monthly Revenue", value: "$74.2k", delta: "+9%", trend: "up" },
-  { id: "debt", label: "Open Debt (month)", value: "$8.9k", delta: "-6%", trend: "down" },
+  { id: "revenue", label: "Monthly Revenue", value: "₪74.2k", delta: "+9%", trend: "up" },
+  { id: "debt", label: "Open Debt (month)", value: "₪8.9k", delta: "-6%", trend: "down" },
 ]
 
 /**
@@ -334,7 +334,7 @@ export const patients: PatientSummary[] = [
     email: "maya.green@example.com",
     address: "14 Sycamore Lane, Tel Aviv",
     lastVisit: "2026-04-02",
-    balance: "$120",
+    balance: "₪120",
     tags: ["Cervical Spine", "Insurance"],
     medicalHistorySummary:
       "Recurring cervical pain after sustained remote-work strain, presenting primarily as right-sided neck and upper trapezius tension with referral toward the suboccipital region. Prior imaging (cervical X-Ray, Apr 2026) showed mild C5-C6 disc narrowing without acute findings. No allergies reported. Patient is otherwise active, with no history of cardiovascular or systemic conditions, and responds well to manual mobilization combined with home mobility drills.",
@@ -349,7 +349,7 @@ export const patients: PatientSummary[] = [
     email: "noah.stone@example.com",
     address: "38 HaYarkon St, Tel Aviv",
     lastVisit: "2026-03-11",
-    balance: "$460",
+    balance: "₪460",
     tags: ["Debt Watch", "Lumbar"],
     medicalHistorySummary: "Intermittent lumbar pain with prior MRI on file. Follow-up paused due to travel.",
     generalNotes: "Resume care plan once insurance approval clears.",
@@ -362,7 +362,7 @@ export const patients: PatientSummary[] = [
     email: "ava.hart@example.com",
     address: "7 Dizengoff Circle, Tel Aviv",
     lastVisit: "2025-12-18",
-    balance: "$0",
+    balance: "₪0",
     tags: ["Discharged"],
     medicalHistorySummary: "Completed six-session treatment plan with improved range of motion.",
     generalNotes: "Archive after final document retention review.",
@@ -375,7 +375,7 @@ export const patients: PatientSummary[] = [
     email: "liam.carter@example.com",
     address: "22 Ben Yehuda St, Haifa",
     lastVisit: "2026-04-01",
-    balance: "$180",
+    balance: "₪180",
     tags: ["MRI", "Follow-up"],
     medicalHistorySummary: "Recent MRI review requested for thoracic discomfort with posture-related aggravation.",
     generalNotes: "Likes concise summaries after visits and midday scheduling windows.",
@@ -388,7 +388,7 @@ export const patients: PatientSummary[] = [
     email: "sofia.reed@example.com",
     address: "55 Rothschild Blvd, Tel Aviv",
     lastVisit: "2026-03-29",
-    balance: "$90",
+    balance: "₪90",
     tags: ["Pelvic Alignment"],
     medicalHistorySummary: "Ongoing pelvic alignment treatment plan with strong adherence to home exercises.",
     generalNotes: "Reminder preference is email first, then SMS fallback.",
@@ -401,7 +401,7 @@ export const patients: PatientSummary[] = [
     email: "ethan.blake@example.com",
     address: "3 Allenby St, Jerusalem",
     lastVisit: "2026-03-03",
-    balance: "$320",
+    balance: "₪320",
     tags: ["Rehab", "Debt Watch"],
     medicalHistorySummary: "Paused rehabilitation checkpoint sequence while travel schedule is unstable.",
     generalNotes: "Re-engage when availability stabilizes; prefers WhatsApp check-ins.",
@@ -488,7 +488,7 @@ export const financesByPatient: Record<string, FinanceRecord[]> = {
       id: "fin-001",
       issuedAt: "2026-04-02",
       description: "Visit invoice INV-2402",
-      amount: "$120",
+      amount: "₪120",
       invoiceStatus: "issued",
       paymentStatus: "pending",
     },
@@ -498,7 +498,7 @@ export const financesByPatient: Record<string, FinanceRecord[]> = {
       id: "fin-002",
       issuedAt: "2026-03-11",
       description: "Care package INV-2390",
-      amount: "$460",
+      amount: "₪460",
       invoiceStatus: "overdue",
       paymentStatus: "partially_paid",
     },
@@ -508,7 +508,7 @@ export const financesByPatient: Record<string, FinanceRecord[]> = {
       id: "fin-003",
       issuedAt: "2025-12-18",
       description: "Final consultation INV-2281",
-      amount: "$0",
+      amount: "₪0",
       invoiceStatus: "paid",
       paymentStatus: "paid",
     },
@@ -616,7 +616,7 @@ export const newsFeed: NewsArticle[] = [
 ]
 
 export const debtorSnapshot = patients
-  .filter((patient) => patient.balance !== "$0")
+  .filter((patient) => patient.balance !== "₪0")
   .map((patient) => ({
     id: patient.id,
     name: patient.fullName,
@@ -626,9 +626,9 @@ export const debtorSnapshot = patients
   }))
 
 export const invoiceArchive = [
-  { id: "INV-2402", patient: "Maya Green", status: "issued", amount: "$120", provider: "Morning" },
-  { id: "INV-2390", patient: "Noah Stone", status: "overdue", amount: "$460", provider: "Invoice4U" },
-  { id: "INV-2281", patient: "Ava Hart", status: "paid", amount: "$0", provider: "Morning" },
+  { id: "INV-2402", patient: "Maya Green", status: "issued", amount: "₪120", provider: "Morning" },
+  { id: "INV-2390", patient: "Noah Stone", status: "overdue", amount: "₪460", provider: "Invoice4U" },
+  { id: "INV-2281", patient: "Ava Hart", status: "paid", amount: "₪0", provider: "Morning" },
 ]
 
 /**

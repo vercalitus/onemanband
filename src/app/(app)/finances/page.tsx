@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import {
   BarChart3,
-  CircleDollarSign,
+  Banknote,
   FileDown,
   FileText,
   Percent,
@@ -130,7 +130,7 @@ export default function BillingPage() {
         <KpiCard
           label={t("finances.kpi.monthlyRevenue")}
           value={formatMoney(monthlyRevenue)}
-          icon={CircleDollarSign}
+          icon={Banknote}
           delta={monthlyDelta}
           context={t("finances.kpi.vsLastMonth", { amount: formatMoney(PREVIOUS_MONTH_REVENUE) })}
           contextMonospace

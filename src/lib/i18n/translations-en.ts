@@ -54,10 +54,10 @@ export const EN_MESSAGES: Record<string, string> = {
   "metric.capacity.value": "78%",
   "metric.capacity.delta": "+4 pp MoM",
   "metric.revenue.label": "Monthly Revenue",
-  "metric.revenue.value": "$74.2k",
+  "metric.revenue.value": "₪74.2k",
   "metric.revenue.delta": "+9%",
   "metric.debt.label": "Open Debt (month)",
-  "metric.debt.value": "$8.9k",
+  "metric.debt.value": "₪8.9k",
   "metric.debt.delta": "-6%",
 
   "dashboard.todayClinic": "Today's Clinic",

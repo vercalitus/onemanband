@@ -143,7 +143,7 @@ export interface BillingInvoice {
   paidAt: string | null
   /** Amount in clinic currency. */
   amount: number
-  /** Pre-formatted string for display, e.g. "$120". */
+  /** Pre-formatted string for display, e.g. "₪120". */
   displayAmount: string
   status: InvoiceStatus
   paymentStatus: PaymentStatus

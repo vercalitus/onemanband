@@ -27,7 +27,7 @@ export function KpiCard({
   icon: LucideIcon
   /** Percentage change vs. the previous period; positive = up arrow. */
   delta?: number | null
-  /** Short context line under the value (e.g. "vs $1,180 last month"). */
+  /** Short context line under the value (e.g. "vs ₪1,180 last month"). */
   context?: string
   /** Optional element rendered at the bottom of the card (e.g. a progress bar). */
   footer?: ReactNode

@@ -101,7 +101,7 @@ export function useBilling() {
     return () => window.removeEventListener("clinic-settings-saved", syncVisitPricesFromSettings)
   }, [hydrated, syncVisitPricesFromSettings])
 
-  /** Keep serialized display strings aligned with locale (ILS vs USD formatting). */
+  /** Keep serialized display strings aligned with the shekel formatter. */
   useEffect(() => {
     if (!hydrated) return
     setInvoices((prev) =>

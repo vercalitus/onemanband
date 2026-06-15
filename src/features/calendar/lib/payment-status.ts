@@ -1,7 +1,7 @@
 import { patients } from "@/lib/mock-data"
 
 /**
- * In the mock data balances are stored as display strings ("$120", "Settled").
+ * In the mock data balances are stored as display strings ("₪120", "Settled").
  * We parse them into a numeric balance so the scheduler can show a
  * payment-status dot (debt / settled) on each appointment card.
  */

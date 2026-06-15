@@ -122,7 +122,7 @@ export function AddPatientDialog({
       email: emailTrim || "—",
       status: "active",
       lastVisit: visitIso,
-      balance: "$0",
+      balance: "₪0",
       tags: [],
       medicalHistorySummary: complaint.trim() || t("addPatient.defaultComplaint"),
       generalNotes: generalParts.filter(Boolean).join(" · "),
