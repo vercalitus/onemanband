@@ -1,14 +1,80 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronDown, ChevronUp, FileText, Receipt, Trash2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ChevronDown, ChevronUp, FileText, Mic, Pencil, Receipt, Trash2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { localizeCompletedSessionTitle } from "@/lib/i18n/localized-seed"
+import { getAudio } from "@/lib/audio-store"
 import { cn } from "@/lib/utils"
 import type { DocumentRecord, FinanceRecord, TreatmentRecord } from "@/types/domain"
 import { DocumentPreviewModal } from "./document-preview-modal"
 import type { CompletedSession } from "../lib/use-patient-cockpit"
+
+/** Collapsed-by-default toggle that reveals the handwriting snapshot on demand,
+ *  keeping the timeline light instead of rendering a full-width PNG per session. */
+function PenNoteCollapsible({ src }: { src: string }) {
+  const { t } = useLocale()
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50/60">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-slate-600 transition-colors hover:text-sky-700"
+        aria-expanded={open}
+      >
+        <Pencil className="size-3.5 text-slate-400" aria-hidden />
+        {t("patientChart.timeline.penNote")}
+        <span className="ms-auto flex items-center gap-1 text-[10px] font-normal text-slate-400">
+          {open ? t("patientChart.timeline.penNoteClose") : t("patientChart.timeline.penNoteOpen")}
+          {open ? <ChevronUp className="size-3.5" aria-hidden /> : <ChevronDown className="size-3.5" aria-hidden />}
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100 p-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={t("patientChart.timeline.snapshotAlt")}
+            className="w-full rounded-md border border-slate-100 object-contain"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Loads a session's voice memo from IndexedDB and renders a native player. */
+function TimelineAudio({ audioKey }: { audioKey: string }) {
+  const { t } = useLocale()
+  const [url, setUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl: string | null = null
+    getAudio(audioKey).then((blob) => {
+      if (cancelled || !blob) return
+      objectUrl = URL.createObjectURL(blob)
+      setUrl(objectUrl)
+    })
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [audioKey])
+
+  if (!url) return null
+  return (
+    <div>
+      <p className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+        <Mic className="size-3" aria-hidden />
+        {t("patientChart.timeline.voiceMemo")}
+      </p>
+      <audio controls src={url} className="h-9 w-full" aria-label={t("patientChart.audio.playbackAria")} />
+    </div>
+  )
+}
 
 /** Attach documents and finances to the nearest session by date. */
 function attachRelated(
@@ -47,6 +113,7 @@ interface SessionEntry {
   title: string
   note: string
   canvasDataUrl?: string | null
+  audioKey?: string | null
   relatedDocs: DocumentRecord[]
   relatedFinances: FinanceRecord[]
 }
@@ -135,6 +202,7 @@ export function UnifiedTimeline({
       title: t.title,
       note: t.note,
       canvasDataUrl: null,
+      audioKey: null,
       relatedDocs: [] as DocumentRecord[],
       relatedFinances: [] as FinanceRecord[],
     })),
@@ -145,6 +213,7 @@ export function UnifiedTimeline({
       title: cs.title,
       note: cs.sessionNotes || "",
       canvasDataUrl: cs.canvasDataUrl,
+      audioKey: cs.audioKey ?? null,
       relatedDocs: [] as DocumentRecord[],
       relatedFinances: [] as FinanceRecord[],
     })),
@@ -200,11 +269,13 @@ export function UnifiedTimeline({
             isCompleted
               ? localizeCompletedSessionTitle(entry.title, locale, t)
               : entry.title
+          // The pen note sits at the entry level (one press), so it no longer
+          // drives the card expand — that's only for secondary detail.
           const hasMore =
             entry.note.search(/\.\s/) !== -1 ||
             entry.relatedDocs.length > 0 ||
             entry.relatedFinances.length > 0 ||
-            !!entry.canvasDataUrl
+            !!entry.audioKey
           const confirming = confirmDeleteId === entry.id
 
           return (
@@ -304,26 +375,25 @@ export function UnifiedTimeline({
                     )}
                   </button>
 
-                  {/* Expanded area */}
+                  {/* Pen note — always at the entry level, one press to open the
+                      drawing (it's the primary artifact from the session). */}
+                  {entry.canvasDataUrl && (
+                    <div
+                      className="border-t border-slate-50 px-4 py-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <PenNoteCollapsible src={entry.canvasDataUrl} />
+                    </div>
+                  )}
+
+                  {/* Expanded area — secondary detail only */}
                   {expanded && (
                     <div
                       className="border-t border-slate-50 px-4 pb-3 pt-3 space-y-3"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {/* Canvas snapshot */}
-                      {entry.canvasDataUrl && (
-                        <div>
-                          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            {t("patientChart.timeline.snapshot")}
-                          </p>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={entry.canvasDataUrl}
-                            alt={t("patientChart.timeline.snapshotAlt")}
-                            className="w-full rounded-lg border border-slate-100 object-contain"
-                          />
-                        </div>
-                      )}
+                      {/* Voice memo */}
+                      {entry.audioKey && <TimelineAudio audioKey={entry.audioKey} />}
 
                       {/* Related docs + invoices */}
                       {(entry.relatedDocs.length > 0 || entry.relatedFinances.length > 0) && (

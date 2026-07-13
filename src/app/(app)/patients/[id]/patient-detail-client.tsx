@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { BillingToast } from "@/features/finances/components/billing-toast"
 import { PatientSmartHeader } from "@/features/patients/components/patient-smart-header"
 import { SessionCanvas } from "@/features/patients/components/session-canvas"
+import { SessionAudio } from "@/features/patients/components/session-audio"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
 import { PatientActionBar } from "@/features/patients/components/patient-action-bar"
 import { usePatientCockpit } from "@/features/patients/lib/use-patient-cockpit"
@@ -37,8 +38,11 @@ export function PatientDetailClient() {
     setClinicalStatus,
     sessionNotes,
     setSessionNotes,
-    canvasDataUrl,
-    setCanvasDataUrl,
+    canvasStrokes,
+    setCanvasStrokes,
+    sessionAudioUrl,
+    saveSessionAudio,
+    clearSessionAudio,
     completedSessions,
     completeSession,
     deleteTreatmentRecord,
@@ -72,7 +76,7 @@ export function PatientDetailClient() {
   })()
 
   const handleCompleteSession = () => {
-    completeSession(patientLastAppointmentType)
+    void completeSession(patientLastAppointmentType)
     showToast(t("patientChart.toast.sessionDone", { n: totalSessionsDone + 1 }))
   }
 
@@ -134,7 +138,17 @@ export function PatientDetailClient() {
               </div>
 
               <div className="space-y-4 p-5">
-                <SessionCanvas initialDataUrl={canvasDataUrl} onSave={setCanvasDataUrl} />
+                <SessionCanvas
+                  key={id}
+                  initialStrokes={canvasStrokes}
+                  onStrokesChange={setCanvasStrokes}
+                />
+
+                <SessionAudio
+                  audioUrl={sessionAudioUrl}
+                  onRecorded={saveSessionAudio}
+                  onDelete={clearSessionAudio}
+                />
 
                 <div className="rounded-2xl border border-slate-100 bg-slate-50">
                   <button

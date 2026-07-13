@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import {
@@ -12,6 +12,8 @@ import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import type { Locale } from "@/lib/i18n/types"
 import { treatmentsByPatient, documentsByPatient, financesByPatient } from "@/lib/mock-data"
 import type { AppointmentType, TreatmentRecord, DocumentRecord, FinanceRecord } from "@/types/domain"
+import { renderStrokesToDataUrl, type Stroke } from "@/features/patients/lib/canvas-strokes"
+import { deleteAudio, getAudio, moveAudio, putAudio } from "@/lib/audio-store"
 
 export interface CompletedSession {
   id: string
@@ -19,8 +21,14 @@ export interface CompletedSession {
   /** e.g. localized "Session 3 of 10 — Adjustments" or Hebrew equivalent */
   title: string
   sessionNotes: string
+  /** Immutable PNG snapshot of the handwriting, rasterized at completion. */
   canvasDataUrl: string | null
+  /** IndexedDB key of the attached voice memo, if any. */
+  audioKey?: string | null
 }
+
+const activeAudioKey = (patientId: string) => `audio-active:${patientId}`
+const sessionAudioKey = (sessionId: string) => `audio-session:${sessionId}`
 
 export interface PatientContactOverrides {
   phone?: string
@@ -88,7 +96,8 @@ export function usePatientCockpit(patientId: string) {
   const { t, locale } = useLocale()
   const [clinicalStatus, setClinicalStatusRaw] = useState(DEFAULT_CLINICAL_EN)
   const [sessionNotes, setSessionNotesRaw] = useState("")
-  const [canvasDataUrl, setCanvasDataUrlRaw] = useState<string | null>(null)
+  const [canvasStrokes, setCanvasStrokesRaw] = useState<Stroke[]>([])
+  const [sessionAudioUrl, setSessionAudioUrl] = useState<string | null>(null)
   const [completedSessions, setCompletedSessionsRaw] = useState<CompletedSession[]>([])
   const [deletedTreatmentIds, setDeletedTreatmentIds] = useState<string[]>([])
   const [deletedDocumentIds, setDeletedDocumentIds] = useState<string[]>([])
@@ -96,19 +105,38 @@ export function usePatientCockpit(patientId: string) {
   const [lastAppointmentType, setLastAppointmentTypeRaw] = useState<AppointmentType>("adjustments")
   const [hydrated, setHydrated] = useState(false)
 
+  // Track the current active-audio object URL so we can revoke it on change.
+  const audioUrlRef = useRef<string | null>(null)
+  const applyAudioUrl = useCallback((url: string | null) => {
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
+    audioUrlRef.current = url
+    setSessionAudioUrl(url)
+  }, [])
+
   useEffect(() => {
     const rawClinical = readField<string | null>(patientId, "clinicalStatus", null)
     setClinicalStatusRaw(normalizeClinicalRead(rawClinical, locale))
 
     setSessionNotesRaw(readField(patientId, "sessionNotes", ""))
-    setCanvasDataUrlRaw(readField(patientId, "canvasDataUrl", null))
+    setCanvasStrokesRaw(readField<Stroke[]>(patientId, "canvasStrokes", []))
     setCompletedSessionsRaw(readField(patientId, "completedSessions", []))
     setDeletedTreatmentIds(readField(patientId, "deletedTreatmentIds", []))
     setDeletedDocumentIds(readField(patientId, "deletedDocumentIds", []))
     setContactOverridesRaw(readField(patientId, "contactOverrides", {}))
     setLastAppointmentTypeRaw(readField(patientId, "lastAppointmentType", "adjustments"))
     setHydrated(true)
-  }, [patientId, locale])
+
+    // Restore an in-progress voice memo for this patient (stored in IndexedDB).
+    let cancelled = false
+    getAudio(activeAudioKey(patientId)).then((blob) => {
+      if (cancelled) return
+      applyAudioUrl(blob ? URL.createObjectURL(blob) : null)
+    })
+    return () => {
+      cancelled = true
+      applyAudioUrl(null)
+    }
+  }, [patientId, locale, applyAudioUrl])
 
   const setClinicalStatus = useCallback(
     (value: string) => {
@@ -126,13 +154,26 @@ export function usePatientCockpit(patientId: string) {
     [patientId],
   )
 
-  const setCanvasDataUrl = useCallback(
-    (value: string | null) => {
-      setCanvasDataUrlRaw(value)
-      writeField(patientId, "canvasDataUrl", value)
+  const setCanvasStrokes = useCallback(
+    (value: Stroke[]) => {
+      setCanvasStrokesRaw(value)
+      writeField(patientId, "canvasStrokes", value)
     },
     [patientId],
   )
+
+  const saveSessionAudio = useCallback(
+    async (blob: Blob) => {
+      await putAudio(activeAudioKey(patientId), blob)
+      applyAudioUrl(URL.createObjectURL(blob))
+    },
+    [patientId, applyAudioUrl],
+  )
+
+  const clearSessionAudio = useCallback(async () => {
+    await deleteAudio(activeAudioKey(patientId))
+    applyAudioUrl(null)
+  }, [patientId, applyAudioUrl])
 
   const saveContactOverrides = useCallback(
     (overrides: PatientContactOverrides) => {
@@ -180,7 +221,7 @@ export function usePatientCockpit(patientId: string) {
   const totalSessionsDone = treatmentRecords.length + completedSessions.length
 
   const completeSession = useCallback(
-    (appointmentType: AppointmentType = "adjustments") => {
+    async (appointmentType: AppointmentType = "adjustments") => {
       const sessionNumber = totalSessionsDone + 1
       const typeLabel = t(`billing.treatment.${appointmentType}`)
       const title = t("patientChart.sessionCompleteTitle", {
@@ -189,12 +230,19 @@ export function usePatientCockpit(patientId: string) {
         type: typeLabel,
       })
 
+      const sessionId = `cs-${Date.now()}`
+      // Rasterize the vector strokes into an immutable snapshot for the summary.
+      const canvasDataUrl = renderStrokesToDataUrl(canvasStrokes)
+      // Promote the in-progress voice memo to a permanent, session-scoped key.
+      const audioKey = await moveAudio(activeAudioKey(patientId), sessionAudioKey(sessionId))
+
       const entry: CompletedSession = {
-        id: `cs-${Date.now()}`,
+        id: sessionId,
         completedAt: new Date().toISOString(),
         title,
         sessionNotes,
         canvasDataUrl,
+        audioKey,
       }
       setCompletedSessionsRaw((prev) => {
         const next = [entry, ...prev]
@@ -203,17 +251,19 @@ export function usePatientCockpit(patientId: string) {
       })
       setLastAppointmentType(appointmentType)
       setSessionNotes("")
-      setCanvasDataUrl(null)
+      setCanvasStrokes([])
+      applyAudioUrl(null)
     },
     [
       patientId,
       totalSessionsDone,
       planTarget,
       sessionNotes,
-      canvasDataUrl,
+      canvasStrokes,
       setLastAppointmentType,
       setSessionNotes,
-      setCanvasDataUrl,
+      setCanvasStrokes,
+      applyAudioUrl,
       t,
     ],
   )
@@ -232,6 +282,8 @@ export function usePatientCockpit(patientId: string) {
   const deleteCompletedSession = useCallback(
     (id: string) => {
       setCompletedSessionsRaw((prev) => {
+        const target = prev.find((s) => s.id === id)
+        if (target?.audioKey) void deleteAudio(target.audioKey)
         const next = prev.filter((s) => s.id !== id)
         writeField(patientId, "completedSessions", next)
         return next
@@ -257,8 +309,11 @@ export function usePatientCockpit(patientId: string) {
     setClinicalStatus,
     sessionNotes,
     setSessionNotes,
-    canvasDataUrl,
-    setCanvasDataUrl,
+    canvasStrokes,
+    setCanvasStrokes,
+    sessionAudioUrl,
+    saveSessionAudio,
+    clearSessionAudio,
     completedSessions,
     completeSession,
     deleteTreatmentRecord,

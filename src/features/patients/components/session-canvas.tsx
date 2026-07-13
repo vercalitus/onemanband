@@ -5,35 +5,48 @@ import { Eraser, RotateCcw, Save } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
-
-interface Point {
-  x: number
-  y: number
-  pressure: number
-}
-
-type Stroke = Point[]
+import {
+  CANVAS_HEIGHT,
+  CANVAS_WIDTH,
+  drawDotGrid,
+  drawStrokes,
+  type Stroke,
+  type StrokePoint,
+} from "@/features/patients/lib/canvas-strokes"
 
 interface Props {
-  initialDataUrl?: string | null
-  onSave: (dataUrl: string) => void
+  /** Previously drawn vector strokes to restore (fully editable). */
+  initialStrokes?: Stroke[]
+  /** Called with the full stroke set whenever it changes — persisted by parent. */
+  onStrokesChange: (strokes: Stroke[]) => void
   className?: string
 }
 
 /**
- * Finger/stylus-friendly drawing canvas with dot-grid background,
- * per-stroke undo, clear, and save-to-PNG. Renders nothing on very small
- * screens (< sm) and shows a friendly nudge instead.
+ * Finger/stylus-friendly drawing canvas. Strokes are kept as lightweight
+ * vectors (not a PNG), so they persist across reloads and stay editable via
+ * undo. Every committed change is pushed to the parent via onStrokesChange —
+ * there is no "lose your work if you forget to save" trap. The Save button is
+ * a reassurance flash only. Renders a nudge instead on very small screens.
  */
-export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
+export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Props) {
   const { t } = useLocale()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
   const currentStroke = useRef<Stroke>([])
-  const [strokes, setStrokes] = useState<Stroke[]>([])
-  const [undoStack, setUndoStack] = useState<Stroke[][]>([]) // history snapshots
+  const [strokes, setStrokes] = useState<Stroke[]>(() => initialStrokes ?? [])
+  const [undoStack, setUndoStack] = useState<Stroke[][]>([])
   const [isMobileSmall, setIsMobileSmall] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  /** Commit a new stroke set: update state + persist upward. */
+  const commit = useCallback(
+    (next: Stroke[]) => {
+      setStrokes(next)
+      onStrokesChange(next)
+    },
+    [onStrokesChange],
+  )
 
   /** Detect very small screens — skip canvas render to keep UX clean. */
   useEffect(() => {
@@ -43,74 +56,20 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
     return () => window.removeEventListener("resize", check)
   }, [])
 
-  /** Draw the dot-grid background + all strokes. */
-  const redraw = useCallback(
-    (ctx: CanvasRenderingContext2D, allStrokes: Stroke[]) => {
-      const { width, height } = ctx.canvas
-      ctx.clearRect(0, 0, width, height)
-
-      // Dot grid
-      ctx.save()
-      ctx.fillStyle = "rgba(100,116,139,0.04)" // barely-there dot grid
-      const gap = 24
-      for (let y = gap; y < height; y += gap) {
-        for (let x = gap; x < width; x += gap) {
-          ctx.beginPath()
-          ctx.arc(x, y, 1, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      }
-      ctx.restore()
-
-      // Restore initial image (if any) underneath strokes
-      if (initialDataUrl) {
-        const img = new Image()
-        img.src = initialDataUrl
-        img.onload = () => {
-          ctx.save()
-          ctx.globalAlpha = 0.6
-          ctx.drawImage(img, 0, 0, width, height)
-          ctx.restore()
-          drawStrokes(ctx, allStrokes)
-        }
-        return
-      }
-
-      drawStrokes(ctx, allStrokes)
-    },
-    [initialDataUrl],
-  )
-
-  function drawStrokes(ctx: CanvasRenderingContext2D, allStrokes: Stroke[]) {
-    ctx.save()
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-    for (const stroke of allStrokes) {
-      if (stroke.length < 2) continue
-      ctx.beginPath()
-      ctx.moveTo(stroke[0].x, stroke[0].y)
-      for (let i = 1; i < stroke.length; i++) {
-        const pressure = stroke[i].pressure || 0.5
-        ctx.lineWidth = 1.5 + pressure * 2.5
-        ctx.strokeStyle = `rgba(15,23,42,${0.72 + pressure * 0.2})`
-        ctx.lineTo(stroke[i].x, stroke[i].y)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.moveTo(stroke[i].x, stroke[i].y)
-      }
-    }
-    ctx.restore()
-  }
+  /** Redraw dot grid + all committed strokes. */
+  const redraw = useCallback((ctx: CanvasRenderingContext2D, allStrokes: Stroke[]) => {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+    drawDotGrid(ctx, ctx.canvas.width, ctx.canvas.height)
+    drawStrokes(ctx, allStrokes)
+  }, [])
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
+    const ctx = canvasRef.current?.getContext("2d")
     if (!ctx) return
     redraw(ctx, strokes)
   }, [strokes, redraw])
 
-  function getPoint(e: React.PointerEvent<HTMLCanvasElement>): Point {
+  function getPoint(e: React.PointerEvent<HTMLCanvasElement>): StrokePoint {
     const rect = canvasRef.current!.getBoundingClientRect()
     const scaleX = canvasRef.current!.width / rect.width
     const scaleY = canvasRef.current!.height / rect.height
@@ -132,9 +91,8 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
     if (!isDrawing.current) return
     currentStroke.current.push(getPoint(e))
 
-    // Live preview of current stroke
-    const canvas = canvasRef.current
-    const ctx = canvas?.getContext("2d")
+    // Live preview of the in-progress stroke
+    const ctx = canvasRef.current?.getContext("2d")
     if (!ctx || currentStroke.current.length < 2) return
     const pts = currentStroke.current
     const last = pts[pts.length - 2]
@@ -153,8 +111,8 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
     if (!isDrawing.current) return
     isDrawing.current = false
     if (currentStroke.current.length > 1) {
-      setUndoStack((prev) => [...prev, strokes]) // save snapshot before
-      setStrokes((prev) => [...prev, currentStroke.current])
+      setUndoStack((prev) => [...prev, strokes]) // snapshot before change
+      commit([...strokes, currentStroke.current])
     }
     currentStroke.current = []
   }
@@ -162,22 +120,21 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
   const handleUndo = () => {
     if (undoStack.length === 0) return
     const prev = undoStack[undoStack.length - 1]
-    setStrokes(prev)
     setUndoStack((u) => u.slice(0, -1))
+    commit(prev)
     setSaved(false)
   }
 
   const handleClear = () => {
+    if (strokes.length === 0) return
     setUndoStack((u) => [...u, strokes])
-    setStrokes([])
+    commit([])
     setSaved(false)
   }
 
+  /** Strokes already auto-persist; this is just an explicit reassurance flash. */
   const handleSave = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const dataUrl = canvas.toDataURL("image/png")
-    onSave(dataUrl)
+    onStrokesChange(strokes)
     setSaved(true)
     setTimeout(() => setSaved(false), 2200)
   }
@@ -240,8 +197,8 @@ export function SessionCanvas({ initialDataUrl, onSave, className }: Props) {
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[inset_0_1px_4px_rgba(15,23,42,0.04)]">
         <canvas
           ref={canvasRef}
-          width={1200}
-          height={480}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
