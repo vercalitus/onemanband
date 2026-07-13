@@ -253,7 +253,9 @@ export function AppointmentEditDialog({
           }
         : {
             id: crypto.randomUUID(),
-            patientId: `pt-new-${crypto.randomUUID().slice(0, 8)}`,
+            // Preserve the patient when a stub carried one (patient page / search),
+            // otherwise treat it as a brand-new patient.
+            patientId: appointment?.patientId || `pt-new-${crypto.randomUUID().slice(0, 8)}`,
             patientName: name,
             date,
             dayLabel,

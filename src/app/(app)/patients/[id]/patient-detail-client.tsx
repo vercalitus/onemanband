@@ -115,7 +115,7 @@ export function PatientDetailClient() {
             onSaveOverrides={saveContactOverrides}
           />
 
-          <section aria-labelledby="session-heading">
+          <section id="active-session" aria-labelledby="session-heading" className="scroll-mt-24">
             <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <h2
@@ -221,17 +221,19 @@ export function PatientDetailClient() {
           />
         </div>
 
-        <PatientActionBar
-          outstandingDebt={outstandingDebt}
-          onCompleteSession={handleCompleteSession}
-          onIssueInvoice={handleIssueInvoice}
-          patientId={id}
-          patientName={displayPatient.fullName}
-          documentRecords={documentRecords}
-          onDeleteDocument={deleteDocumentRecord}
-          lastAppointmentType={patientLastAppointmentType}
-          nextSessionNumber={totalSessionsDone + 1}
-        />
+        <div id="patient-actions" className="scroll-mt-24">
+          <PatientActionBar
+            outstandingDebt={outstandingDebt}
+            onCompleteSession={handleCompleteSession}
+            onIssueInvoice={handleIssueInvoice}
+            patientId={id}
+            patientName={displayPatient.fullName}
+            documentRecords={documentRecords}
+            onDeleteDocument={deleteDocumentRecord}
+            lastAppointmentType={patientLastAppointmentType}
+            nextSessionNumber={totalSessionsDone + 1}
+          />
+        </div>
       </div>
 
       <BillingToast

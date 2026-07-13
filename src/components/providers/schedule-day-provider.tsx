@@ -34,7 +34,10 @@ type ScheduleDayContextValue = {
    * Opens the "New Appointment" dialog. Accepts an optional ISO date so callers
    * (e.g. the calendar's mini-calendar) can pre-select the day the user clicked.
    */
-  openCreateAppointment: (defaultDate?: string) => void
+  openCreateAppointment: (
+    defaultDate?: string,
+    patient?: { id: string; name: string },
+  ) => void
 }
 
 const ScheduleDayContext = createContext<ScheduleDayContextValue | null>(null)
@@ -58,22 +61,48 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
   const [headerCreateOpen, setHeaderCreateOpen] = useState(false)
   const [headerDefaultStart, setHeaderDefaultStart] = useState<number | undefined>(undefined)
   const [headerDefaultDate, setHeaderDefaultDate] = useState<string | undefined>(undefined)
+  // When opened for a specific patient (e.g. from search), carry them into the
+  // dialog as a create-mode stub so the appointment links to that patient.
+  const [headerStub, setHeaderStub] = useState<ScheduleItem | null>(null)
 
-  const openCreateAppointment = useCallback((defaultDate?: string) => {
-    const now = new Date()
-    const currentMinutes = now.getHours() * 60 + now.getMinutes()
-    const dayStartMin = CALENDAR_HOUR_START * 60
-    const dayEndMin = CALENDAR_HOUR_END * 60
-    const defaultDuration = 15
-    let snapped = snapMinutesToSlotNearest(currentMinutes)
-    if (currentMinutes < dayStartMin || currentMinutes >= dayEndMin) {
-      snapped = dayStartMin + 60
-    }
-    const clamped = clampStartForDuration(snapped, defaultDuration)
-    setHeaderDefaultStart(clamped)
-    setHeaderDefaultDate(defaultDate ?? toISODate(new Date()))
-    setHeaderCreateOpen(true)
-  }, [])
+  const openCreateAppointment = useCallback(
+    (defaultDate?: string, patient?: { id: string; name: string }) => {
+      const now = new Date()
+      const currentMinutes = now.getHours() * 60 + now.getMinutes()
+      const dayStartMin = CALENDAR_HOUR_START * 60
+      const dayEndMin = CALENDAR_HOUR_END * 60
+      const defaultDuration = 15
+      let snapped = snapMinutesToSlotNearest(currentMinutes)
+      if (currentMinutes < dayStartMin || currentMinutes >= dayEndMin) {
+        snapped = dayStartMin + 60
+      }
+      const clamped = clampStartForDuration(snapped, defaultDuration)
+      const hhmm = (m: number) =>
+        `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`
+      const dateISO = defaultDate ?? toISODate(new Date())
+      setHeaderDefaultStart(clamped)
+      setHeaderDefaultDate(dateISO)
+      setHeaderStub(
+        patient
+          ? {
+              id: "",
+              patientId: patient.id,
+              patientName: patient.name,
+              date: dateISO,
+              dayLabel: "",
+              provider: "",
+              start: hhmm(clamped),
+              end: hhmm(clamped + defaultDuration),
+              status: "scheduled",
+              treatment: "",
+              appointmentType: "adjustments",
+            }
+          : null,
+      )
+      setHeaderCreateOpen(true)
+    },
+    [],
+  )
 
   const value = useMemo(
     () => ({
@@ -91,7 +120,7 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
         open={headerCreateOpen}
         onOpenChange={setHeaderCreateOpen}
         mode="create"
-        appointment={null}
+        appointment={headerStub}
         defaultStartMinutes={headerDefaultStart}
         defaultDate={headerDefaultDate}
         allAppointments={appointments}
