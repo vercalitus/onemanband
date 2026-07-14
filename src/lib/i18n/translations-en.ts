@@ -353,6 +353,15 @@ export const EN_MESSAGES: Record<string, string> = {
   "addTask.title": "Add active task",
   "addTask.close": "Close",
 
+  "login.title": "Sign in",
+  "login.subtitle": "Secure clinic workspace",
+  "login.email": "Email",
+  "login.password": "Password",
+  "login.submit": "Sign in",
+  "login.error.invalid": "Incorrect email or password.",
+  "login.error.notConfigured": "Sign-in is not available in this environment.",
+  "header.signOut": "Sign out",
+
   // Reactive-signal to-do titles (see reactive-signals.ts). {patient}/{amount}/{days}/… are interpolated.
   "signal.overdueInvoice": "Chase overdue payment — {patient} · {amount}",
   "signal.invoiceDueSoon": "Invoice due soon — {patient} · {amount}",

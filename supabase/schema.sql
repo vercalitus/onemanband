@@ -415,3 +415,22 @@ comment on column public.appointments.reminder_payload is
 
 comment on column public.finances.external_sync_payload is
 'Placeholder payload for Morning or Invoice4U billing synchronization metadata.';
+
+-- ---------------------------------------------------------------------------
+-- Role grants
+--
+-- RLS decides which ROWS a user sees; these grants decide which TABLES the API
+-- roles may touch at all. Without them PostgREST denies every request before
+-- RLS runs (error 42501). We grant table access to `authenticated` only and
+-- rely on RLS for row-level isolation. `anon` (unauthenticated) gets no access
+-- to clinical data — it is used solely for the auth endpoints during sign-in.
+-- ---------------------------------------------------------------------------
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+-- Apply the same defaults to any tables/sequences added later.
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;
+alter default privileges in schema public
+  grant usage, select on sequences to authenticated;

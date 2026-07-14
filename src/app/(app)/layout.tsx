@@ -7,6 +7,7 @@ import { HeaderBarDate } from "@/components/layout/header-bar-date"
 import { HeaderActions } from "@/components/layout/header-actions"
 import { LocaleSwitcher } from "@/components/layout/locale-switcher"
 import { MobileNav } from "@/components/layout/mobile-nav"
+import { SignOutButton } from "@/components/layout/sign-out-button"
 import { AddTaskProvider } from "@/components/providers/add-task-provider"
 import { GlobalAddPatientProvider } from "@/components/providers/global-add-patient-provider"
 import { useLocale } from "@/components/providers/locale-provider"
@@ -38,6 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <BellDot className="size-4 text-sky-600" />
             </Button>
+            <SignOutButton />
           </div>
         </div>
       </header>
