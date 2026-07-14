@@ -19,10 +19,10 @@ Supabase.
 
 | # | Control | Where it lives in our stack | Status |
 |---|---------|-----------------------------|--------|
-| 0.1 | **Authentication** — email + strong password, **MFA** for the practitioner, short session timeout, no self-serve signup | Supabase Auth; login flow (not built) | ⬜ Not built |
-| 0.2 | **Row-Level Security (RLS)** enforced on every table — DB refuses cross-clinic / cross-patient reads even if app code has a bug | `supabase/schema.sql` (RLS + `current_user_clinic_id()` / `is_admin()` / `is_clinician()` **already written**) — needs enabling + tests | 🟡 Designed, not active |
+| 0.1 | **Authentication** — email + strong password, **MFA** for the practitioner, short session timeout, no self-serve signup | Supabase Auth; `middleware.ts` gate; `/login`; TOTP MFA (`/mfa` + Settings → Security) with enforced step-up | ✅ Built + verified (password + TOTP MFA) |
+| 0.2 | **Row-Level Security (RLS)** enforced on every table — DB refuses cross-clinic / cross-patient reads even if app code has a bug | `supabase/schema.sql` (RLS + helpers + role GRANTs) | ✅ Active + verified (2-clinic isolation test) |
 | 0.3 | **Service-role key never reaches the browser** | `src/lib/supabase/server.ts` (server-only); client returns `null` when key absent — **already correct**, keep it so | ✅ In place |
-| 0.4 | **Private imaging storage** — X-ray/MRI in a **private** Supabase Storage bucket, served only via **short-lived signed URLs** (minutes, not public links) | Supabase Storage bucket `documents` (private); signed-URL helper (not built) | ⬜ Not built |
+| 0.4 | **Private imaging storage** — X-ray/MRI in a **private** Supabase Storage bucket, served only via **short-lived signed URLs** (minutes, not public links) | `supabase/storage.sql` (private `patient-media` bucket + clinic-scoped RLS); `src/lib/supabase/storage.ts` (signed URLs, 60s TTL) | ✅ Built + verified (isolation + private-access test) |
 | 0.5 | **HTTPS/TLS everywhere** (in transit) | Vercel default | ✅ In place |
 | 0.6 | **Encryption at rest** | Supabase encrypts DB + Storage at rest by default | ✅ Provider default |
 
@@ -72,8 +72,14 @@ legal duty to the control and confirms nothing is missing.
 
 ## Suggested build order
 
-1. Auth (0.1) + turn on & **test** RLS (0.2) — nothing else is safe without these.
-2. Private imaging buckets + signed URLs (0.4).
-3. Audit log (1.1).
+1. ~~Auth (0.1) + turn on & **test** RLS (0.2)~~ — ✅ done (password + TOTP MFA, RLS verified).
+2. ~~Private imaging buckets + signed URLs (0.4)~~ — ✅ done.
+3. Audit log (1.1) — **next**.
 4. Field-level encryption decision (1.2) + region/DPA (1.3).
 5. Retention, backups, breach runbook, consent (1.4–1.7).
+
+**Also outstanding (infra):** wire `schema.sql` + `storage.sql` into the migration
+chain so `supabase start` / a fresh deploy builds the whole DB (currently the lone
+migration ALTERs tables the chain never creates — applied manually for now). And
+these were verified on **local** Supabase; a real hosted project + its secrets are
+provisioned by the practitioner, not the agent.
