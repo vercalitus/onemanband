@@ -46,21 +46,39 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 
   const path = request.nextUrl.pathname
 
-  // No session on a protected route → send to login, remembering the target.
-  if (!user && !isPublicPath(path)) {
-    const redirect = request.nextUrl.clone()
-    redirect.pathname = "/login"
-    redirect.search = ""
-    redirect.searchParams.set("next", path)
-    return NextResponse.redirect(redirect)
+  const redirectTo = (pathname: string, next?: string) => {
+    const url = request.nextUrl.clone()
+    url.pathname = pathname
+    url.search = ""
+    if (next && next.startsWith("/") && next !== pathname) url.searchParams.set("next", next)
+    return NextResponse.redirect(url)
   }
 
-  // Already signed in but sitting on /login → bounce to the dashboard.
-  if (user && path === "/login") {
-    const redirect = request.nextUrl.clone()
-    redirect.pathname = "/dashboard"
-    redirect.search = ""
-    return NextResponse.redirect(redirect)
+  // No session on a protected route → send to login, remembering the target.
+  // /mfa needs a session too, so it is NOT treated as public here.
+  if (!user) {
+    if (isPublicPath(path)) return response
+    return redirectTo("/login", path)
+  }
+
+  // Signed in: enforce MFA step-up. Once the practitioner has a *verified*
+  // factor, a password-only session is aal1 with nextLevel aal2 and must
+  // complete a TOTP challenge before reaching any protected page.
+  let mustStepUp = false
+  try {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    mustStepUp = aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2"
+  } catch {
+    // If the AAL check fails, fail open to the app rather than lock the user out.
+    mustStepUp = false
+  }
+
+  if (mustStepUp && path !== "/mfa") {
+    return redirectTo("/mfa", path === "/login" ? undefined : path)
+  }
+  // Fully authenticated (or no MFA enrolled) but sitting on an auth page → app.
+  if (!mustStepUp && (path === "/login" || path === "/mfa")) {
+    return redirectTo("/dashboard")
   }
 
   return response

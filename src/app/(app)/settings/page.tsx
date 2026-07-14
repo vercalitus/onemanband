@@ -10,6 +10,7 @@ import { ClinicalPreferencesTab } from "@/features/settings/components/clinical-
 import { IntegrationsTab } from "@/features/settings/components/integrations-tab"
 import { NotificationsTab } from "@/features/settings/components/notifications-tab"
 import { ProfilePracticeTab } from "@/features/settings/components/profile-practice-tab"
+import { SecurityTab } from "@/features/settings/components/security-tab"
 import { useClinicSettings } from "@/features/settings/lib/use-clinic-settings"
 import { cn } from "@/lib/utils"
 
@@ -40,6 +41,7 @@ export default function SettingsPage() {
     { id: "integrations", labelKey: "settings.tab.integrations" as const },
     { id: "clinical", labelKey: "settings.tab.clinical" as const },
     { id: "notifications", labelKey: "settings.tab.notifications" as const },
+    { id: "security", labelKey: "settings.tab.security" as const },
   ]
 
   return (
@@ -88,6 +90,12 @@ export default function SettingsPage() {
           className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
         >
           <NotificationsTab settings={settings} onChange={setSettings} />
+        </TabsContent>
+        <TabsContent
+          value="security"
+          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
+        >
+          <SecurityTab />
         </TabsContent>
       </Tabs>
 
