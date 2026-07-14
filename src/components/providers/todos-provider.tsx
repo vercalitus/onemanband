@@ -11,6 +11,7 @@ import {
   type SetStateAction,
 } from "react"
 
+import { deriveReactiveTodos } from "@/features/dashboard/lib/reactive-signals"
 import { dashboardTodos } from "@/lib/mock-data"
 import type { TodoItem } from "@/types/domain"
 
@@ -20,6 +21,16 @@ function normalize(seed: TodoItem[]): TodoItem[] {
     kind: t.kind ?? "reactive",
     completed: t.completed ?? false,
   }))
+}
+
+/**
+ * Initial board = system-derived reactive signals + any hand-authored
+ * active/completed seeds. The old hardcoded reactive rows are replaced by the
+ * reactive-signal engine (see reactive-signals.ts).
+ */
+function seedTodos(): TodoItem[] {
+  const authored = dashboardTodos.filter((t) => t.kind && t.kind !== "reactive")
+  return normalize([...deriveReactiveTodos(), ...authored])
 }
 
 type TodosContextValue = {
@@ -46,7 +57,7 @@ export function useTodos(): TodosContextValue {
  * and any global Add-task entry point (header bar).
  */
 export function TodosProvider({ children }: { children: ReactNode }) {
-  const [todos, setTodos] = useState<TodoItem[]>(() => normalize(dashboardTodos))
+  const [todos, setTodos] = useState<TodoItem[]>(seedTodos)
 
   const addActiveTask = useCallback(({ title, due }: { title: string; due: string }) => {
     const trimmed = title.trim()

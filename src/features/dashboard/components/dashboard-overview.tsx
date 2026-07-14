@@ -72,8 +72,11 @@ function TodoRow({
 }) {
   const { t } = useLocale()
   const done = Boolean(item.completed)
-  const dueTrimmed = item.due.trim()
-  const markDoneAria = `${done ? t("dashboard.todo.markNotDone") : t("dashboard.todo.markDone")}: ${item.title}`
+  // Reactive signals carry i18n keys + params; authored tasks carry plain strings.
+  const title = item.titleKey ? t(item.titleKey, item.params) : item.title
+  const dueText = item.dueKey ? t(item.dueKey, item.params) : item.due
+  const dueTrimmed = dueText.trim()
+  const markDoneAria = `${done ? t("dashboard.todo.markNotDone") : t("dashboard.todo.markDone")}: ${title}`
 
   return (
     <div
@@ -95,7 +98,7 @@ function TodoRow({
         />
       </label>
       <div className="min-w-0 flex-1">
-        <p className={`font-medium ${done ? "text-slate-400 line-through" : "text-slate-900"}`}>{item.title}</p>
+        <p className={`font-medium ${done ? "text-slate-400 line-through" : "text-slate-900"}`}>{title}</p>
         <p className={`text-xs ${done ? "text-slate-400" : "text-slate-500"}`}>
           {dueTrimmed
             ? `${item.overdue && !done ? t("dashboard.todo.overduePrefix") : t("dashboard.todo.duePrefix")} ${dueTrimmed}`

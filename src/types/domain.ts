@@ -67,6 +67,12 @@ export interface TodoItem {
   overdue?: boolean
   kind?: TodoKind
   completed?: boolean
+  /** i18n: when set, the UI renders `t(titleKey, params)` instead of `title` (which is the English fallback). */
+  titleKey?: string
+  /** i18n: when set, the UI renders `t(dueKey, params)` instead of `due` for the due line. */
+  dueKey?: string
+  /** Interpolation values (patient name, amount, count, …) shared by titleKey/dueKey. */
+  params?: Record<string, string | number>
 }
 
 export interface PulseMetric {

@@ -30,22 +30,37 @@ export function AddTaskDialog({
   onOpenChange: (open: boolean) => void
   onSave: (input: { title: string; due: string }) => void
 }) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const [title, setTitle] = useState("")
-  const [due, setDue] = useState("")
+  const [date, setDate] = useState("")
+  const [time, setTime] = useState("")
 
   // Reset fields whenever the dialog reopens so we never carry stale state across uses.
   useEffect(() => {
     if (!open) return
     setTitle("")
-    setDue("")
+    setDate("")
+    setTime("")
   }, [open])
+
+  // Combine the date + time pickers into a single readable due label, localized
+  // at creation time. Any subset is valid: date-only, time-only, or neither.
+  function composeDue(): string {
+    if (date) {
+      const d = new Date(`${date}T${time || "00:00"}`)
+      if (Number.isNaN(d.getTime())) return time
+      return time
+        ? d.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })
+        : d.toLocaleDateString(locale, { dateStyle: "medium" })
+    }
+    return time
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const trimmed = title.trim()
     if (!trimmed) return
-    onSave({ title: trimmed, due: due.trim() })
+    onSave({ title: trimmed, due: composeDue() })
     onOpenChange(false)
   }
 
@@ -105,20 +120,37 @@ export function AddTaskDialog({
                   className="h-11 rounded-xl border-slate-200"
                 />
               </div>
-              <div className="grid gap-1.5">
-                <label
-                  htmlFor="todo-due"
-                  className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
-                >
-                  {t("addTask.field.due")}
-                </label>
-                <Input
-                  id="todo-due"
-                  value={due}
-                  onChange={(e) => setDue(e.target.value)}
-                  placeholder="14:00"
-                  className="h-11 rounded-xl border-slate-200 font-mono tabular-nums"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <label
+                    htmlFor="todo-date"
+                    className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
+                  >
+                    {t("addTask.field.date")}
+                  </label>
+                  <Input
+                    id="todo-date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="h-11 rounded-xl border-slate-200 tabular-nums"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <label
+                    htmlFor="todo-time"
+                    className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
+                  >
+                    {t("addTask.field.time")}
+                  </label>
+                  <Input
+                    id="todo-time"
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="h-11 rounded-xl border-slate-200 tabular-nums"
+                  />
+                </div>
               </div>
             </div>
           </div>
