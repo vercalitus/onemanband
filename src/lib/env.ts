@@ -7,6 +7,9 @@ const clientEnvSchema = z.object({
 
 const serverEnvSchema = clientEnvSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  // Base64-encoded 32-byte key for app-layer field encryption (AES-256-GCM).
+  // Server-only. Generate with: openssl rand -base64 32
+  APP_ENCRYPTION_KEY: z.string().min(1).optional(),
 })
 
 export const clientEnv = clientEnvSchema.parse({
@@ -18,6 +21,7 @@ export const serverEnv = serverEnvSchema.parse({
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  APP_ENCRYPTION_KEY: process.env.APP_ENCRYPTION_KEY,
 })
 
 /**

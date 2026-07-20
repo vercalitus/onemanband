@@ -30,13 +30,13 @@ Supabase.
 
 | # | Control | Where it lives in our stack | Status |
 |---|---------|-----------------------------|--------|
-| 1.1 | **Audit log** — who viewed/edited which patient record, when | New `audit_log` table + write on sensitive reads/writes | ⬜ Not built |
-| 1.2 | **Field-level encryption** for the most sensitive free-text (diagnoses, questionnaire answers) so a DB dump alone is unreadable | App-layer encrypt/decrypt or Postgres `pgcrypto`; key in Vercel env, **not** in the DB | ⬜ Decide approach |
-| 1.3 | **Data region + DPA** — choose Supabase region deliberately; sign Data Processing Agreements with Supabase and Vercel | Supabase project settings; vendor contracts | ⬜ Not done |
-| 1.4 | **Retention & deletion policy** — medical records must be retained for the period Israeli law requires; define hard-delete vs. archive | Documented policy + DB constraints | ⬜ Not defined |
-| 1.5 | **Encrypted, tested backups** with a restore drill | Supabase automated backups (verify tier) | ⬜ Verify |
-| 1.6 | **Breach-notification runbook** — who does what, within what window | This repo / ops doc | ⬜ Not written |
-| 1.7 | **Patient consent capture** for storing/processing medical data | Intake flow | ⬜ Not built |
+| 1.1 | **Audit log** — who viewed/edited which patient record, when | `supabase/audit.sql` (append-only log + write-triggers); `src/lib/supabase/audit.ts` | ✅ Built (live DB test pending Docker) |
+| 1.2 | **Field-level encryption** for the most sensitive free-text (diagnoses, questionnaire answers) so a DB dump alone is unreadable | `src/lib/crypto/field-encryption.ts` (AES-256-GCM); key in `APP_ENCRYPTION_KEY` | ✅ Built + verified (roundtrip/tamper/wrong-key) |
+| 1.3 | **Data region + DPA** — choose Supabase region deliberately; sign Data Processing Agreements with Supabase and Vercel | Supabase project settings; vendor contracts | 📋 Procedure in [SECURITY-RUNBOOK.md](SECURITY-RUNBOOK.md#13) — practitioner action |
+| 1.4 | **Retention & deletion policy** — medical records must be retained for the period Israeli law requires; define hard-delete vs. archive | Documented policy + DB constraints | 📋 Policy in [SECURITY-RUNBOOK.md](SECURITY-RUNBOOK.md#14) — confirm years w/ counsel |
+| 1.5 | **Encrypted, tested backups** with a restore drill | Supabase automated backups (verify tier) | 📋 Procedure in [SECURITY-RUNBOOK.md](SECURITY-RUNBOOK.md#15) — practitioner action |
+| 1.6 | **Breach-notification runbook** — who does what, within what window | This repo / ops doc | ✅ Written — [SECURITY-RUNBOOK.md](SECURITY-RUNBOOK.md#16) |
+| 1.7 | **Patient consent capture** for storing/processing medical data | `supabase/consent.sql` (`patient_consents` + RLS); intake UI comes with live wiring | ✅ Schema built; UI pending live-data wiring |
 
 ## Priority 2 — Ongoing hygiene
 
