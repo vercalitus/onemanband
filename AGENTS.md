@@ -56,8 +56,7 @@ src/
   lib/                    # Shared utilities, mock data, i18n, Supabase clients
   types/                  # domain.ts, clinic-settings.ts
 supabase/
-  schema.sql              # Full Postgres schema (RLS, enums, constraints)
-  migrations/
+  migrations/             # Ordered DDL — single source of truth (schema, RLS, storage, audit, consent)
   seed.sql
 scripts/
   clean-all.mjs           # Deep clean for Windows dev cache issues
@@ -96,7 +95,7 @@ There is **no auth UI**, **no API routes**, and **no live Supabase queries** in 
 
 - Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - Clients: `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts` — return `null` when env is missing (graceful no-op)
-- Schema: `supabase/schema.sql` — clinics, profiles, patients, appointments, treatments, documents, finances, news_feed; RLS helpers `current_user_clinic_id()`, `current_user_role()`
+- Schema: `supabase/migrations/` (ordered chain, `*_init_schema.sql` first) — clinics, profiles, patients, appointments, treatments, documents, finances, news_feed, audit_log, patient_consents; plus RLS helpers `current_user_clinic_id()` / `is_admin()` / `is_clinician()`, private `patient-media` storage, and audit triggers. `supabase db reset` builds it all.
 
 When wiring Supabase, match existing TypeScript types in `src/types/domain.ts` and respect DB constraints (see below).
 
@@ -223,7 +222,7 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 | Billing logic | `features/finances/lib/derive-billing.ts`, `use-billing.ts` |
 | Settings field | `types/clinic-settings.ts`, defaults, settings tabs |
 | New translation | `translations-en.ts` first, then he/ar overlays |
-| Wire Supabase read | `lib/supabase/*`, align with `supabase/schema.sql`, replace mock imports gradually |
+| Wire Supabase read | `lib/supabase/*`, align with `supabase/migrations/*_init_schema.sql`, replace mock imports gradually |
 | Appointment validation | `lib/appointment-time.ts`, `appointment-edit-dialog.tsx` |
 
 ---
@@ -237,7 +236,7 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 | `src/lib/clinic-settings-defaults.ts` | Default practice configuration |
 | `src/lib/env.ts` | Zod-validated env (optional Supabase keys) |
 | `src/types/domain.ts` | Core enums and interfaces |
-| `supabase/schema.sql` | Target database shape and RLS |
+| `supabase/migrations/` | Ordered DDL: schema + RLS, storage, audit, consent (source of truth) |
 | `components.json` | shadcn config (`base-nova`, `@/` aliases) |
 
 ---

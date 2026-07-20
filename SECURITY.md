@@ -20,9 +20,9 @@ Supabase.
 | # | Control | Where it lives in our stack | Status |
 |---|---------|-----------------------------|--------|
 | 0.1 | **Authentication** — email + strong password, **MFA** for the practitioner, short session timeout, no self-serve signup | Supabase Auth; `middleware.ts` gate; `/login`; TOTP MFA (`/mfa` + Settings → Security) with enforced step-up | ✅ Built + verified (password + TOTP MFA) |
-| 0.2 | **Row-Level Security (RLS)** enforced on every table — DB refuses cross-clinic / cross-patient reads even if app code has a bug | `supabase/schema.sql` (RLS + helpers + role GRANTs) | ✅ Active + verified (2-clinic isolation test) |
+| 0.2 | **Row-Level Security (RLS)** enforced on every table — DB refuses cross-clinic / cross-patient reads even if app code has a bug | `supabase/migrations/*_init_schema.sql` (RLS + helpers + role GRANTs) | ✅ Active + verified (2-clinic isolation test) |
 | 0.3 | **Service-role key never reaches the browser** | `src/lib/supabase/server.ts` (server-only); client returns `null` when key absent — **already correct**, keep it so | ✅ In place |
-| 0.4 | **Private imaging storage** — X-ray/MRI in a **private** Supabase Storage bucket, served only via **short-lived signed URLs** (minutes, not public links) | `supabase/storage.sql` (private `patient-media` bucket + clinic-scoped RLS); `src/lib/supabase/storage.ts` (signed URLs, 60s TTL) | ✅ Built + verified (isolation + private-access test) |
+| 0.4 | **Private imaging storage** — X-ray/MRI in a **private** Supabase Storage bucket, served only via **short-lived signed URLs** (minutes, not public links) | `supabase/migrations/*_patient_media_storage.sql` (private `patient-media` bucket + clinic-scoped RLS); `src/lib/supabase/storage.ts` (signed URLs, 60s TTL) | ✅ Built + verified (isolation + private-access test) |
 | 0.5 | **HTTPS/TLS everywhere** (in transit) | Vercel default | ✅ In place |
 | 0.6 | **Encryption at rest** | Supabase encrypts DB + Storage at rest by default | ✅ Provider default |
 
@@ -30,13 +30,13 @@ Supabase.
 
 | # | Control | Where it lives in our stack | Status |
 |---|---------|-----------------------------|--------|
-| 1.1 | **Audit log** — who viewed/edited which patient record, when | `supabase/audit.sql` (append-only log + write-triggers); `src/lib/supabase/audit.ts` | ✅ Built (live DB test pending Docker) |
+| 1.1 | **Audit log** — who viewed/edited which patient record, when | `supabase/migrations/*_audit_log.sql` (append-only log + write-triggers); `src/lib/supabase/audit.ts` | ✅ Built (live DB test pending Docker) |
 | 1.2 | **Field-level encryption** for the most sensitive free-text (diagnoses, questionnaire answers) so a DB dump alone is unreadable | `src/lib/crypto/field-encryption.ts` (AES-256-GCM); key in `APP_ENCRYPTION_KEY` | ✅ Built + verified (roundtrip/tamper/wrong-key) |
 | 1.3 | **Data region + DPA** — choose Supabase region deliberately; sign Data Processing Agreements with Supabase and Vercel | Supabase project settings; vendor contracts | 📋 Procedure in [SECURITY-RUNBOOK.md](SECURITY-RUNBOOK.md#13) — practitioner action |
 | 1.4 | **Retention & deletion policy** — medical records must be retained for the period Israeli law requires; define hard-delete vs. archive | Documented policy + DB constraints | 📋 Policy in [SECURITY-RUNBOOK.md](SECURITY-RUNBOOK.md#14) — confirm years w/ counsel |
 | 1.5 | **Encrypted, tested backups** with a restore drill | Supabase automated backups (verify tier) | 📋 Procedure in [SECURITY-RUNBOOK.md](SECURITY-RUNBOOK.md#15) — practitioner action |
 | 1.6 | **Breach-notification runbook** — who does what, within what window | This repo / ops doc | ✅ Written — [SECURITY-RUNBOOK.md](SECURITY-RUNBOOK.md#16) |
-| 1.7 | **Patient consent capture** for storing/processing medical data | `supabase/consent.sql` (`patient_consents` + RLS); intake UI comes with live wiring | ✅ Schema built; UI pending live-data wiring |
+| 1.7 | **Patient consent capture** for storing/processing medical data | `supabase/migrations/*_patient_consents.sql` (`patient_consents` + RLS); intake UI comes with live wiring | ✅ Schema built; UI pending live-data wiring |
 
 ## Priority 2 — Ongoing hygiene
 
@@ -78,8 +78,8 @@ legal duty to the control and confirms nothing is missing.
 4. Field-level encryption decision (1.2) + region/DPA (1.3).
 5. Retention, backups, breach runbook, consent (1.4–1.7).
 
-**Also outstanding (infra):** wire `schema.sql` + `storage.sql` into the migration
-chain so `supabase start` / a fresh deploy builds the whole DB (currently the lone
-migration ALTERs tables the chain never creates — applied manually for now). And
-these were verified on **local** Supabase; a real hosted project + its secrets are
-provisioned by the practitioner, not the agent.
+**Also outstanding (infra):** the DB is now built from an ordered migration chain
+(`supabase/migrations/`), so `supabase db reset` / a fresh deploy builds the whole
+schema in one command. (A live `db reset` confirmation is pending local Docker.)
+These controls were verified on **local** Supabase; a real hosted project + its
+secrets are provisioned by the practitioner, not the agent.

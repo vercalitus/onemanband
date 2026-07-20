@@ -107,7 +107,9 @@ legal actions marked above.
 
 Remaining engineering follow-ups (not blockers for the security model, but needed
 for a clean production deploy):
-- Wire `schema.sql` + `storage.sql` + `audit.sql` + `consent.sql` into the
-  migration chain (currently applied manually — see the migration-chain note).
-- Run the audit-log live verification once Docker/Supabase is back up.
+- ✅ The DB is now built from an ordered migration chain in `supabase/migrations/`
+  (`init_schema` → `patient_media_storage` → `audit_log` → `patient_consents`), so
+  `supabase db reset` / `supabase db push` builds everything in one command.
+- Run `supabase db reset` once locally to confirm the chain end-to-end, and the
+  audit-log live verification, once Docker/Supabase is back up.
 - Provision the real hosted Supabase project and set its secrets (practitioner).
