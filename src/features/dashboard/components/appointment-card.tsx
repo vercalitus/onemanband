@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
 const statusCycle: AppointmentStatus[] = [
   "scheduled",
   "confirmed",
-  "checked_in",
+  "uncertain",
   "completed",
   "cancelled",
   "no_show",
@@ -23,7 +23,7 @@ const statusCycle: AppointmentStatus[] = [
 const cardTone: Record<AppointmentStatus, string> = {
   scheduled: "border-[rgb(224,236,244)] bg-white shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]",
   confirmed: "border-[rgb(223,237,230)] bg-white shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]",
-  checked_in: "border-slate-100 bg-white shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]",
+  uncertain: "border-[rgb(250,235,204)] bg-white shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]",
   completed: "border-[rgb(223,237,230)] bg-white shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]",
   cancelled: "border-[rgb(248,228,214)] bg-white shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]",
   no_show: "border-[rgb(248,228,214)] bg-white shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]",
@@ -32,7 +32,7 @@ const cardTone: Record<AppointmentStatus, string> = {
 const badgeTone: Record<AppointmentStatus, "default" | "secondary" | "outline" | "destructive"> = {
   scheduled: "outline",
   confirmed: "default",
-  checked_in: "outline",
+  uncertain: "outline",
   completed: "secondary",
   cancelled: "destructive",
   no_show: "destructive",
@@ -51,7 +51,7 @@ function formatStatus(status: AppointmentStatus) {
 const dotTone: Record<AppointmentStatus, string> = {
   scheduled: "bg-[rgb(150,182,197)] shadow-[0_0_0_5px_rgba(150,182,197,0.18)]",
   confirmed: "bg-[rgb(120,157,138)] shadow-[0_0_0_5px_rgba(120,157,138,0.18)]",
-  checked_in: "bg-slate-300 shadow-[0_0_0_5px_rgba(148,163,184,0.1)]",
+  uncertain: "bg-amber-400 shadow-[0_0_0_5px_rgba(251,191,36,0.18)]",
   completed: "bg-[rgb(120,157,138)] shadow-[0_0_0_5px_rgba(120,157,138,0.15)]",
   cancelled: "bg-[rgb(240,186,159)] shadow-[0_0_0_5px_rgba(248,228,214,0.5)]",
   no_show: "bg-[rgb(240,186,159)] shadow-[0_0_0_5px_rgba(248,228,214,0.5)]",
@@ -60,7 +60,7 @@ const dotTone: Record<AppointmentStatus, string> = {
 const statusBadgeTone: Record<AppointmentStatus, string> = {
   scheduled: "border-[rgb(224,236,244)] bg-[rgb(233,242,248)] text-[rgb(91,123,138)]",
   confirmed: "border-[rgb(223,237,230)] bg-[rgb(232,242,238)] text-[rgb(92,123,110)]",
-  checked_in: "border-slate-200 bg-slate-50 text-slate-600",
+  uncertain: "border-amber-200 bg-amber-50 text-amber-700",
   completed: "border-[rgb(223,237,230)] bg-[rgb(232,242,238)] text-[rgb(92,123,110)]",
   cancelled: "border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(171,119,93)]",
   no_show: "border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(171,119,93)]",

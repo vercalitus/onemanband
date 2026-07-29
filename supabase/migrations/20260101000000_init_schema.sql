@@ -6,7 +6,7 @@ create type public.patient_status as enum ('active', 'frozen', 'past');
 create type public.appointment_status as enum (
   'scheduled',
   'confirmed',
-  'checked_in',
+  'uncertain',
   'completed',
   'cancelled',
   'no_show'

@@ -237,7 +237,7 @@ export const HE_MESSAGES: Record<string, string> = {
 
   "appt.status.confirmed": "אושר",
   "appt.status.scheduled": "מתוכנן",
-  "appt.status.checked_in": "נרשם הגעה",
+  "appt.status.uncertain": "לא בטוח",
   "appt.status.completed": "הושלם",
   "appt.status.cancelled": "בוטל",
   "appt.status.no_show": "לא הופיע",
@@ -331,6 +331,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "appointment.field.status": "סטטוס",
   "appointment.footer.cancel": "ביטול",
   "appointment.footer.save": "שמירה",
+  "appointment.footer.cancelTreatment": "ביטול טיפול",
 
   "addTask.description": "הוספת משימה חדשה לרשימה הפעילה.",
   "addTask.field.title": "כותרת",

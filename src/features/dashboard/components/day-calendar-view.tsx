@@ -86,7 +86,7 @@ export function DayCalendarView({
     (): Record<AppointmentStatus, { dot: string; label: string; text: string }> => ({
       confirmed: { dot: "bg-emerald-400", label: t("appt.status.confirmed"), text: "text-emerald-700" },
       scheduled: { dot: "bg-sky-400", label: t("appt.status.scheduled"), text: "text-sky-700" },
-      checked_in: { dot: "bg-indigo-400", label: t("appt.status.checked_in"), text: "text-indigo-700" },
+      uncertain: { dot: "bg-amber-400", label: t("appt.status.uncertain"), text: "text-amber-700" },
       completed: { dot: "bg-slate-300", label: t("appt.status.completed"), text: "text-slate-500" },
       cancelled: { dot: "bg-rose-300", label: t("appt.status.cancelled"), text: "text-rose-500" },
       no_show: { dot: "bg-orange-300", label: t("appt.status.no_show"), text: "text-orange-600" },

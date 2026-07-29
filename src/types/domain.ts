@@ -5,7 +5,7 @@ export type PatientStatus = "active" | "frozen" | "past"
 export type AppointmentStatus =
   | "scheduled"
   | "confirmed"
-  | "checked_in"
+  | "uncertain"
   | "completed"
   | "cancelled"
   | "no_show"

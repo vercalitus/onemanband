@@ -36,7 +36,7 @@ function hasSessionToComplete(patientId: string): boolean {
     (a) =>
       a.patientId === patientId &&
       a.date === todayISO &&
-      (a.status === "scheduled" || a.status === "confirmed" || a.status === "checked_in"),
+      (a.status === "scheduled" || a.status === "confirmed" || a.status === "uncertain"),
   )
 }
 

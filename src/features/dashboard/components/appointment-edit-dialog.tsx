@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils"
 const STATUS_OPTIONS: AppointmentStatus[] = [
   "scheduled",
   "confirmed",
-  "checked_in",
+  "uncertain",
   "completed",
   "cancelled",
   "no_show",
@@ -268,6 +268,12 @@ export function AppointmentEditDialog({
           }
 
     onSave(item, { isNew: mode === "create" })
+    onOpenChange(false)
+  }
+
+  const handleCancelTreatment = () => {
+    if (!appointment) return
+    onSave({ ...appointment, status: "cancelled" }, { isNew: false })
     onOpenChange(false)
   }
 
@@ -532,6 +538,16 @@ export function AppointmentEditDialog({
           </div>
 
           <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-3 sm:flex-row sm:justify-end sm:gap-3">
+            {mode === "edit" && appointment && appointment.status !== "cancelled" ? (
+              <Button
+                type="button"
+                variant="destructive"
+                className="h-11 rounded-xl me-auto"
+                onClick={handleCancelTreatment}
+              >
+                {t("appointment.footer.cancelTreatment")}
+              </Button>
+            ) : null}
             <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)}>
               {t("appointment.footer.cancel")}
             </Button>

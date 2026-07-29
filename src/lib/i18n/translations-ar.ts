@@ -246,7 +246,7 @@ export const AR_MESSAGES: Record<string, string> = {
 
   "appt.status.confirmed": "مؤكَّد",
   "appt.status.scheduled": "مجدول",
-  "appt.status.checked_in": "تم تسجيل الوصول",
+  "appt.status.uncertain": "غير مؤكد",
   "appt.status.completed": "تمّت",
   "appt.status.cancelled": "ملغاة",
   "appt.status.no_show": "لم يحضر",
@@ -340,6 +340,7 @@ export const AR_MESSAGES: Record<string, string> = {
   "appointment.field.status": "الحالة",
   "appointment.footer.cancel": "إلغاء",
   "appointment.footer.save": "حفظ",
+  "appointment.footer.cancelTreatment": "إلغاء العلاج",
 
   "addTask.description": "إضافة مهمة جديدة إلى قائمتك النشطة.",
   "addTask.field.title": "العنوان",

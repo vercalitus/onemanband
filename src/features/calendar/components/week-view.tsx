@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 const statusDot: Record<AppointmentStatus, string> = {
   confirmed: "bg-emerald-400",
   scheduled: "bg-sky-400",
-  checked_in: "bg-indigo-400",
+  uncertain: "bg-amber-400",
   completed: "bg-slate-300",
   cancelled: "bg-rose-300",
   no_show: "bg-orange-300",

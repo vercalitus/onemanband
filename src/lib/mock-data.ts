@@ -198,7 +198,7 @@ export const todaySchedule: ScheduleItem[] = [
     provider: "",
     start: "12:30",
     end: "13:30",
-    status: "checked_in",
+    status: "confirmed",
     treatment: "Rehab milestone — resisted rotation + gait check",
     appointmentType: "first",
   },

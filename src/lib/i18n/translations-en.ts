@@ -246,7 +246,7 @@ export const EN_MESSAGES: Record<string, string> = {
 
   "appt.status.confirmed": "Confirmed",
   "appt.status.scheduled": "Scheduled",
-  "appt.status.checked_in": "Checked in",
+  "appt.status.uncertain": "Uncertain",
   "appt.status.completed": "Done",
   "appt.status.cancelled": "Cancelled",
   "appt.status.no_show": "No show",
@@ -340,6 +340,7 @@ export const EN_MESSAGES: Record<string, string> = {
   "appointment.field.status": "Status",
   "appointment.footer.cancel": "Cancel",
   "appointment.footer.save": "Save",
+  "appointment.footer.cancelTreatment": "Cancel treatment",
 
   "addTask.description": "Add a new task to your active list.",
   "addTask.field.title": "Title",
