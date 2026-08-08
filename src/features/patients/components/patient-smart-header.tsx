@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, Check, Mail, MapPin, Pencil, Phone, X } from "lucide-react"
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Mail, MapPin, Pencil, Phone, X } from "lucide-react"
 import { useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
-import type { PatientSummary } from "@/types/domain"
+import type { BodyMapView, PatientSummary, TreatmentMark } from "@/types/domain"
 import type { PatientContactOverrides } from "../lib/use-patient-cockpit"
+import { BodyMapContent } from "./body-map-card"
 
 const STATUS_BADGE: Record<PatientSummary["status"], string> = {
   active: "bg-slate-100 text-slate-700 border-slate-200",
@@ -23,6 +24,10 @@ interface Props {
   clinicalStatus: string
   onClinicalStatusChange: (v: string) => void
   onSaveOverrides: (o: PatientContactOverrides) => void
+  treatmentMarks: TreatmentMark[]
+  onAddTreatmentMark: (view: BodyMapView, x: number, y: number) => void
+  onUpdateTreatmentMarkNote: (id: string, note: string) => void
+  onRemoveTreatmentMark: (id: string) => void
 }
 
 const FIELD_CLASS =
@@ -36,8 +41,13 @@ export function PatientSmartHeader({
   clinicalStatus,
   onClinicalStatusChange,
   onSaveOverrides,
+  treatmentMarks,
+  onAddTreatmentMark,
+  onUpdateTreatmentMarkNote,
+  onRemoveTreatmentMark,
 }: Props) {
   const { t } = useLocale()
+  const [mapOpen, setMapOpen] = useState(false)
   const clampedDone = Math.min(totalSessionsDone, planTarget)
   const pct = planTarget > 0 ? Math.round((clampedDone / planTarget) * 100) : 0
 
@@ -260,6 +270,43 @@ export function PatientSmartHeader({
                 {clinicalStatus}
               </button>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Treatment map — collapsed by default */}
+      <div className="border-t border-slate-100">
+        <button
+          type="button"
+          onClick={() => setMapOpen((v) => !v)}
+          className="flex w-full items-center gap-2 px-6 py-3.5 text-start text-sm font-semibold text-slate-700 transition-colors hover:text-sky-700"
+          aria-expanded={mapOpen}
+          aria-controls="bodymap-panel"
+        >
+          <MapPin className="size-4 text-slate-400" aria-hidden />
+          {t("patientChart.bodyMapTitle")}
+          {mapOpen ? (
+            <ChevronUp className="ms-auto size-4 text-slate-400" aria-hidden />
+          ) : (
+            <ChevronDown className="ms-auto size-4 text-slate-400" aria-hidden />
+          )}
+        </button>
+
+        <div
+          id="bodymap-panel"
+          className={cn(
+            "overflow-hidden transition-all duration-300",
+            mapOpen ? "max-h-[1300px]" : "max-h-0",
+          )}
+        >
+          <div className="border-t border-slate-100 px-6 pb-5 pt-4">
+            <p className="mb-3 text-xs text-slate-400">{t("patientChart.bodyMapHint")}</p>
+            <BodyMapContent
+              marks={treatmentMarks}
+              onAddMark={onAddTreatmentMark}
+              onUpdateNote={onUpdateTreatmentMarkNote}
+              onRemoveMark={onRemoveTreatmentMark}
+            />
           </div>
         </div>
       </div>

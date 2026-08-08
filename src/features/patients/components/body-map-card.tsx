@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { MapPin } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
@@ -24,6 +23,9 @@ const VIEWS: { view: BodyMapView; Svg: typeof FrontBody; viewBox: { width: numbe
   { view: "side", Svg: SideBody, viewBox: SIDE_BODY_VIEWBOX, labelKey: "patientChart.bodyMapSide" },
   { view: "back", Svg: BackBody, viewBox: BACK_BODY_VIEWBOX, labelKey: "patientChart.bodyMapBack" },
 ]
+
+/** Diagrams render at 85% of their column width (15% smaller than a full-bleed panel). */
+const PANEL_SCALE = "85%"
 
 function formatDate(raw: string, localeTag: string) {
   try {
@@ -65,8 +67,8 @@ function BodyMapPanel({ view, Svg, viewBox, label, marks, onAdd, onMarkClick, lo
         role="button"
         tabIndex={0}
         onClick={handleClick}
-        className="relative w-full cursor-crosshair overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70"
-        style={{ aspectRatio: `${viewBox.width} / ${viewBox.height}` }}
+        className="relative mx-auto cursor-crosshair overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70"
+        style={{ width: PANEL_SCALE, aspectRatio: `${viewBox.width} / ${viewBox.height}` }}
       >
         <Svg className="absolute inset-0 h-full w-full text-slate-500" />
         {marks.map((mark) => (
@@ -90,14 +92,15 @@ function BodyMapPanel({ view, Svg, viewBox, label, marks, onAdd, onMarkClick, lo
   )
 }
 
-interface BodyMapCardProps {
+interface BodyMapContentProps {
   marks: TreatmentMark[]
   onAddMark: (view: BodyMapView, x: number, y: number) => void
   onUpdateNote: (id: string, note: string) => void
   onRemoveMark: (id: string) => void
 }
 
-export function BodyMapCard({ marks, onAddMark, onUpdateNote, onRemoveMark }: BodyMapCardProps) {
+/** The three click-to-mark diagrams + note dialog — embedded at the bottom of the patient summary card. */
+export function BodyMapContent({ marks, onAddMark, onUpdateNote, onRemoveMark }: BodyMapContentProps) {
   const { t, localeTag } = useLocale()
   const [activeMark, setActiveMark] = useState<TreatmentMark | null>(null)
   const [draftNote, setDraftNote] = useState("")
@@ -113,34 +116,21 @@ export function BodyMapCard({ marks, onAddMark, onUpdateNote, onRemoveMark }: Bo
   }
 
   return (
-    <section aria-labelledby="bodymap-heading">
-      <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2
-            id="bodymap-heading"
-            className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
-          >
-            <MapPin className="size-3.5 text-slate-400" aria-hidden />
-            {t("patientChart.bodyMapTitle")}
-          </h2>
-          <p className="mt-1 text-xs text-slate-400">{t("patientChart.bodyMapHint")}</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
-          {VIEWS.map(({ view, Svg, viewBox, labelKey }) => (
-            <BodyMapPanel
-              key={view}
-              view={view}
-              Svg={Svg}
-              viewBox={viewBox}
-              label={t(labelKey)}
-              marks={marks.filter((m) => m.view === view)}
-              onAdd={onAddMark}
-              onMarkClick={openMark}
-              localeTag={localeTag}
-            />
-          ))}
-        </div>
+    <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {VIEWS.map(({ view, Svg, viewBox, labelKey }) => (
+          <BodyMapPanel
+            key={view}
+            view={view}
+            Svg={Svg}
+            viewBox={viewBox}
+            label={t(labelKey)}
+            marks={marks.filter((m) => m.view === view)}
+            onAdd={onAddMark}
+            onMarkClick={openMark}
+            localeTag={localeTag}
+          />
+        ))}
       </div>
 
       <Dialog open={activeMark !== null} onOpenChange={(open) => !open && closeDialog()}>
@@ -187,6 +177,6 @@ export function BodyMapCard({ marks, onAddMark, onUpdateNote, onRemoveMark }: Bo
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </section>
+    </>
   )
 }
