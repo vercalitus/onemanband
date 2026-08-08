@@ -11,7 +11,14 @@ import {
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import type { Locale } from "@/lib/i18n/types"
 import { treatmentsByPatient, documentsByPatient, financesByPatient } from "@/lib/mock-data"
-import type { AppointmentType, TreatmentRecord, DocumentRecord, FinanceRecord } from "@/types/domain"
+import type {
+  AppointmentType,
+  TreatmentRecord,
+  DocumentRecord,
+  FinanceRecord,
+  TreatmentMark,
+  BodyMapView,
+} from "@/types/domain"
 import { renderStrokesToDataUrl, type Stroke } from "@/features/patients/lib/canvas-strokes"
 import { deleteAudio, getAudio, moveAudio, putAudio } from "@/lib/audio-store"
 
@@ -103,6 +110,7 @@ export function usePatientCockpit(patientId: string) {
   const [deletedDocumentIds, setDeletedDocumentIds] = useState<string[]>([])
   const [contactOverrides, setContactOverridesRaw] = useState<PatientContactOverrides>({})
   const [lastAppointmentType, setLastAppointmentTypeRaw] = useState<AppointmentType>("adjustments")
+  const [treatmentMarks, setTreatmentMarksRaw] = useState<TreatmentMark[]>([])
   const [hydrated, setHydrated] = useState(false)
 
   // Track the current active-audio object URL so we can revoke it on change.
@@ -124,6 +132,7 @@ export function usePatientCockpit(patientId: string) {
     setDeletedDocumentIds(readField(patientId, "deletedDocumentIds", []))
     setContactOverridesRaw(readField(patientId, "contactOverrides", {}))
     setLastAppointmentTypeRaw(readField(patientId, "lastAppointmentType", "adjustments"))
+    setTreatmentMarksRaw(readField<TreatmentMark[]>(patientId, "treatmentMarks", []))
     setHydrated(true)
 
     // Restore an in-progress voice memo for this patient (stored in IndexedDB).
@@ -187,6 +196,46 @@ export function usePatientCockpit(patientId: string) {
     (type: AppointmentType) => {
       setLastAppointmentTypeRaw(type)
       writeField(patientId, "lastAppointmentType", type)
+    },
+    [patientId],
+  )
+
+  const addTreatmentMark = useCallback(
+    (view: BodyMapView, x: number, y: number) => {
+      const mark: TreatmentMark = {
+        id: `tm-${Date.now()}`,
+        view,
+        x,
+        y,
+        createdAt: new Date().toISOString(),
+      }
+      setTreatmentMarksRaw((prev) => {
+        const next = [...prev, mark]
+        writeField(patientId, "treatmentMarks", next)
+        return next
+      })
+    },
+    [patientId],
+  )
+
+  const updateTreatmentMarkNote = useCallback(
+    (id: string, note: string) => {
+      setTreatmentMarksRaw((prev) => {
+        const next = prev.map((m) => (m.id === id ? { ...m, note } : m))
+        writeField(patientId, "treatmentMarks", next)
+        return next
+      })
+    },
+    [patientId],
+  )
+
+  const removeTreatmentMark = useCallback(
+    (id: string) => {
+      setTreatmentMarksRaw((prev) => {
+        const next = prev.filter((m) => m.id !== id)
+        writeField(patientId, "treatmentMarks", next)
+        return next
+      })
     },
     [patientId],
   )
@@ -328,5 +377,9 @@ export function usePatientCockpit(patientId: string) {
     contactOverrides,
     saveContactOverrides,
     deleteDocumentRecord,
+    treatmentMarks,
+    addTreatmentMark,
+    updateTreatmentMarkNote,
+    removeTreatmentMark,
   }
 }

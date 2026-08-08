@@ -10,6 +10,7 @@ import { localizePatient } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 import { BillingToast } from "@/features/finances/components/billing-toast"
 import { PatientSmartHeader } from "@/features/patients/components/patient-smart-header"
+import { BodyMapCard } from "@/features/patients/components/body-map-card"
 import { SessionCanvas } from "@/features/patients/components/session-canvas"
 import { SessionAudio } from "@/features/patients/components/session-audio"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
@@ -56,6 +57,10 @@ export function PatientDetailClient() {
     contactOverrides,
     saveContactOverrides,
     deleteDocumentRecord,
+    treatmentMarks,
+    addTreatmentMark,
+    updateTreatmentMarkNote,
+    removeTreatmentMark,
   } = usePatientCockpit(id)
 
   const [notesOpen, setNotesOpen] = useState(true)
@@ -113,6 +118,13 @@ export function PatientDetailClient() {
             clinicalStatus={clinicalStatus}
             onClinicalStatusChange={setClinicalStatus}
             onSaveOverrides={saveContactOverrides}
+          />
+
+          <BodyMapCard
+            marks={treatmentMarks}
+            onAddMark={addTreatmentMark}
+            onUpdateNote={updateTreatmentMarkNote}
+            onRemoveMark={removeTreatmentMark}
           />
 
           <section id="active-session" aria-labelledby="session-heading" className="scroll-mt-24">

@@ -105,6 +105,18 @@ export interface TreatmentRecord {
   note: string
 }
 
+export type BodyMapView = "front" | "back" | "side"
+
+export interface TreatmentMark {
+  id: string
+  view: BodyMapView
+  /** Percent (0–100) position within the diagram's viewBox — resolution-independent. */
+  x: number
+  y: number
+  note?: string
+  createdAt: string
+}
+
 export interface DocumentRecord {
   id: string
   name: string
