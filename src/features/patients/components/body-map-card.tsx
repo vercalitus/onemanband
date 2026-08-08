@@ -37,12 +37,7 @@ function formatDate(raw: string, localeTag: string) {
   }
 }
 
-function dotClasses(rank: number) {
-  if (rank === 0) return "bg-sky-600 shadow-md"
-  if (rank <= 2) return "bg-sky-500/85"
-  if (rank <= 5) return "bg-slate-400/75"
-  return "bg-slate-300/60"
-}
+const DOT_CLASSES = "bg-sky-600 shadow-md"
 
 interface BodyMapPanelProps {
   view: BodyMapView
@@ -50,13 +45,12 @@ interface BodyMapPanelProps {
   viewBox: { width: number; height: number }
   label: string
   marks: TreatmentMark[]
-  rankOf: (id: string) => number
   onAdd: (view: BodyMapView, x: number, y: number) => void
   onMarkClick: (mark: TreatmentMark) => void
   localeTag: string
 }
 
-function BodyMapPanel({ view, Svg, viewBox, label, marks, rankOf, onAdd, onMarkClick, localeTag }: BodyMapPanelProps) {
+function BodyMapPanel({ view, Svg, viewBox, label, marks, onAdd, onMarkClick, localeTag }: BodyMapPanelProps) {
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100))
@@ -74,26 +68,23 @@ function BodyMapPanel({ view, Svg, viewBox, label, marks, rankOf, onAdd, onMarkC
         className="relative w-full cursor-crosshair overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70"
         style={{ aspectRatio: `${viewBox.width} / ${viewBox.height}` }}
       >
-        <Svg className="absolute inset-0 h-full w-full text-slate-300" />
-        {marks.map((mark) => {
-          const rank = rankOf(mark.id)
-          return (
-            <button
-              key={mark.id}
-              type="button"
-              title={mark.note ? `${formatDate(mark.createdAt, localeTag)} — ${mark.note}` : formatDate(mark.createdAt, localeTag)}
-              onClick={(e) => {
-                e.stopPropagation()
-                onMarkClick(mark)
-              }}
-              className={cn(
-                "absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white transition-transform hover:scale-125",
-                dotClasses(rank),
-              )}
-              style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
-            />
-          )
-        })}
+        <Svg className="absolute inset-0 h-full w-full text-slate-500" />
+        {marks.map((mark) => (
+          <button
+            key={mark.id}
+            type="button"
+            title={mark.note ? `${formatDate(mark.createdAt, localeTag)} — ${mark.note}` : formatDate(mark.createdAt, localeTag)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onMarkClick(mark)
+            }}
+            className={cn(
+              "absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white transition-transform hover:scale-125",
+              DOT_CLASSES,
+            )}
+            style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
+          />
+        ))}
       </div>
     </div>
   )
@@ -110,13 +101,6 @@ export function BodyMapCard({ marks, onAddMark, onUpdateNote, onRemoveMark }: Bo
   const { t, localeTag } = useLocale()
   const [activeMark, setActiveMark] = useState<TreatmentMark | null>(null)
   const [draftNote, setDraftNote] = useState("")
-
-  const rankById = new Map(
-    [...marks]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .map((m, i) => [m.id, i] as const),
-  )
-  const rankOf = (id: string) => rankById.get(id) ?? marks.length
 
   const openMark = (mark: TreatmentMark) => {
     setActiveMark(mark)
@@ -151,7 +135,6 @@ export function BodyMapCard({ marks, onAddMark, onUpdateNote, onRemoveMark }: Bo
               viewBox={viewBox}
               label={t(labelKey)}
               marks={marks.filter((m) => m.view === view)}
-              rankOf={rankOf}
               onAdd={onAddMark}
               onMarkClick={openMark}
               localeTag={localeTag}
