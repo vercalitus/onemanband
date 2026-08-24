@@ -28,6 +28,15 @@ interface StoreShape {
   intakes: PatientIntake[]
   questionnaires: ProgressQuestionnaire[]
   responses: PatientResponse[]
+  /**
+   * Instant the no-show watcher first ran. Visits that ended before it are
+   * never auto-marked — the system should not invent history for appointments
+   * it was not watching, which would otherwise bill every stale seed row the
+   * moment the feature ships.
+   */
+  noShowWatermark?: string
+  /** Questionnaire ids already filed into a patient's timeline. */
+  filedQuestionnaires?: string[]
 }
 
 const emptyStore = (): StoreShape => ({
@@ -36,6 +45,7 @@ const emptyStore = (): StoreShape => ({
   intakes: [],
   questionnaires: [],
   responses: [],
+  filedQuestionnaires: [],
 })
 
 /** Server-side stand-in for localStorage. Per-instance, non-durable. */
@@ -241,6 +251,33 @@ export function markResponseHandled(id: string): void {
   mutate((s) => ({
     ...s,
     responses: s.responses.map((r) => (r.id === id ? { ...r, handled: true } : r)),
+  }))
+}
+
+/* -------------------------------------------------------------------------- */
+/* Watchers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Read the no-show watermark, setting it to `now` the first time. Anything
+ * that ended before this instant is out of scope for auto-marking.
+ */
+export function ensureNoShowWatermark(now: Date = new Date()): string {
+  const current = readStore().noShowWatermark
+  if (current) return current
+  const stamp = now.toISOString()
+  mutate((s) => ({ ...s, noShowWatermark: stamp }))
+  return stamp
+}
+
+export function isQuestionnaireFiled(id: string): boolean {
+  return (readStore().filedQuestionnaires ?? []).includes(id)
+}
+
+export function markQuestionnaireFiled(id: string): void {
+  mutate((s) => ({
+    ...s,
+    filedQuestionnaires: [...new Set([...(s.filedQuestionnaires ?? []), id])],
   }))
 }
 

@@ -5,6 +5,7 @@ import {
   enqueueMessages,
   randomId,
 } from "@/features/automations/lib/automation-store"
+import { setAppointmentOverlay } from "@/features/automations/lib/appointment-overlay"
 import { planMessages, type AutomationEvent, type PlanContext } from "@/features/automations/lib/plan-messages"
 import { createQuestionnaire } from "@/features/automations/lib/questionnaire"
 import type { ClinicSettings } from "@/types/clinic-settings"
@@ -103,7 +104,12 @@ export function onAppointmentCancelled(appointmentId: string): number {
  * session also opens a progress questionnaire.
  */
 export function onTreatmentCompleted(
-  input: AppointmentEventInput & { invoiceAmount?: string; completedSessions?: number },
+  input: AppointmentEventInput & {
+    invoiceId?: string
+    invoiceAmount?: string
+    invoiceIssuedDate?: string
+    completedSessions?: number
+  },
   ctx: PlanContext,
 ): OutboxMessage[] {
   const queued = emit({ ...input, trigger: "treatment.completed" }, ctx)
@@ -136,7 +142,11 @@ export function onTreatmentCompleted(
  * `noShowGraceMinutes` has elapsed past the slot end.
  */
 export function onNoShow(
-  input: AppointmentEventInput & { invoiceId?: string; invoiceAmount?: string },
+  input: AppointmentEventInput & {
+    invoiceId?: string
+    invoiceAmount?: string
+    invoiceIssuedDate?: string
+  },
   ctx: PlanContext,
 ): OutboxMessage[] {
   cancelPendingForAppointment(input.appointmentId)
@@ -199,6 +209,24 @@ export function recordPatientResponse(input: {
     input.appointmentId
   ) {
     cancelPendingForAppointment(input.appointmentId)
+  }
+
+  // Write the change through to the schedule. Without this the calendar keeps
+  // showing a visit the patient has already cancelled or moved.
+  if (input.appointmentId) {
+    if (input.kind === "confirmed") {
+      setAppointmentOverlay(input.appointmentId, { status: "confirmed" })
+    } else if (input.kind === "cancelled") {
+      setAppointmentOverlay(input.appointmentId, { status: "cancelled" })
+    } else if (input.kind === "rescheduled" && input.newDate && input.newStart) {
+      // Status returns to `scheduled`: the patient picked a slot but has not
+      // confirmed the new one, and the practitioner still has to accept it.
+      setAppointmentOverlay(input.appointmentId, {
+        status: "scheduled",
+        date: input.newDate,
+        start: input.newStart,
+      })
+    }
   }
 
   const response: PatientResponse = {

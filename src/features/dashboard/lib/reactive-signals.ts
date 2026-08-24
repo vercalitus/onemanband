@@ -46,7 +46,6 @@ const PRIORITY_RANK: Record<TodoItem["priority"], number> = { high: 0, medium: 1
  */
 export function deriveReactiveTodos(now: Date = new Date()): TodoItem[] {
   const items: TodoItem[] = []
-  const todayIso = isoDay(now)
   const tomorrowIso = isoDay(new Date(now.getTime() + MS_PER_DAY))
   const appointments = [...todaySchedule, ...weeklySchedule]
 

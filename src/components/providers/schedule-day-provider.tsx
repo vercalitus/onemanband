@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -11,6 +12,12 @@ import {
   type SetStateAction,
 } from "react"
 
+import {
+  APPOINTMENT_OVERLAY_EVENT,
+  applyAppointmentOverlay,
+} from "@/features/automations/lib/appointment-overlay"
+import { useNoShowWatcher } from "@/features/automations/lib/use-no-show-watcher"
+import { useQuestionnaireFiling } from "@/features/automations/lib/use-questionnaire-filing"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import {
   CALENDAR_HOUR_END,
@@ -58,6 +65,22 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
     ...todaySchedule,
     ...weeklySchedule,
   ])
+
+  /**
+   * Fold in changes the patient made through a reminder link (confirmed,
+   * cancelled, moved). Applied after mount rather than in the initialiser
+   * because the overlay is localStorage — deriving it during render would make
+   * server and client markup disagree.
+   */
+  useEffect(() => {
+    const sync = () => setAppointments((prev) => applyAppointmentOverlay(prev))
+    sync()
+    window.addEventListener(APPOINTMENT_OVERLAY_EVENT, sync)
+    return () => window.removeEventListener(APPOINTMENT_OVERLAY_EVENT, sync)
+  }, [])
+
+  useNoShowWatcher(appointments, setAppointments)
+  useQuestionnaireFiling()
   const [headerCreateOpen, setHeaderCreateOpen] = useState(false)
   const [headerDefaultStart, setHeaderDefaultStart] = useState<number | undefined>(undefined)
   const [headerDefaultDate, setHeaderDefaultDate] = useState<string | undefined>(undefined)

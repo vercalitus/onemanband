@@ -1,7 +1,17 @@
 "use client"
 
-import { useState } from "react"
-import { CalendarRange, Check, Clock, Copy, Link2, Plus, Trash2, Workflow } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import {
+  BellOff,
+  CalendarRange,
+  Check,
+  Clock,
+  Copy,
+  Link2,
+  Plus,
+  Trash2,
+  Workflow,
+} from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Badge } from "@/components/ui/badge"
@@ -13,9 +23,16 @@ import { MessageQueueCard } from "@/features/settings/components/automations/mes
 import { SequenceCard } from "@/features/settings/components/automations/sequence-card"
 import { randomId } from "@/features/automations/lib/automation-store"
 import { mintToken, tokenLink } from "@/features/automations/lib/tokens"
+import {
+  PATIENT_EXTRAS_EVENT,
+  readOptOut,
+  writeOptOut,
+  type NotificationOptOut,
+} from "@/features/patients/lib/patient-extras-store"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
+import { patients } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
-import type { AutomationSequence, AvailabilityWindow } from "@/types/automation"
+import type { AutomationSequence, AvailabilityWindow, MessageChannel } from "@/types/automation"
 import type { ClinicSettings } from "@/types/clinic-settings"
 
 const CONTROL =
@@ -85,8 +102,49 @@ export function AutomationsTab({
               {t("automations.timing.timezoneHint")}
             </p>
           </div>
+
+          <div className="sm:col-span-3">
+            <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+              <Switch
+                checked={a.quietHours.enabled}
+                aria-label={t("automations.quiet.toggleAria")}
+                onCheckedChange={(enabled) =>
+                  patch({ quietHours: { ...a.quietHours, enabled } })
+                }
+              />
+              <span className="text-sm font-semibold text-slate-900">
+                {t("automations.quiet.title")}
+              </span>
+              <Input
+                type="time"
+                step={300}
+                value={a.quietHours.start}
+                onChange={(e) =>
+                  patch({ quietHours: { ...a.quietHours, start: e.target.value || "21:00" } })
+                }
+                className={cn(CONTROL, "w-32 font-mono tabular-nums")}
+                aria-label={t("automations.quiet.startAria")}
+              />
+              <span className="text-slate-400">–</span>
+              <Input
+                type="time"
+                step={300}
+                value={a.quietHours.end}
+                onChange={(e) =>
+                  patch({ quietHours: { ...a.quietHours, end: e.target.value || "08:00" } })
+                }
+                className={cn(CONTROL, "w-32 font-mono tabular-nums")}
+                aria-label={t("automations.quiet.endAria")}
+              />
+            </div>
+            <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+              {t("automations.quiet.hint")}
+            </p>
+          </div>
         </CardContent>
       </Card>
+
+      <OptOutCard />
 
       <div className="flex items-center gap-2.5 pt-1">
         <Workflow className="size-5 text-sky-600" aria-hidden />
@@ -145,6 +203,106 @@ function NumberField({
       />
       {hint ? <span className="mt-1 block text-xs leading-relaxed text-slate-500">{hint}</span> : null}
     </label>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Per-patient notification opt-out.
+ *
+ * A patient asking not to be messaged must be honoured across every sequence
+ * at once — editing each template would be both laborious and easy to get
+ * wrong. The planner checks this before any channel is used, so switching a
+ * patient off here silences reminders, invoices and questionnaires alike.
+ */
+function OptOutCard() {
+  const { t } = useLocale()
+  const [rows, setRows] = useState<{ id: string; name: string; optOut: NotificationOptOut }[]>([])
+
+  const refresh = useCallback(() => {
+    setRows(patients.map((p) => ({ id: p.id, name: p.fullName, optOut: readOptOut(p.id) })))
+  }, [])
+
+  // After mount only — the store is localStorage and would not match SSR.
+  useEffect(() => {
+    refresh()
+    window.addEventListener(PATIENT_EXTRAS_EVENT, refresh)
+    return () => window.removeEventListener(PATIENT_EXTRAS_EVENT, refresh)
+  }, [refresh])
+
+  const update = (patientId: string, partial: Partial<NotificationOptOut>) => {
+    const next = { ...readOptOut(patientId), ...partial }
+    writeOptOut(patientId, next)
+    refresh()
+  }
+
+  const channels: MessageChannel[] = ["whatsapp", "email", "sms"]
+
+  return (
+    <Card className={elevatedCardClass}>
+      <CardHeader className={darkCardHeaderClass}>
+        <div className="flex items-center gap-2.5">
+          <BellOff className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
+          <div>
+            <CardTitle className="text-lg font-bold tracking-tight text-white">
+              {t("automations.optOut.title")}
+            </CardTitle>
+            <CardDescription className="text-sky-100/80">
+              {t("automations.optOut.desc")}
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className={cn(elevatedCardBodyClass, "p-0")}>
+        <ul className="divide-y divide-slate-100">
+          {rows.map((row) => (
+            <li key={row.id} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">
+                {row.name}
+              </span>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {channels.map((channel) => {
+                  // A blanket opt-out subsumes the per-channel flags, so show
+                  // them as off and disabled rather than silently overridden.
+                  const blocked = row.optOut.all || row.optOut[channel]
+                  return (
+                    <button
+                      key={channel}
+                      type="button"
+                      aria-pressed={!blocked}
+                      disabled={row.optOut.all}
+                      onClick={() => update(row.id, { [channel]: !row.optOut[channel] })}
+                      className={cn(
+                        "rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                        blocked
+                          ? "border-slate-200 bg-slate-50 text-slate-400 line-through"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                        row.optOut.all && "cursor-not-allowed opacity-60",
+                      )}
+                    >
+                      {t(`automations.channel.${channel}`)}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <label className="flex items-center gap-2">
+                <Switch
+                  checked={row.optOut.all}
+                  aria-label={`${t("automations.optOut.allAria")}: ${row.name}`}
+                  onCheckedChange={(all) => update(row.id, { all })}
+                />
+                <span className="text-xs font-semibold text-slate-600">
+                  {t("automations.optOut.all")}
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   )
 }
 

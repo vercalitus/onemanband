@@ -2,12 +2,14 @@ import {
   addIsoDays,
   addMinutes,
   clinicDateTimeToUtc,
+  clinicHhmm,
   clinicIsoDate,
   formatClinicDateTime,
 } from "@/features/automations/lib/clinic-time"
 import { randomId } from "@/features/automations/lib/automation-store"
 import { renderTemplate } from "@/features/automations/lib/template-render"
 import { mintToken, tokenLink } from "@/features/automations/lib/tokens"
+import { allowsChannel } from "@/features/patients/lib/patient-extras-store"
 import type {
   AutomationAction,
   AutomationSequence,
@@ -16,6 +18,7 @@ import type {
   ClinicAutomations,
   MessageChannel,
   OutboxMessage,
+  QuietHours,
 } from "@/types/automation"
 
 /**
@@ -165,6 +168,53 @@ function tokenKindForActions(actions: AutomationAction[]) {
 const recipientFor = (channel: MessageChannel, event: AutomationEvent): string | undefined =>
   channel === "email" ? event.email : event.phone
 
+/** Minutes from midnight, clinic-local. */
+const minutesOfDay = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+
+/** True when a clinic-local time sits inside the quiet window (which may wrap). */
+function insideQuietHours(minutes: number, quiet: QuietHours): boolean {
+  const start = minutesOfDay(quiet.start)
+  const end = minutesOfDay(quiet.end)
+  if (start === end) return false
+  return start < end
+    ? minutes >= start && minutes < end
+    : minutes >= start || minutes < end // wraps past midnight
+}
+
+/**
+ * Move a send out of the quiet window, or refuse it.
+ *
+ * Returns null when the message cannot be salvaged — a reminder anchored
+ * before an appointment is worthless once the appointment has begun, so it is
+ * dropped rather than delivered late.
+ */
+function applyQuietHours(
+  at: Date,
+  quiet: QuietHours,
+  timezone: string,
+  latestUseful: Date | null,
+): Date | null {
+  if (!quiet.enabled) return at
+
+  const minutes = minutesOfDay(clinicHhmm(at, timezone))
+  if (!insideQuietHours(minutes, quiet)) return at
+
+  // Push to the end of the window. Only a wrapping window entered in the
+  // evening resolves on the following morning; every other case is same-day.
+  const start = minutesOfDay(quiet.start)
+  const end = minutesOfDay(quiet.end)
+  const wraps = start > end
+  const day = clinicIsoDate(at, timezone)
+  const targetDay = wraps && minutes >= start ? addIsoDays(day, 1) : day
+  const shifted = clinicDateTimeToUtc(timezone, targetDay, quiet.end)
+
+  if (latestUseful && shifted.getTime() > latestUseful.getTime()) return null
+  return shifted
+}
+
 /**
  * Plan every message an event should produce.
  *
@@ -189,8 +239,13 @@ export function planMessages(event: AutomationEvent, ctx: PlanContext): OutboxMe
     for (const step of sequence.steps) {
       if (!step.enabled) continue
 
+      // Three gates, narrowest last: the clinic's master switch, the patient's
+      // own opt-out, and finally whether we have an address at all.
       const channels = step.channels.filter(
-        (c) => ctx.channelEnabled[c] && recipientFor(c, event),
+        (c) =>
+          ctx.channelEnabled[c] &&
+          allowsChannel(event.patientId, c) &&
+          recipientFor(c, event),
       )
       if (!channels.length) continue
 
@@ -218,7 +273,25 @@ export function planMessages(event: AutomationEvent, ctx: PlanContext): OutboxMe
         : null
       const link = token ? tokenLink(token, ctx.origin) : undefined
 
-      for (const { at, runIndex } of instants) {
+      // A message that must arrive before the visit has a hard deadline;
+      // quiet-hours shifting may not push it past that.
+      const appointmentStart =
+        event.appointmentDate && event.appointmentStart
+          ? clinicDateTimeToUtc(timezone, event.appointmentDate, event.appointmentStart)
+          : null
+      const deadline =
+        step.schedule.mode === "offset" &&
+        step.schedule.anchor === "appointment_start" &&
+        step.schedule.minutes < 0
+          ? appointmentStart
+          : step.schedule.mode === "clock_before"
+            ? appointmentStart
+            : null
+
+      for (const { at: rawAt, runIndex } of instants) {
+        const at = applyQuietHours(rawAt, automations.quietHours, timezone, deadline)
+        if (!at) continue
+
         // A reminder whose moment has passed is noise, not a reminder. Steps
         // scheduled to fire immediately are exempt.
         if (step.schedule.mode !== "immediate" && at.getTime() < now.getTime()) continue

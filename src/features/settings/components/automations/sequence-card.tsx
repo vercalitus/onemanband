@@ -1,18 +1,22 @@
 "use client"
 
-import { AlertTriangle, Mail, MessageCircle, Smartphone } from "lucide-react"
+import { AlertTriangle, Eye, Mail, MessageCircle, RotateCcw, Smartphone } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { ScheduleEditor } from "@/features/settings/components/automations/schedule-editor"
+import { StepPreview } from "@/features/settings/components/automations/step-preview"
+import { defaultSequences } from "@/features/automations/lib/default-sequences"
 import { TEMPLATE_PLACEHOLDERS } from "@/features/automations/lib/template-render"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { cn } from "@/lib/utils"
 import type {
+  AutomationAction,
   AutomationSequence,
   AutomationStep,
+  AutomationTrigger,
   MessageChannel,
   ScheduleRule,
 } from "@/types/automation"
@@ -24,6 +28,31 @@ const CHANNEL_ICON: Record<MessageChannel, typeof Mail> = {
 }
 
 const ALL_CHANNELS: MessageChannel[] = ["whatsapp", "email", "sms"]
+
+/**
+ * Buttons offered per trigger.
+ *
+ * Not one flat list: a booking confirmation has no invoice to open and a
+ * payment reminder has nothing to reschedule. Offering every action everywhere
+ * would let a clinic build a message whose buttons cannot work.
+ */
+const ACTIONS_FOR_TRIGGER: Record<AutomationTrigger, AutomationAction[]> = {
+  "appointment.booked": ["confirm", "cancel", "reschedule", "reply_free_text"],
+  "appointment.reminder": ["confirm", "cancel", "reschedule", "reply_free_text"],
+  "treatment.completed": ["open_invoice", "reply_free_text"],
+  "appointment.no_show": ["open_invoice", "reschedule", "reply_free_text"],
+  "invoice.unpaid": ["open_invoice", "reply_free_text"],
+  "progress.checkpoint": ["open_questionnaire", "reply_free_text"],
+}
+
+const DEFAULTS = defaultSequences()
+
+/** True when the practitioner has edited this step away from the shipped default. */
+function isStepModified(sequenceId: string, step: AutomationStep): boolean {
+  const original = DEFAULTS.find((s) => s.id === sequenceId)?.steps.find((x) => x.id === step.id)
+  if (!original) return false
+  return JSON.stringify({ ...original, enabled: step.enabled }) !== JSON.stringify(step)
+}
 
 /**
  * One automation sequence, rendered as a vertical timeline of its steps.
@@ -46,6 +75,16 @@ export function SequenceCard({
       ...sequence,
       steps: sequence.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s)),
     })
+
+  /** Restore shipped copy and timing, keeping the on/off state as it is. */
+  const resetStep = (stepId: string) => {
+    const original = DEFAULTS.find((s) => s.id === sequence.id)?.steps.find((x) => x.id === stepId)
+    if (!original) return
+    onChange({
+      ...sequence,
+      steps: sequence.steps.map((s) => (s.id === stepId ? { ...original, enabled: s.enabled } : s)),
+    })
+  }
 
   return (
     <Card className={elevatedCardClass}>
@@ -170,21 +209,56 @@ export function SequenceCard({
                     />
                   </label>
 
-                  {step.actions.length ? (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        {t("automations.step.buttons")}
-                      </span>
-                      {step.actions.map((action) => (
-                        <Badge
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      {t("automations.step.buttons")}
+                    </span>
+                    {ACTIONS_FOR_TRIGGER[sequence.trigger].map((action) => {
+                      const on = step.actions.includes(action)
+                      return (
+                        <button
                           key={action}
-                          variant="outline"
-                          className="border-slate-200 bg-slate-50 font-medium text-slate-600"
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() =>
+                            patchStep(step.id, {
+                              actions: on
+                                ? step.actions.filter((a) => a !== action)
+                                : [...step.actions, action],
+                            })
+                          }
+                          className={cn(
+                            "rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                            on
+                              ? "border-sky-600 bg-sky-600 text-white"
+                              : "border-slate-200 bg-white text-slate-500 hover:border-sky-300",
+                          )}
                         >
                           {t(`automations.action.${action}`)}
-                        </Badge>
-                      ))}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <details className="group/preview">
+                    <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-sky-700 hover:text-sky-800">
+                      <Eye className="size-3.5" aria-hidden />
+                      {t("automations.preview.toggle")}
+                    </summary>
+                    <div className="mt-3">
+                      <StepPreview step={step} />
                     </div>
+                  </details>
+
+                  {isStepModified(sequence.id, step) ? (
+                    <button
+                      type="button"
+                      onClick={() => resetStep(step.id)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800"
+                    >
+                      <RotateCcw className="size-3.5" aria-hidden />
+                      {t("automations.step.reset")}
+                    </button>
                   ) : null}
                 </div>
               </div>

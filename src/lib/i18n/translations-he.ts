@@ -803,6 +803,26 @@ export const HE_MESSAGES: Record<string, string> = {
   "automations.schedule.maxRuns": "מקסימום",
   "automations.schedule.maxRunsAria": "מספר תזכורות מרבי",
 
+  "automations.quiet.title": "שעות שקטות",
+  "automations.quiet.toggleAria": "הפעלת שעות שקטות",
+  "automations.quiet.startAria": "תחילת שעות שקטות",
+  "automations.quiet.endAria": "סיום שעות שקטות",
+  "automations.quiet.hint":
+    "הודעה שזמנה נופל בחלון הזה תמתין עד שהוא נגמר. תזכורת שהייתה מגיעה אחרי התור — תבוטל במקום.",
+
+  "automations.optOut.title": "העדפות מטופלים",
+  "automations.optOut.desc": "מטופל שביקש לא לקבל הודעות. חל על כל הרצפים בבת אחת.",
+  "automations.optOut.all": "עצור הכל",
+  "automations.optOut.allAria": "עצירת כל ההודעות עבור",
+
+  "automations.step.reset": "החזרה לברירת מחדל",
+  "automations.preview.toggle": "תצוגה מקדימה",
+  "automations.preview.whatsapp": "וואטסאפ",
+  "automations.preview.email": "מייל",
+  "automations.preview.noSubject": "(ללא נושא)",
+  "automations.preview.sampleNote": "התצוגה משתמשת בפרטים לדוגמה, לא במטופל אמיתי.",
+  "automations.preview.unknownPlaceholder": "זה לא יתמלא וישלח כמו שהוא:",
+
   "automations.queue.title": "תור ההודעות",
   "automations.queue.desc":
     "כל מה שהמנוע תזמן. עדיין לא מחובר ספק שליחה, ולכן המסירה מדומה.",

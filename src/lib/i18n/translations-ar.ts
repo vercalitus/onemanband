@@ -802,6 +802,26 @@ export const AR_MESSAGES: Record<string, string> = {
   "automations.schedule.maxRuns": "حد أقصى",
   "automations.schedule.maxRunsAria": "أقصى عدد للتذكيرات",
 
+  "automations.quiet.title": "ساعات الهدوء",
+  "automations.quiet.toggleAria": "تفعيل ساعات الهدوء",
+  "automations.quiet.startAria": "بداية ساعات الهدوء",
+  "automations.quiet.endAria": "نهاية ساعات الهدوء",
+  "automations.quiet.hint":
+    "الرسالة التي يحين موعدها ضمن هذه النافذة تنتظر حتى تنتهي. أما التذكير الذي سيصل بعد الموعد فيُلغى.",
+
+  "automations.optOut.title": "تفضيلات المرضى",
+  "automations.optOut.desc": "مريض طلب عدم مراسلته. ينطبق على كل التسلسلات دفعة واحدة.",
+  "automations.optOut.all": "إيقاف الكل",
+  "automations.optOut.allAria": "إيقاف كل الرسائل لـ",
+
+  "automations.step.reset": "استعادة الافتراضي",
+  "automations.preview.toggle": "معاينة",
+  "automations.preview.whatsapp": "واتساب",
+  "automations.preview.email": "بريد",
+  "automations.preview.noSubject": "(بلا عنوان)",
+  "automations.preview.sampleNote": "المعاينة تستخدم بيانات تجريبية، لا مريضاً حقيقياً.",
+  "automations.preview.unknownPlaceholder": "لن يُملأ هذا وسيُرسل كما هو:",
+
   "automations.queue.title": "قائمة الرسائل",
   "automations.queue.desc":
     "كل ما جدوَله المحرّك. لم يُربط مزوّد إرسال بعد، لذا التسليم محاكاة.",

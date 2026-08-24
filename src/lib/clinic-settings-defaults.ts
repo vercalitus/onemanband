@@ -97,6 +97,8 @@ export function defaultAutomations(): ClinicAutomations {
     timezone: DEFAULT_CLINIC_TIMEZONE,
     sequences: defaultSequences(),
     futureAvailability: defaultFutureAvailability(),
+    // Nothing automated reaches a patient overnight.
+    quietHours: { enabled: true, start: "21:00", end: "08:00" },
     noShowGraceMinutes: 20,
     progressQuestionnaireEverySessions: 6,
     selfBooking: {

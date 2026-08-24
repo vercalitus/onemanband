@@ -108,6 +108,7 @@ function mergeAutomations(
     futureAvailability: stored.futureAvailability?.length
       ? stored.futureAvailability
       : d.futureAvailability,
+    quietHours: { ...d.quietHours, ...stored.quietHours },
     noShowGraceMinutes: stored.noShowGraceMinutes ?? d.noShowGraceMinutes,
     progressQuestionnaireEverySessions:
       stored.progressQuestionnaireEverySessions ?? d.progressQuestionnaireEverySessions,

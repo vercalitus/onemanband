@@ -3,16 +3,18 @@
 import { useCallback } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { issueInvoiceForVisit } from "@/features/automations/lib/billing-bridge"
 import {
   onAppointmentBooked,
   onAppointmentCancelled,
   onAppointmentRescheduled,
+  onInvoiceIssued,
   onNoShow,
   onTreatmentCompleted,
   planContextFromSettings,
 } from "@/features/automations/lib/events"
+import type { PlanContext } from "@/features/automations/lib/plan-messages"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
-import { formatIls } from "@/lib/format-ils"
 import { patients, todaySchedule, weeklySchedule } from "@/lib/mock-data"
 import type { ScheduleItem } from "@/types/domain"
 
@@ -74,25 +76,24 @@ export function useAppointmentAutomations() {
           case "cancelled":
             onAppointmentCancelled(next.id)
             break
+
+          // A missed visit is still billable, so it takes the same invoice
+          // path as a completed one — the sequence attaches it to the notice.
           case "no_show":
-            onNoShow(
-              {
-                ...input,
-                invoiceAmount: priceForType(settings, next),
-              },
-              ctx,
-            )
+            onNoShow({ ...input, ...bill(settings, next, "no_show", ctx) }, ctx)
             break
+
           case "completed":
             onTreatmentCompleted(
               {
                 ...input,
-                invoiceAmount: priceForType(settings, next),
+                ...bill(settings, next, "visit", ctx),
                 completedSessions: completedSessionsFor(next.patientId) + 1,
               },
               ctx,
             )
             break
+
           default:
             break
         }
@@ -104,12 +105,55 @@ export function useAppointmentAutomations() {
   )
 }
 
-function priceForType(
+/**
+ * Issue the invoice for a visit and start its payment-reminder ladder.
+ *
+ * Returns the ids the message templates need, so the notice a patient receives
+ * points at a real invoice rather than quoting a number that exists nowhere.
+ * Idempotent: `issueInvoiceForVisit` keys off the appointment, and the dunning
+ * sequence is only started for a newly created invoice.
+ */
+function bill(
   settings: ReturnType<typeof readClinicSettings>,
   item: ScheduleItem,
-): string | undefined {
+  reason: "visit" | "no_show",
+  ctx: PlanContext,
+): { invoiceId?: string; invoiceAmount?: string; invoiceIssuedDate?: string } {
   const row = settings.treatmentTypes.find((t) => t.type === item.appointmentType)
-  return row ? formatIls(row.priceIls) : undefined
+  if (!row) return {}
+
+  const patient = patients.find((p) => p.id === item.patientId)
+  const { invoice, created } = issueInvoiceForVisit({
+    patientId: item.patientId,
+    patientName: item.patientName,
+    appointmentId: item.id,
+    treatmentType: item.appointmentType,
+    amount: row.priceIls,
+    visitDate: item.date,
+    provider: settings.integrations.billingProvider,
+    reason,
+  })
+
+  if (created) {
+    onInvoiceIssued(
+      {
+        patientId: item.patientId,
+        patientName: item.patientName,
+        phone: patient?.phone,
+        email: patient?.email,
+        invoiceId: invoice.id,
+        invoiceAmount: invoice.displayAmount,
+        invoiceIssuedDate: item.date,
+      },
+      ctx,
+    )
+  }
+
+  return {
+    invoiceId: invoice.id,
+    invoiceAmount: invoice.displayAmount,
+    invoiceIssuedDate: item.date,
+  }
 }
 
 /**

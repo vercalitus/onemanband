@@ -816,6 +816,27 @@ export const EN_MESSAGES: Record<string, string> = {
   "automations.schedule.maxRuns": "max",
   "automations.schedule.maxRunsAria": "Maximum reminders",
 
+  "automations.quiet.title": "Quiet hours",
+  "automations.quiet.toggleAria": "Toggle quiet hours",
+  "automations.quiet.startAria": "Quiet hours start",
+  "automations.quiet.endAria": "Quiet hours end",
+  "automations.quiet.hint":
+    "Messages due inside this window wait until it ends. A reminder that would arrive after its appointment is dropped instead.",
+
+  "automations.optOut.title": "Patient preferences",
+  "automations.optOut.desc":
+    "A patient who asks not to be contacted. Applies to every sequence at once.",
+  "automations.optOut.all": "Stop all",
+  "automations.optOut.allAria": "Stop all messages for",
+
+  "automations.step.reset": "Reset to default",
+  "automations.preview.toggle": "Preview",
+  "automations.preview.whatsapp": "WhatsApp",
+  "automations.preview.email": "Email",
+  "automations.preview.noSubject": "(no subject)",
+  "automations.preview.sampleNote": "Preview uses sample details, not a real patient.",
+  "automations.preview.unknownPlaceholder": "This will not be filled in and will send as-is:",
+
   "automations.queue.title": "Message queue",
   "automations.queue.desc":
     "Everything the engine has scheduled. No provider is connected yet, so delivery is simulated.",

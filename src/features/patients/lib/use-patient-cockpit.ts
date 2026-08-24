@@ -20,6 +20,13 @@ import type {
   BodyMapView,
 } from "@/types/domain"
 import { renderStrokesToDataUrl, type Stroke } from "@/features/patients/lib/canvas-strokes"
+import {
+  PATIENT_EXTRAS_EVENT,
+  readAddedFinances,
+  readAddedTreatments,
+  readField,
+  writeField,
+} from "@/features/patients/lib/patient-extras-store"
 import { deleteAudio, getAudio, moveAudio, putAudio } from "@/lib/audio-store"
 
 export interface CompletedSession {
@@ -79,25 +86,8 @@ function normalizeClinicalRead(stored: string | null | undefined, locale: Locale
   return stored ?? defaultClinicalForLocale(locale)
 }
 
-function storageKey(patientId: string, field: string) {
-  return `patient.${patientId}.${field}`
-}
-
-function readField<T>(patientId: string, field: string, fallback: T): T {
-  try {
-    const raw = window.localStorage.getItem(storageKey(patientId, field))
-    if (raw == null) return fallback
-    return JSON.parse(raw) as T
-  } catch {
-    return fallback
-  }
-}
-
-function writeField(patientId: string, field: string, value: unknown) {
-  try {
-    window.localStorage.setItem(storageKey(patientId, field), JSON.stringify(value))
-  } catch {}
-}
+// Overlay storage now lives in patient-extras-store so the automation engine
+// can file records into a patient without importing this hook.
 
 export function usePatientCockpit(patientId: string) {
   const { t, locale } = useLocale()
@@ -240,12 +230,31 @@ export function usePatientCockpit(patientId: string) {
     [patientId],
   )
 
+  /**
+   * Overlay records filed by automations (e.g. a returned progress
+   * questionnaire). Kept in state and refreshed on the store event so a
+   * questionnaire arriving while the chart is open shows up without a reload.
+   */
+  const [addedTreatments, setAddedTreatments] = useState<TreatmentRecord[]>([])
+  const [addedFinances, setAddedFinances] = useState<FinanceRecord[]>([])
+
+  useEffect(() => {
+    const sync = () => {
+      setAddedTreatments(readAddedTreatments(patientId))
+      setAddedFinances(readAddedFinances(patientId))
+    }
+    sync()
+    window.addEventListener(PATIENT_EXTRAS_EVENT, sync)
+    return () => window.removeEventListener(PATIENT_EXTRAS_EVENT, sync)
+  }, [patientId])
+
   const treatmentRecords: TreatmentRecord[] = useMemo(() => {
-    const all = treatmentsByPatient[patientId] ?? []
+    const all = [...addedTreatments, ...(treatmentsByPatient[patientId] ?? [])]
     return all
       .filter((r) => !deletedTreatmentIds.includes(r.id))
       .map((r) => localizeTreatmentRecord(r, locale))
-  }, [patientId, deletedTreatmentIds, locale])
+      .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+  }, [patientId, addedTreatments, deletedTreatmentIds, locale])
 
   const documentRecords: DocumentRecord[] = useMemo(() => {
     const all = documentsByPatient[patientId] ?? []
@@ -255,9 +264,10 @@ export function usePatientCockpit(patientId: string) {
   }, [patientId, deletedDocumentIds, locale])
 
   const financeRecords: FinanceRecord[] = useMemo(() => {
-    const all = financesByPatient[patientId] ?? []
+    // Auto-issued invoices first — they are the most recent by construction.
+    const all = [...addedFinances, ...(financesByPatient[patientId] ?? [])]
     return all.map((r) => localizeFinanceRecord(r, locale))
-  }, [patientId, locale])
+  }, [patientId, addedFinances, locale])
 
   const planTarget = useMemo(() => {
     try {

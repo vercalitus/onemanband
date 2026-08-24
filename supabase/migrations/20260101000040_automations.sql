@@ -157,8 +157,37 @@ create index patient_responses_open_idx
   where handled = false;
 
 -- ---------------------------------------------------------------------------
+-- Per-patient notification preferences.
+--
+-- Separate from patient_consents, which records what the patient agreed to for
+-- their care. This is narrower and operational: which channels may carry
+-- automated messages. `opt_out_all` is stored apart from the per-channel flags
+-- so a blanket "stop contacting me" cannot be lost when a narrower preference
+-- is edited.
+-- ---------------------------------------------------------------------------
+create table public.patient_notification_prefs (
+  patient_id uuid primary key references public.patients (id) on delete cascade,
+  clinic_id uuid not null references public.clinics (id) on delete restrict,
+  opt_out_all boolean not null default false,
+  opt_out_whatsapp boolean not null default false,
+  opt_out_email boolean not null default false,
+  opt_out_sms boolean not null default false,
+  note text,
+  updated_by uuid references public.profiles (id) on delete set null,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+-- ---------------------------------------------------------------------------
 -- RLS — same clinic-scoping as every other table in this schema.
 -- ---------------------------------------------------------------------------
+alter table public.patient_notification_prefs enable row level security;
+
+create policy patient_notification_prefs_clinic_access on public.patient_notification_prefs
+  for all using (clinic_id = public.current_user_clinic_id())
+  with check (clinic_id = public.current_user_clinic_id());
+
+grant select, insert, update, delete on public.patient_notification_prefs to authenticated;
+
 alter table public.automation_outbox enable row level security;
 alter table public.automation_access_tokens enable row level security;
 alter table public.patient_intakes enable row level security;

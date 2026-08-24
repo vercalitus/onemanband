@@ -115,11 +115,27 @@ export interface SelfBookingSettings {
   horizonDays: number
 }
 
+/**
+ * Hours during which no patient message may go out.
+ *
+ * Applies to scheduled sends only. A message that lands inside the window is
+ * pushed to the end of it — except one anchored before an appointment, which
+ * is dropped instead, because a "see you in an hour" delivered after the visit
+ * is worse than none at all.
+ */
+export interface QuietHours {
+  enabled: boolean
+  /** Clinic-local `HH:mm`. May wrap past midnight (e.g. 21:00 → 08:00). */
+  start: string
+  end: string
+}
+
 export interface ClinicAutomations {
   /** IANA zone all schedule maths resolve in. */
   timezone: string
   sequences: AutomationSequence[]
   futureAvailability: AvailabilityWindow[]
+  quietHours: QuietHours
   /** Grace period after the slot ends before a missed visit becomes a no-show. */
   noShowGraceMinutes: number
   /** Send the long progress questionnaire every N completed sessions. */
