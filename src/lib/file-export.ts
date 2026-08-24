@@ -12,8 +12,12 @@
  * the file in the system codepage and every Hebrew and Arabic name arrives as
  * mojibake ("מאיה" → "×ž××™×”"). One character, and it is the difference
  * between a usable export and a useless one in a trilingual clinic.
+ *
+ * Written as an escape, never as the literal character: a bare U+FEFF is
+ * invisible in an editor and gets silently eaten by formatters and tooling —
+ * which is exactly how this shipped broken the first time.
  */
-const UTF8_BOM = "﻿"
+const UTF8_BOM = "\uFEFF"
 
 /** RFC 4180: quote a field containing a comma, quote or newline; double inner quotes. */
 function escapeCsvCell(value: unknown): string {
