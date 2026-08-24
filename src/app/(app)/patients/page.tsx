@@ -18,6 +18,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AddPatientDialog } from "@/features/patients/components/add-patient-dialog"
+import { ExportButton, ExportDialog } from "@/features/exports/components/export-dialog"
+import { patientColumns } from "@/features/exports/lib/build-exports"
+import { datedFilename, downloadCsv } from "@/lib/file-export"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { localeToBcp47 } from "@/lib/format-locale"
 import { localizePatient } from "@/lib/i18n/localized-seed"
@@ -76,6 +79,7 @@ export default function PatientsPage() {
   const [query, setQuery] = useState("")
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   const localizedPatients = useMemo(
     () => merged.map((p) => localizePatient(p, locale)),
@@ -328,7 +332,8 @@ export default function PatientsPage() {
             </Table>
           </div>
 
-          <div className="flex justify-center border-t border-slate-100 pt-5 pb-1">
+          <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-100 pt-5 pb-1">
+            <ExportButton onClick={() => setExportOpen(true)} label={t("export.patients")} />
             <button
               type="button"
               onClick={() => setAddOpen(true)}
@@ -343,6 +348,21 @@ export default function PatientsPage() {
       </Card>
 
       <AddPatientDialog open={addOpen} onOpenChange={setAddOpen} onSave={addPatient} />
+
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        title={t("export.patients")}
+        subtitle={t("export.patientsSubtitle", { count: rows.length })}
+        onExportCsv={(options) => {
+          downloadCsv(
+            patientColumns(options),
+            rows.map((r) => r.patient),
+            datedFilename("patients", "csv"),
+          )
+          setExportOpen(false)
+        }}
+      />
     </div>
   )
 }

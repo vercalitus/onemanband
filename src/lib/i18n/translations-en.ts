@@ -964,4 +964,35 @@ export const EN_MESSAGES: Record<string, string> = {
   "dashboard.badge.fault": "Failed",
   "signal.sendFailed": "Message failed to send — {patient}",
   "signal.due.sendFailed": "{channel} · {error}",
+
+  "settings.tab.data": "Data export",
+  "export.button": "Export",
+  "export.csv": "CSV (Excel)",
+  "export.json": "JSON",
+  "export.csvDetails": "CSV — details",
+  "export.jsonFullRecord": "JSON — full record",
+  "export.includeClinical": "Include clinical history",
+  "export.includeClinicalHint":
+    "Medical history, treatment notes and questionnaire answers. Off by default — a contact list and a medical record are not the same thing to lose.",
+  "export.warning":
+    "The file leaves the system unencrypted. Once downloaded it is outside this app’s protections, and storing or deleting it safely is on you.",
+  "export.patients": "Export patients",
+  "export.patientsSubtitle": "Exports the {count} patients currently listed, with your filters applied.",
+  "export.patientRecord": "Export record",
+  "export.patientRecordSubtitle": "Everything held about {name}.",
+  "export.tab.title": "Export clinic data",
+  "export.tab.desc": "Spreadsheets for working, a full backup for moving.",
+  "export.tab.body":
+    "Take the whole clinic out as CSV files you can open in Excel, or one complete JSON backup for migrating to another system.",
+  "export.tab.open": "Open export",
+  "export.tab.dialogSubtitle": "Choose what leaves the clinic, then pick a format.",
+  "export.spreadsheets": "Spreadsheets",
+  "export.dataset.patients": "Patients",
+  "export.dataset.appointments": "Appointments",
+  "export.dataset.invoices": "Invoices",
+  "export.dataset.treatments": "Treatment records",
+  "export.backup": "Full backup",
+  "export.backupButton": "Download complete backup",
+  "export.backupHint":
+    "One JSON file with settings, patients, appointments, invoices and the automation queue — exact and complete, for migration rather than reading.",
 }

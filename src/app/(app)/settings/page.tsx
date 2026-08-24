@@ -7,6 +7,7 @@ import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ClinicalPreferencesTab } from "@/features/settings/components/clinical-preferences-tab"
+import { DataExportTab } from "@/features/settings/components/data-export-tab"
 import { IntegrationsTab } from "@/features/settings/components/integrations-tab"
 import { NotificationsTab } from "@/features/settings/components/notifications-tab"
 import { ProfilePracticeTab } from "@/features/settings/components/profile-practice-tab"
@@ -44,6 +45,7 @@ export default function SettingsPage() {
     // one tab — a separate "Automations" tab sent people looking for message
     // settings to the wrong place.
     { id: "notifications", labelKey: "settings.tab.notifications" as const },
+    { id: "data", labelKey: "settings.tab.data" as const },
     { id: "security", labelKey: "settings.tab.security" as const },
   ]
 
@@ -93,6 +95,12 @@ export default function SettingsPage() {
           className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
         >
           <NotificationsTab settings={settings} onChange={setSettings} />
+        </TabsContent>
+        <TabsContent
+          value="data"
+          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
+        >
+          <DataExportTab />
         </TabsContent>
         <TabsContent
           value="security"

@@ -940,4 +940,35 @@ export const HE_MESSAGES: Record<string, string> = {
   "dashboard.badge.fault": "נכשל",
   "signal.sendFailed": "הודעה נכשלה בשליחה — {patient}",
   "signal.due.sendFailed": "{channel} · {error}",
+
+  "settings.tab.data": "ייצוא נתונים",
+  "export.button": "ייצוא",
+  "export.csv": "CSV (אקסל)",
+  "export.json": "JSON",
+  "export.csvDetails": "CSV — פרטים",
+  "export.jsonFullRecord": "JSON — תיק מלא",
+  "export.includeClinical": "לכלול היסטוריה רפואית",
+  "export.includeClinicalHint":
+    "היסטוריה רפואית, רשומות טיפול ותשובות שאלונים. כבוי כברירת מחדל — רשימת קשר ותיק רפואי זה לא אותו דבר לאבד.",
+  "export.warning":
+    "הקובץ יוצא מהמערכת ללא הצפנה. מרגע ההורדה הוא מחוץ להגנות של המערכת, ובאחריותך לשמור או למחוק אותו בבטחה.",
+  "export.patients": "ייצוא מטופלים",
+  "export.patientsSubtitle": "מייצא את {count} המטופלים המוצגים כרגע, עם הסינון שלך.",
+  "export.patientRecord": "ייצוא תיק",
+  "export.patientRecordSubtitle": "כל מה ששמור על {name}.",
+  "export.tab.title": "ייצוא נתוני המרפאה",
+  "export.tab.desc": "גיליונות לעבודה, גיבוי מלא למעבר.",
+  "export.tab.body":
+    "להוציא את כל המרפאה כקבצי CSV שנפתחים באקסל, או כגיבוי JSON אחד שלם למעבר למערכת אחרת.",
+  "export.tab.open": "פתיחת ייצוא",
+  "export.tab.dialogSubtitle": "בחר מה יוצא מהמרפאה, ואז בחר פורמט.",
+  "export.spreadsheets": "גיליונות",
+  "export.dataset.patients": "מטופלים",
+  "export.dataset.appointments": "תורים",
+  "export.dataset.invoices": "חשבוניות",
+  "export.dataset.treatments": "רשומות טיפול",
+  "export.backup": "גיבוי מלא",
+  "export.backupButton": "הורדת גיבוי מלא",
+  "export.backupHint":
+    "קובץ JSON אחד עם הגדרות, מטופלים, תורים, חשבוניות ותור ההודעות — מדויק ושלם, מיועד למעבר ולא לקריאה.",
 }

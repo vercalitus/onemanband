@@ -939,4 +939,35 @@ export const AR_MESSAGES: Record<string, string> = {
   "dashboard.badge.fault": "فشلت",
   "signal.sendFailed": "فشل إرسال رسالة — {patient}",
   "signal.due.sendFailed": "{channel} · {error}",
+
+  "settings.tab.data": "تصدير البيانات",
+  "export.button": "تصدير",
+  "export.csv": "CSV (إكسل)",
+  "export.json": "JSON",
+  "export.csvDetails": "CSV — التفاصيل",
+  "export.jsonFullRecord": "JSON — الملف الكامل",
+  "export.includeClinical": "تضمين التاريخ الطبي",
+  "export.includeClinicalHint":
+    "التاريخ الطبي وملاحظات العلاج وإجابات الاستبيانات. مغلق افتراضياً — قائمة اتصال وملف طبي ليسا سواء عند فقدانهما.",
+  "export.warning":
+    "يغادر الملف النظام دون تشفير. بعد التنزيل يصبح خارج حمايات التطبيق وعليك حفظه أو حذفه بأمان.",
+  "export.patients": "تصدير المرضى",
+  "export.patientsSubtitle": "يصدّر الـ {count} مريضاً المعروضين حالياً بعوامل التصفية المطبّقة.",
+  "export.patientRecord": "تصدير الملف",
+  "export.patientRecordSubtitle": "كل ما هو محفوظ عن {name}.",
+  "export.tab.title": "تصدير بيانات العيادة",
+  "export.tab.desc": "جداول للعمل، ونسخة كاملة للانتقال.",
+  "export.tab.body":
+    "أخرج العيادة بأكملها كملفات CSV تُفتح في إكسل، أو كنسخة JSON واحدة كاملة للانتقال إلى نظام آخر.",
+  "export.tab.open": "فتح التصدير",
+  "export.tab.dialogSubtitle": "اختر ما يغادر العيادة، ثم اختر الصيغة.",
+  "export.spreadsheets": "جداول",
+  "export.dataset.patients": "المرضى",
+  "export.dataset.appointments": "المواعيد",
+  "export.dataset.invoices": "الفواتير",
+  "export.dataset.treatments": "سجلات العلاج",
+  "export.backup": "نسخة كاملة",
+  "export.backupButton": "تنزيل نسخة كاملة",
+  "export.backupHint":
+    "ملف JSON واحد يضم الإعدادات والمرضى والمواعيد والفواتير وقائمة الرسائل — دقيق وكامل، للانتقال لا للقراءة.",
 }

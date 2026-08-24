@@ -10,6 +10,9 @@ import { localizePatient } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 import { BillingToast } from "@/features/finances/components/billing-toast"
 import { PatientSmartHeader } from "@/features/patients/components/patient-smart-header"
+import { ExportButton, ExportDialog } from "@/features/exports/components/export-dialog"
+import { buildPatientBundle, patientColumns } from "@/features/exports/lib/build-exports"
+import { datedFilename, downloadCsv, downloadJson } from "@/lib/file-export"
 import { SessionCanvas } from "@/features/patients/components/session-canvas"
 import { SessionAudio } from "@/features/patients/components/session-audio"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
@@ -63,6 +66,7 @@ export function PatientDetailClient() {
   } = usePatientCockpit(id)
 
   const [notesOpen, setNotesOpen] = useState(true)
+  const [exportOpen, setExportOpen] = useState(false)
   const [toast, setToast] = useState<{ open: boolean; message: string }>({
     open: false,
     message: "",
@@ -104,8 +108,30 @@ export function PatientDetailClient() {
     )
   }
 
+  const slug = displayPatient.fullName.replace(/\s+/g, "-").toLowerCase()
+
   return (
     <>
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        title={t("export.patientRecord")}
+        subtitle={t("export.patientRecordSubtitle", { name: displayPatient.fullName })}
+        csvLabel={t("export.csvDetails")}
+        jsonLabel={t("export.jsonFullRecord")}
+        onExportCsv={(options) => {
+          // CSV holds the contact row only — a chart is nested data and a
+          // single flat row cannot carry its timeline.
+          downloadCsv(patientColumns(options), [patient], datedFilename(`patient-${slug}`, "csv"))
+          setExportOpen(false)
+        }}
+        onExportJson={(options) => {
+          const bundle = buildPatientBundle(id, options)
+          if (bundle) downloadJson(bundle, datedFilename(`patient-${slug}`, "json"))
+          setExportOpen(false)
+        }}
+      />
+
       <div className="flex gap-6 pb-28 xl:pb-8">
         {/* ── Main column ── */}
         <div className="min-w-0 flex-1 space-y-6 sm:space-y-8">
@@ -122,6 +148,10 @@ export function PatientDetailClient() {
             onUpdateTreatmentMarkNote={updateTreatmentMarkNote}
             onRemoveTreatmentMark={removeTreatmentMark}
           />
+
+          <div className="flex justify-end">
+            <ExportButton onClick={() => setExportOpen(true)} label={t("export.patientRecord")} />
+          </div>
 
           <section id="active-session" aria-labelledby="session-heading" className="scroll-mt-24">
             <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
