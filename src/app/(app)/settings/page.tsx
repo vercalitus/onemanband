@@ -6,7 +6,6 @@ import { Loader2, Settings2 } from "lucide-react"
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AutomationsTab } from "@/features/settings/components/automations-tab"
 import { ClinicalPreferencesTab } from "@/features/settings/components/clinical-preferences-tab"
 import { IntegrationsTab } from "@/features/settings/components/integrations-tab"
 import { NotificationsTab } from "@/features/settings/components/notifications-tab"
@@ -41,8 +40,10 @@ export default function SettingsPage() {
     { id: "profile", labelKey: "settings.tab.profile" as const },
     { id: "integrations", labelKey: "settings.tab.integrations" as const },
     { id: "clinical", labelKey: "settings.tab.clinical" as const },
+    // Channels, sequences, content and the queue are one subject and live in
+    // one tab — a separate "Automations" tab sent people looking for message
+    // settings to the wrong place.
     { id: "notifications", labelKey: "settings.tab.notifications" as const },
-    { id: "automations", labelKey: "settings.tab.automations" as const },
     { id: "security", labelKey: "settings.tab.security" as const },
   ]
 
@@ -92,12 +93,6 @@ export default function SettingsPage() {
           className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
         >
           <NotificationsTab settings={settings} onChange={setSettings} />
-        </TabsContent>
-        <TabsContent
-          value="automations"
-          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
-        >
-          <AutomationsTab settings={settings} onChange={setSettings} />
         </TabsContent>
         <TabsContent
           value="security"

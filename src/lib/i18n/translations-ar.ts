@@ -500,14 +500,11 @@ export const AR_MESSAGES: Record<string, string> = {
   "settings.integrations.outlookSub": "Microsoft 365 / Outlook.com",
   "settings.integrations.outlookAria": "تقويم Outlook",
   "settings.notifications.remindersTitle": "تذكيرات المرضى",
-  "settings.notifications.remindersDesc":
-    "مفاتيح القنوات جاهزة مسبقاً — اربط مزوّدي واتساب / الرسائل القصيرة عند التشغيل الفعلي.",
+  "settings.notifications.remindersDesc": "مفاتيح رئيسية. القناة المغلقة هنا مغلقة في كل التسلسلات أدناه.",
   "settings.notifications.whatsappAria": "تذكيرات واتساب",
   "settings.notifications.whatsappLabel": "تذكيرات واتساب",
   "settings.notifications.smsAria": "تذكيرات الرسائل القصيرة",
   "settings.notifications.smsLabel": "تذكيرات الرسائل القصيرة",
-  "settings.notifications.hoursBeforeLabel": "كم ساعة قبل الموعد تُرسل؟",
-  "settings.notifications.templateLabel": "قالب الرسالة",
   "settings.notifications.insightsTitle": "تحليلات الإدارة",
   "settings.notifications.insightsDesc":
     "ملخصات أداء آلية لمقدِّم الرعاية — يمكن ربط البريد لاحقاً.",
@@ -678,8 +675,6 @@ export const AR_MESSAGES: Record<string, string> = {
   "error.backDashboard": "العودة إلى لوحة التحكم",
   "error.devTip":
     "تلميح: يظهر مسار الخطأ الكامل في الطرفية التي تشغّل next dev أو next start، وليس في المتصفح فقط.",
-
-  "settings.tab.automations": "الأتمتة",
   "settings.notifications.emailLabel": "البريد الإلكتروني",
   "settings.notifications.emailAria": "تفعيل إشعارات البريد الإلكتروني",
 

@@ -70,9 +70,6 @@ export function defaultNotifications(): ClinicNotifications {
     whatsappEnabled: true,
     smsEnabled: false,
     emailEnabled: true,
-    hoursBefore: 24,
-    messageTemplate:
-      "Hi {patient_name}, reminder: appointment at {clinic_name} on {date} at {time}. Reply to reschedule.",
     dailyDigest: true,
     weeklyReport: false,
   }

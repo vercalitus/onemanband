@@ -497,14 +497,11 @@ export const HE_MESSAGES: Record<string, string> = {
   "settings.integrations.outlookSub": "Microsoft 365 / Outlook.com",
   "settings.integrations.outlookAria": "יומן Outlook",
   "settings.notifications.remindersTitle": "תזכורות למטופלים",
-  "settings.notifications.remindersDesc":
-    "מתגי הערוצים מוכנים מראש — חברו ספקי וואטסאפ / SMS כשעולים לייצור.",
+  "settings.notifications.remindersDesc": "מתגים ראשיים. ערוץ שכבוי כאן כבוי בכל הרצפים שלמטה.",
   "settings.notifications.whatsappAria": "תזכורות וואטסאפ",
   "settings.notifications.whatsappLabel": "תזכורות וואטסאפ",
   "settings.notifications.smsAria": "תזכורות SMS",
   "settings.notifications.smsLabel": "תזכורות SMS",
-  "settings.notifications.hoursBeforeLabel": "כמה שעות לפני לשלוח?",
-  "settings.notifications.templateLabel": "תבנית הודעה",
   "settings.notifications.insightsTitle": "תובנות מנהלות",
   "settings.notifications.insightsDesc":
     "סיכומי ביצועים אוטומטיים לרופא — שליחה בדוא\"ל יתווסף בהמשך.",
@@ -679,8 +676,6 @@ export const HE_MESSAGES: Record<string, string> = {
   "error.backDashboard": "חזרה ללוח הבקרה",
   "error.devTip":
     "טיפ: המחסנית המלאה מופיעה בטרמינל שבו מריצים את השרת (next dev או next start), לא רק בדפדפן.",
-
-  "settings.tab.automations": "אוטומציות",
   "settings.notifications.emailLabel": "אימייל",
   "settings.notifications.emailAria": "הפעלת התרעות במייל",
 

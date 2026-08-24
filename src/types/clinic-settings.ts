@@ -50,17 +50,15 @@ export interface ClinicIntegrations {
 /**
  * Channel master switches and practice-facing digests.
  *
- * `hoursBefore` / `messageTemplate` predate the automation engine and now act
- * as the simple single-reminder fallback for clinics that never open the
- * Automations tab. The per-step ladder in `ClinicSettings.automations`
- * supersedes them when its sequence is enabled.
+ * A channel switched off here is off for every sequence, whatever the
+ * individual steps say. Per-message timing and copy are not here — they belong
+ * to the steps in `ClinicSettings.automations`, which is the only place that
+ * can express a ladder of several reminders.
  */
 export interface ClinicNotifications {
   whatsappEnabled: boolean
   smsEnabled: boolean
   emailEnabled: boolean
-  hoursBefore: number
-  messageTemplate: string
   dailyDigest: boolean
   weeklyReport: boolean
 }

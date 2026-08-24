@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch"
 import { ScheduleEditor } from "@/features/settings/components/automations/schedule-editor"
 import { StepPreview } from "@/features/settings/components/automations/step-preview"
+import { VISIBLE_CHANNELS } from "@/features/automations/lib/channels"
 import { defaultSequences } from "@/features/automations/lib/default-sequences"
 import { TEMPLATE_PLACEHOLDERS } from "@/features/automations/lib/template-render"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
@@ -27,7 +28,8 @@ const CHANNEL_ICON: Record<MessageChannel, typeof Mail> = {
   sms: Smartphone,
 }
 
-const ALL_CHANNELS: MessageChannel[] = ["whatsapp", "email", "sms"]
+// SMS is deliberately absent from the picker — see channels.ts. A step that
+// already carries it keeps working; it just cannot be added by hand.
 
 /**
  * Buttons offered per trigger.
@@ -147,7 +149,7 @@ export function SequenceCard({
                     <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                       {t("automations.step.channels")}
                     </span>
-                    {ALL_CHANNELS.map((channel) => {
+                    {VISIBLE_CHANNELS.map((channel) => {
                       const Icon = CHANNEL_ICON[channel]
                       const on = step.channels.includes(channel)
                       return (

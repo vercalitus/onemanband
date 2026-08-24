@@ -50,12 +50,6 @@ const AR_WEEKDAY: string[] = [
 const HE_CLINIC_NAME = "מרפאת עמוד שדרה שקטה"
 const AR_CLINIC_NAME = "عيادة العمود الفقري الهادئة"
 
-const HE_NOTIF_TEMPLATE =
-  "שלום {patient_name}, תזכורת: תור ב־{clinic_name} בתאריך {date} בשעה {time}. נשמח לעדכון במידת הצורך."
-
-const AR_NOTIF_TEMPLATE =
-  "مرحباً {patient_name}، تذكير: موعد في {clinic_name} بتاريخ {date} الساعة {time}. يُرجى إبلاغنا عند الحاجة."
-
 function cloneSettings(s: ClinicSettings): ClinicSettings {
   return JSON.parse(JSON.stringify(s)) as ClinicSettings
 }
@@ -66,7 +60,6 @@ function applyOverlay(
   planName: Record<string, string>,
   weekday: string[],
   clinicName: string,
-  notifTemplate: string,
 ): ClinicSettings {
   const next = cloneSettings(s)
   next.treatmentTypes = next.treatmentTypes.map((row) => {
@@ -91,9 +84,6 @@ function applyOverlay(
     }
     return wd
   })
-  if (next.notifications.messageTemplate === EN.notifications.messageTemplate) {
-    next.notifications.messageTemplate = notifTemplate
-  }
   if (next.profile.clinicName === EN.profile.clinicName) {
     next.profile.clinicName = clinicName
   }
@@ -106,7 +96,6 @@ function invertOverlay(
   planName: Record<string, string>,
   weekday: string[],
   clinicName: string,
-  notifTemplate: string,
 ): ClinicSettings {
   const next = cloneSettings(s)
   next.treatmentTypes = next.treatmentTypes.map((row) => {
@@ -131,9 +120,6 @@ function invertOverlay(
     }
     return wd
   })
-  if (next.notifications.messageTemplate === notifTemplate) {
-    next.notifications.messageTemplate = EN.notifications.messageTemplate
-  }
   if (next.profile.clinicName === clinicName) {
     next.profile.clinicName = EN.profile.clinicName
   }
@@ -141,19 +127,19 @@ function invertOverlay(
 }
 
 export function applyHebrewClinicOverlay(s: ClinicSettings): ClinicSettings {
-  return applyOverlay(s, HE_TYPE_LABEL, HE_PLAN_NAME, HE_WEEKDAY, HE_CLINIC_NAME, HE_NOTIF_TEMPLATE)
+  return applyOverlay(s, HE_TYPE_LABEL, HE_PLAN_NAME, HE_WEEKDAY, HE_CLINIC_NAME)
 }
 
 export function invertHebrewClinicOverlay(s: ClinicSettings): ClinicSettings {
-  return invertOverlay(s, HE_TYPE_LABEL, HE_PLAN_NAME, HE_WEEKDAY, HE_CLINIC_NAME, HE_NOTIF_TEMPLATE)
+  return invertOverlay(s, HE_TYPE_LABEL, HE_PLAN_NAME, HE_WEEKDAY, HE_CLINIC_NAME)
 }
 
 export function applyArabicClinicOverlay(s: ClinicSettings): ClinicSettings {
-  return applyOverlay(s, AR_TYPE_LABEL, AR_PLAN_NAME, AR_WEEKDAY, AR_CLINIC_NAME, AR_NOTIF_TEMPLATE)
+  return applyOverlay(s, AR_TYPE_LABEL, AR_PLAN_NAME, AR_WEEKDAY, AR_CLINIC_NAME)
 }
 
 export function invertArabicClinicOverlay(s: ClinicSettings): ClinicSettings {
-  return invertOverlay(s, AR_TYPE_LABEL, AR_PLAN_NAME, AR_WEEKDAY, AR_CLINIC_NAME, AR_NOTIF_TEMPLATE)
+  return invertOverlay(s, AR_TYPE_LABEL, AR_PLAN_NAME, AR_WEEKDAY, AR_CLINIC_NAME)
 }
 
 /** Display overlay for active locale; English returns canonical stored values. */

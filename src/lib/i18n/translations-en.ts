@@ -506,14 +506,11 @@ export const EN_MESSAGES: Record<string, string> = {
   "settings.integrations.outlookSub": "Microsoft 365 / Outlook.com",
   "settings.integrations.outlookAria": "Outlook Calendar",
   "settings.notifications.remindersTitle": "Patient reminders",
-  "settings.notifications.remindersDesc":
-    "Channel toggles are prefab — hook WhatsApp / SMS providers when you go live.",
+  "settings.notifications.remindersDesc": "Master switches. A channel turned off here is off for every sequence below.",
   "settings.notifications.whatsappAria": "WhatsApp reminders",
   "settings.notifications.whatsappLabel": "WhatsApp reminders",
   "settings.notifications.smsAria": "SMS reminders",
   "settings.notifications.smsLabel": "SMS reminders",
-  "settings.notifications.hoursBeforeLabel": "Send how many hours before?",
-  "settings.notifications.templateLabel": "Message template",
   "settings.notifications.insightsTitle": "Admin insights",
   "settings.notifications.insightsDesc":
     "Automated performance digests for the practitioner — email delivery can be wired later.",
@@ -688,8 +685,6 @@ export const EN_MESSAGES: Record<string, string> = {
   /* ---------------------------------------------------------------------- */
   /* Automations — settings tab                                              */
   /* ---------------------------------------------------------------------- */
-
-  "settings.tab.automations": "Automations",
   "settings.notifications.emailLabel": "Email",
   "settings.notifications.emailAria": "Toggle email notifications",
 
