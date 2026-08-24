@@ -26,9 +26,9 @@ const DUE_SOON_DAYS = 3
 /** Billing sync older than this is considered stale. */
 const SYNC_STALE_HOURS = 24
 /** Keep the board readable — cap total surfaced items. */
-const MAX_ITEMS = 10
+const MAX_ITEMS = 4
 /** Cap per signal type so one noisy type can't crowd out the rest. */
-const PER_TYPE_CAP = 2
+const PER_TYPE_CAP = 1
 
 /** Signal family, taken from the id prefix (`rx-<type>-<ref>`). */
 const typeOf = (id: string) => id.split("-")[1] ?? id

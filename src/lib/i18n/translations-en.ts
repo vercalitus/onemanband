@@ -87,10 +87,10 @@ export const EN_MESSAGES: Record<string, string> = {
   "pulse.obs.3.body":
     "Outstanding balances improved versus last month; one payer invoice still needs escalation before month-end.",
 
-  "todo.todo-1":
-    "Verify three unsigned consent forms",
-  "todo.todo-2": "Review overdue invoices before billing run",
-  "todo.todo-3": "Approve tomorrow's reminder queue",
+  "todo.todo-1": "Call insurer about Noah Stone's plan approval",
+  "todo.todo-2": "Draft lumbar rehab exercise sheet for handouts",
+  "todo.todo-3": "Restock kinesio tape and cervical rolls",
+  "todo.todo-4": "Book the adjusting table service visit",
 
   "calendar.page.schedule": "Schedule",
   "calendar.page.showCanceled": "Show canceled",

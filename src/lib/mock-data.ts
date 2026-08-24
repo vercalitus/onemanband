@@ -300,28 +300,39 @@ export const weeklySchedule: ScheduleItem[] = [
   },
 ]
 
+/**
+ * Hand-authored tasks the clinician owns. Only `kind: "active"` rows are seeded
+ * into the board — the reactive column is produced by the signal engine
+ * (features/dashboard/lib/reactive-signals.ts), never authored here.
+ */
 export const dashboardTodos: TodoItem[] = [
   {
     id: "todo-1",
-    title: "Verify three unsigned consent forms",
-    due: "09:30",
+    title: "Call insurer about Noah Stone's plan approval",
+    due: "11:00",
     priority: "high",
-    overdue: true,
-    kind: "reactive",
+    kind: "active",
   },
   {
     id: "todo-2",
-    title: "Review overdue invoices before billing run",
-    due: "12:00",
+    title: "Draft lumbar rehab exercise sheet for handouts",
+    due: "13:30",
     priority: "medium",
-    kind: "reactive",
+    kind: "active",
   },
   {
     id: "todo-3",
-    title: "Approve tomorrow's reminder queue",
-    due: "16:00",
+    title: "Restock kinesio tape and cervical rolls",
+    due: "15:00",
     priority: "low",
-    kind: "reactive",
+    kind: "active",
+  },
+  {
+    id: "todo-4",
+    title: "Book the adjusting table service visit",
+    due: "17:00",
+    priority: "medium",
+    kind: "active",
   },
 ]
 
