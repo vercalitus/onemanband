@@ -77,6 +77,10 @@ export const HE_MESSAGES: Record<string, string> = {
   "todo.todo-2": "להכין דף תרגילי שיקום מותני לחלוקה למטופלים",
   "todo.todo-3": "לחדש מלאי של קינזיו טייפ וגלילי צוואר",
   "todo.todo-4": "לקבוע ביקור טכנאי לשולחן הטיפולים",
+  "todo.todo-5": "לחדש את ביטוח אחריות מקצועית",
+  "todo.todo-6": "לעבור על ה-MRI של אווה הרט לפני הביקור הבא",
+  "todo.todo-7": "לעדכן את נוסח טופס ההסכמה",
+  "todo.todo-8": "לבדוק מול המעבדה את התוצאות של ליאם קרטר",
 
   "calendar.page.schedule": "יומן",
   "calendar.page.showCanceled": "הצג ביטולים",

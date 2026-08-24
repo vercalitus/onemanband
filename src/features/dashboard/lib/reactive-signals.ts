@@ -25,10 +25,17 @@ const FOLLOW_UP_DAYS = 60
 const DUE_SOON_DAYS = 3
 /** Billing sync older than this is considered stale. */
 const SYNC_STALE_HOURS = 24
-/** Keep the board readable — cap total surfaced items. */
-const MAX_ITEMS = 4
+/**
+ * Upper bound on derived signals.
+ *
+ * Readability is no longer this function's job — the board shows five and
+ * folds the rest behind a stated count, so truncating here would hide items
+ * the UI is already prepared to page through. This cap only exists to stop a
+ * pathological dataset producing hundreds of rows.
+ */
+const MAX_ITEMS = 12
 /** Cap per signal type so one noisy type can't crowd out the rest. */
-const PER_TYPE_CAP = 1
+const PER_TYPE_CAP = 2
 
 /** Signal family, taken from the id prefix (`rx-<type>-<ref>`). */
 const typeOf = (id: string) => id.split("-")[1] ?? id

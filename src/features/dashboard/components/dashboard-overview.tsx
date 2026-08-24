@@ -45,13 +45,14 @@ const trendIcon = {
 const pulseIconChrome = "bg-sky-100 text-sky-600"
 
 /**
- * How many attention rows show before the list folds.
+ * Rows shown per board section before it folds.
  *
- * Small on purpose. An unbounded column of signals is the same failure as a
- * notification badge that only climbs: it stops being read. The rest stays one
- * click away and the count is stated, so nothing is silently hidden.
+ * Small on purpose, and applied to both halves. An unbounded column is the
+ * same failure as a notification badge that only climbs: it stops being read.
+ * The rest stays one click away and the count is stated, so nothing is
+ * silently hidden.
  */
-const ATTENTION_VISIBLE = 5
+const SECTION_VISIBLE = 5
 
 const PRIORITY_RANK: Record<TodoItem["priority"], number> = { high: 0, medium: 1, low: 2 }
 
@@ -176,6 +177,66 @@ function TodoRow({
   )
 }
 
+/**
+ * One half of the board.
+ *
+ * Both halves fold past `SECTION_VISIBLE` and both state the remainder — a
+ * long list of tasks stops being read for the same reason a long list of
+ * alerts does, so the rule is not special to signals. Collapse state is per
+ * section: expanding your tasks should not also expand the alerts.
+ */
+function BoardSection({
+  label,
+  emptyLabel,
+  items,
+  onToggleComplete,
+  onDismiss,
+}: {
+  label: string
+  emptyLabel: string
+  items: TodoItem[]
+  onToggleComplete: (id: string) => void
+  onDismiss?: (id: string) => void
+}) {
+  const { t } = useLocale()
+  const [expanded, setExpanded] = useState(false)
+
+  const hidden = Math.max(0, items.length - SECTION_VISIBLE)
+  const shown = expanded ? items : items.slice(0, SECTION_VISIBLE)
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
+      <div className="space-y-3">
+        {shown.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 px-3 py-4 text-center text-xs text-slate-500">
+            {emptyLabel}
+          </p>
+        ) : (
+          shown.map((item) => (
+            <TodoRow
+              key={item.id}
+              item={item}
+              onToggleComplete={onToggleComplete}
+              onDismiss={onDismiss}
+            />
+          ))
+        )}
+        {/* A capped list must say what it is hiding, or it reads as "all clear". */}
+        {hidden > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="w-full rounded-lg py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-50"
+          >
+            {expanded ? t("dashboard.todo.showLess") : t("dashboard.todo.showAll", { count: hidden })}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function DashboardOverview() {
   const { locale, t } = useLocale()
   const { appointments: dayAppointments, setAppointments: setDayAppointments } = useScheduleDay()
@@ -209,7 +270,6 @@ export function DashboardOverview() {
    * later returns must not arrive pre-silenced.
    */
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set())
-  const [showAllAttention, setShowAllAttention] = useState(false)
 
   const attentionIds = useMemo(
     () =>
@@ -226,24 +286,22 @@ export function DashboardOverview() {
     return () => window.removeEventListener(DISMISSED_SIGNALS_EVENT, sync)
   }, [attentionIds])
 
-  const { attention, attentionHidden, active, completed } = useMemo(() => {
-    const all = localizedTodos
-      .filter((x) => !x.completed && x.kind === "reactive" && !dismissed.has(x.id))
-      // Faults outrank everything: a message that never sent is the software
-      // failing, not a job on the list.
-      .sort((a, b) => {
-        const fault = Number(b.tone === "fault") - Number(a.tone === "fault")
-        if (fault !== 0) return fault
-        return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
-      })
-
-    return {
-      attention: showAllAttention ? all : all.slice(0, ATTENTION_VISIBLE),
-      attentionHidden: Math.max(0, all.length - ATTENTION_VISIBLE),
+  const { attention, active, completed } = useMemo(
+    () => ({
+      attention: localizedTodos
+        .filter((x) => !x.completed && x.kind === "reactive" && !dismissed.has(x.id))
+        // Faults outrank everything: a message that never sent is the software
+        // failing, not a job on the list.
+        .sort((a, b) => {
+          const fault = Number(b.tone === "fault") - Number(a.tone === "fault")
+          if (fault !== 0) return fault
+          return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
+        }),
       active: localizedTodos.filter((x) => !x.completed && x.kind === "active"),
       completed: localizedTodos.filter((x) => x.completed),
-    }
-  }, [localizedTodos, dismissed, showAllAttention])
+    }),
+    [localizedTodos, dismissed],
+  )
 
   return (
     <div>
@@ -268,53 +326,21 @@ export function DashboardOverview() {
             </div>
           </CardHeader>
           <CardContent className="space-y-5 px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">
-            <div className="space-y-2">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                {t("dashboard.todo.reactive")}
-              </p>
-              <div className="space-y-3">
-                {attention.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 px-3 py-4 text-center text-xs text-slate-500">
-                    {t("dashboard.todo.noReactive")}
-                  </p>
-                ) : (
-                  attention.map((item) => (
-                    <TodoRow
-                      key={item.id}
-                      item={item}
-                      onToggleComplete={toggleComplete}
-                      onDismiss={dismissSignal}
-                    />
-                  ))
-                )}
-                {/* A capped list must say what it is hiding, or it reads as "all clear". */}
-                {attentionHidden > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllAttention((v) => !v)}
-                    className="w-full rounded-lg py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-50"
-                  >
-                    {showAllAttention
-                      ? t("dashboard.todo.showLess")
-                      : t("dashboard.todo.showAll", { count: attentionHidden })}
-                  </button>
-                )}
-              </div>
-            </div>
+            <BoardSection
+              label={t("dashboard.todo.reactive")}
+              emptyLabel={t("dashboard.todo.noReactive")}
+              items={attention}
+              onToggleComplete={toggleComplete}
+              onDismiss={dismissSignal}
+            />
 
             <div className="border-t border-slate-100 pt-5">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                {t("dashboard.todo.active")}
-              </p>
-              <div className="mt-2 space-y-3">
-                {active.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 px-3 py-4 text-center text-xs text-slate-500">
-                    {t("dashboard.todo.noActive")}
-                  </p>
-                ) : (
-                  active.map((item) => <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />)
-                )}
-              </div>
+              <BoardSection
+                label={t("dashboard.todo.active")}
+                emptyLabel={t("dashboard.todo.noActive")}
+                items={active}
+                onToggleComplete={toggleComplete}
+              />
             </div>
 
             <div className="flex justify-center border-t border-slate-100 pt-5 pb-1">

@@ -91,6 +91,10 @@ export const EN_MESSAGES: Record<string, string> = {
   "todo.todo-2": "Draft lumbar rehab exercise sheet for handouts",
   "todo.todo-3": "Restock kinesio tape and cervical rolls",
   "todo.todo-4": "Book the adjusting table service visit",
+  "todo.todo-5": "Renew professional liability insurance",
+  "todo.todo-6": "Review Ava Hart's MRI before her next visit",
+  "todo.todo-7": "Update the intake consent form wording",
+  "todo.todo-8": "Chase the lab about Liam Carter's results",
 
   "calendar.page.schedule": "Schedule",
   "calendar.page.showCanceled": "Show canceled",

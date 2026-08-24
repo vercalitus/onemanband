@@ -334,6 +334,34 @@ export const dashboardTodos: TodoItem[] = [
     priority: "medium",
     kind: "active",
   },
+  {
+    id: "todo-5",
+    title: "Renew professional liability insurance",
+    due: "2026-09-01",
+    priority: "high",
+    kind: "active",
+  },
+  {
+    id: "todo-6",
+    title: "Review Ava Hart's MRI before her next visit",
+    due: "2026-08-26",
+    priority: "medium",
+    kind: "active",
+  },
+  {
+    id: "todo-7",
+    title: "Update the intake consent form wording",
+    due: "2026-08-30",
+    priority: "low",
+    kind: "active",
+  },
+  {
+    id: "todo-8",
+    title: "Chase the lab about Liam Carter's results",
+    due: "2026-08-25",
+    priority: "medium",
+    kind: "active",
+  },
 ]
 
 export const patients: PatientSummary[] = [
