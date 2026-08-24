@@ -919,4 +919,14 @@ export const HE_MESSAGES: Record<string, string> = {
   "signal.due.newSlot": "מועד חדש {date} {time}",
   "signal.due.inFile": "תויק תחת התקדמות",
   "signal.due.requested": "התבקש {date} {time}",
+
+  "header.search.invoiceNew": "הפקת חשבונית",
+  "header.search.invoiceIssued": "החשבונית הופקה — {amount}",
+  "header.search.invoiceExists": "כבר הופקה חשבונית היום — {amount}",
+  "header.search.bookingLink": "קישור לקביעת תור",
+  "header.search.linkCopied": "קישור ההרשמה הועתק",
+  "header.search.mute": "השתקת הודעות",
+  "header.search.unmute": "ההודעות מושתקות",
+  "header.search.muted": "הודעות אוטומטיות כבויות למטופל הזה",
+  "header.search.unmuted": "הודעות אוטומטיות חזרו לפעול",
 }

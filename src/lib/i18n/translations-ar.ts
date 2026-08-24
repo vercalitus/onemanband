@@ -918,4 +918,14 @@ export const AR_MESSAGES: Record<string, string> = {
   "signal.due.newSlot": "وقت جديد {date} {time}",
   "signal.due.inFile": "حُفظ ضمن التقدّم",
   "signal.due.requested": "طُلب {date} {time}",
+
+  "header.search.invoiceNew": "إصدار فاتورة",
+  "header.search.invoiceIssued": "صدرت الفاتورة — {amount}",
+  "header.search.invoiceExists": "صدرت فاتورة اليوم بالفعل — {amount}",
+  "header.search.bookingLink": "رابط حجز موعد",
+  "header.search.linkCopied": "نُسخ رابط التسجيل",
+  "header.search.mute": "كتم الرسائل",
+  "header.search.unmute": "الرسائل مكتومة",
+  "header.search.muted": "الرسائل التلقائية موقوفة لهذا المريض",
+  "header.search.unmuted": "عادت الرسائل التلقائية",
 }

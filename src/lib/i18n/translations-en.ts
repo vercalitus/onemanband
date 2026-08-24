@@ -943,4 +943,14 @@ export const EN_MESSAGES: Record<string, string> = {
   "signal.due.newSlot": "New time {date} {time}",
   "signal.due.inFile": "Filed under Progress",
   "signal.due.requested": "Requested {date} {time}",
+
+  "header.search.invoiceNew": "Issue invoice",
+  "header.search.invoiceIssued": "Invoice issued — {amount}",
+  "header.search.invoiceExists": "Already invoiced today — {amount}",
+  "header.search.bookingLink": "Booking link",
+  "header.search.linkCopied": "Registration link copied to clipboard",
+  "header.search.mute": "Mute messages",
+  "header.search.unmute": "Messages muted",
+  "header.search.muted": "Automated messages are off for this patient",
+  "header.search.unmuted": "Automated messages are back on",
 }
