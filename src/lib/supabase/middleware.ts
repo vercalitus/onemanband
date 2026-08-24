@@ -3,8 +3,13 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { clientEnv } from "@/lib/env"
 
-/** Paths reachable without a session (login + Supabase auth callbacks). */
-const PUBLIC_PATHS = ["/login", "/auth"]
+/**
+ * Paths reachable without a session: login, Supabase auth callbacks, and the
+ * patient-facing automation links. The latter are authorised by the capability
+ * token in the URL (see features/automations/lib/tokens.ts) — patients never
+ * get an account, so gating them behind the session would break every reminder.
+ */
+const PUBLIC_PATHS = ["/login", "/auth", "/book", "/r", "/q", "/api/automations"]
 
 const isPublicPath = (path: string) =>
   PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`))

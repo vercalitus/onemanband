@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { AppointmentStatus, AppointmentType, ScheduleItem } from "@/types/domain"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
+import { useAppointmentAutomations } from "@/features/automations/lib/use-appointment-automations"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
 import {
@@ -118,6 +119,7 @@ export function DayCalendarView({
     [appointments],
   )
 
+  const syncAutomations = useAppointmentAutomations()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("edit")
   const [activeAppointment, setActiveAppointment] = useState<ScheduleItem | null>(null)
@@ -305,8 +307,10 @@ export function DayCalendarView({
         defaultDate={defaultDate}
         allAppointments={appointments}
         onSave={(item, { isNew }) => {
+          const previous = appointments.find((a) => a.id === item.id) ?? null
           if (isNew) onAppointmentsChange(sortByStart([...appointments, item]))
           else onAppointmentsChange(sortByStart(appointments.map((a) => (a.id === item.id ? item : a))))
+          syncAutomations(item, { isNew, previous })
         }}
       />
     </>

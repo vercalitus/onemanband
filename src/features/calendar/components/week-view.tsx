@@ -5,6 +5,7 @@ import { useMemo, useState } from "react"
 import { useLocale } from "@/components/providers/locale-provider"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
+import { useAppointmentAutomations } from "@/features/automations/lib/use-appointment-automations"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
 import { minutesFromHHMM } from "@/lib/appointment-time"
@@ -54,6 +55,7 @@ export function WeekView({
   showCanceled: boolean
 }) {
   const { locale, t } = useLocale()
+  const syncAutomations = useAppointmentAutomations()
   const typeVisualBase = useAppointmentTypeVisual()
   const typeVisual = useMemo(() => {
     const next = { ...typeVisualBase }
@@ -207,8 +209,10 @@ export function WeekView({
         appointment={activeAppointment}
         allAppointments={appointments}
         onSave={(item, { isNew }) => {
+          const previous = appointments.find((a) => a.id === item.id) ?? null
           if (isNew) onAppointmentsChange(sortByStart([...appointments, item]))
           else onAppointmentsChange(sortByStart(appointments.map((a) => (a.id === item.id ? item : a))))
+          syncAutomations(item, { isNew, previous })
         }}
       />
     </>

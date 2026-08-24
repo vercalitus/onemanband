@@ -1,3 +1,4 @@
+import type { ClinicAutomations } from "@/types/automation"
 import type { AppointmentType, InvoiceProvider } from "@/types/domain"
 
 /** Visual preset for calendar / chips — maps to Tailwind class bundles. */
@@ -46,9 +47,18 @@ export interface ClinicIntegrations {
   outlookConnected: boolean
 }
 
+/**
+ * Channel master switches and practice-facing digests.
+ *
+ * `hoursBefore` / `messageTemplate` predate the automation engine and now act
+ * as the simple single-reminder fallback for clinics that never open the
+ * Automations tab. The per-step ladder in `ClinicSettings.automations`
+ * supersedes them when its sequence is enabled.
+ */
 export interface ClinicNotifications {
   whatsappEnabled: boolean
   smsEnabled: boolean
+  emailEnabled: boolean
   hoursBefore: number
   messageTemplate: string
   dailyDigest: boolean
@@ -64,4 +74,5 @@ export interface ClinicSettings {
   carePlans: CarePlan[]
   integrations: ClinicIntegrations
   notifications: ClinicNotifications
+  automations: ClinicAutomations
 }

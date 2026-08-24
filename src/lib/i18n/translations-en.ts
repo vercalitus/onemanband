@@ -684,4 +684,247 @@ export const EN_MESSAGES: Record<string, string> = {
   "error.backDashboard": "Back to dashboard",
   "error.devTip":
     "Tip: the real stack trace appears in the terminal running next dev or next start, not only in the browser.",
+
+  /* ---------------------------------------------------------------------- */
+  /* Automations — settings tab                                              */
+  /* ---------------------------------------------------------------------- */
+
+  "settings.tab.automations": "Automations",
+  "settings.notifications.emailLabel": "Email",
+  "settings.notifications.emailAria": "Toggle email notifications",
+
+  "weekday.mon": "Monday",
+  "weekday.tue": "Tuesday",
+  "weekday.wed": "Wednesday",
+  "weekday.thu": "Thursday",
+  "weekday.fri": "Friday",
+  "weekday.sat": "Saturday",
+  "weekday.sun": "Sunday",
+
+  "automations.sequences.title": "Message sequences",
+  "automations.sequences.desc":
+    "Each sequence fires on one event and runs its steps in order. Turn off a single step to keep the rest of the ladder.",
+
+  "automations.timing.title": "Timing rules",
+  "automations.timing.desc": "Thresholds the automation engine reads before it queues anything.",
+  "automations.timing.noShowGrace": "No-show grace (minutes)",
+  "automations.timing.noShowGraceHint":
+    "How long after the slot ends before a missed visit counts as a no-show.",
+  "automations.timing.questionnaireEvery": "Questionnaire every N sessions",
+  "automations.timing.questionnaireEveryHint": "Set to 0 to never send it automatically.",
+  "automations.timing.timezone": "Clinic timezone",
+  "automations.timing.timezoneHint":
+    "All schedule times resolve here, so daylight saving cannot shift a reminder.",
+
+  "automations.selfBooking.title": "Patient self-service booking",
+  "automations.selfBooking.desc":
+    "Send a link that lets a patient register, upload documents and pick a free slot.",
+  "automations.selfBooking.toggleAria": "Toggle patient self-service booking",
+  "automations.selfBooking.leadTime": "Minimum notice (hours)",
+  "automations.selfBooking.leadTimeHint": "Nothing sooner than this may be booked.",
+  "automations.selfBooking.horizon": "Booking horizon (days)",
+  "automations.selfBooking.horizonHint": "How far ahead the picker shows slots.",
+  "automations.selfBooking.requireDocs": "Require a document",
+  "automations.selfBooking.requireDocsHint":
+    "The patient must attach at least one file before choosing a slot.",
+  "automations.selfBooking.requireDocsAria": "Require a document before booking",
+  "automations.selfBooking.allowedTypes": "Bookable treatment types",
+  "automations.selfBooking.linkTitle": "Registration link",
+  "automations.selfBooking.linkHint":
+    "Each link is single-registration and expires in 30 days. Generate a fresh one per patient.",
+  "automations.selfBooking.generate": "Generate link",
+  "automations.selfBooking.copy": "Copy",
+  "automations.selfBooking.copied": "Copied",
+
+  "automations.availability.title": "Open for future bookings",
+  "automations.availability.desc":
+    "Narrower than your opening hours on purpose — patients rescheduling themselves may only land inside these windows.",
+  "automations.availability.empty":
+    "No windows yet. Without one, patients cannot reschedule themselves.",
+  "automations.availability.add": "Add window",
+  "automations.availability.remove": "Remove window",
+  "automations.availability.invalid": "End must be after start",
+  "automations.availability.weekdayAria": "Weekday",
+  "automations.availability.startAria": "Window start time",
+  "automations.availability.endAria": "Window end time",
+
+  "automations.seq.toggleAria": "Toggle sequence",
+  "automations.seq.seq-booking.name": "Booking confirmation",
+  "automations.seq.seq-booking.desc": "Fires the moment an appointment is created.",
+  "automations.seq.seq-reminders.name": "Pre-appointment reminders",
+  "automations.seq.seq-reminders.desc": "The ladder that runs before the visit.",
+  "automations.seq.seq-post-treatment.name": "After the treatment",
+  "automations.seq.seq-post-treatment.desc": "Check-in, invoice, then a wellbeing follow-up.",
+  "automations.seq.seq-no-show.name": "No-show follow-up",
+  "automations.seq.seq-no-show.desc": "Sent once a missed visit passes the grace period.",
+  "automations.seq.seq-unpaid.name": "Payment reminders",
+  "automations.seq.seq-unpaid.desc": "Repeats until the invoice is settled.",
+  "automations.seq.seq-progress.name": "Progress questionnaire",
+  "automations.seq.seq-progress.desc": "Sent on the session checkpoint you set above.",
+
+  "automations.step.step-booking-confirm.name": "Immediately after booking",
+  "automations.step.step-reminder-evening.name": "The evening before",
+  "automations.step.step-reminder-hour.name": "One hour before",
+  "automations.step.step-post-checkin.name": "Right after the session",
+  "automations.step.step-post-invoice.name": "Send the invoice",
+  "automations.step.step-post-wellbeing.name": "How are you feeling",
+  "automations.step.step-no-show-notice.name": "Missed-visit notice",
+  "automations.step.step-unpaid-daily.name": "Unpaid invoice reminder",
+  "automations.step.step-progress-send.name": "Questionnaire invitation",
+
+  "automations.step.sensitive": "Sensitive",
+  "automations.step.toggleAria": "Toggle step",
+  "automations.step.channels": "Channels",
+  "automations.step.subject": "Email subject",
+  "automations.step.message": "Message",
+  "automations.step.buttons": "Buttons",
+  "automations.step.placeholders": "Placeholders:",
+
+  "automations.channel.whatsapp": "WhatsApp",
+  "automations.channel.email": "Email",
+  "automations.channel.sms": "SMS",
+
+  "automations.action.confirm": "Confirm",
+  "automations.action.cancel": "Cancel",
+  "automations.action.reschedule": "Reschedule",
+  "automations.action.open_invoice": "Open invoice",
+  "automations.action.open_questionnaire": "Open questionnaire",
+  "automations.action.reply_free_text": "Reply",
+
+  "automations.schedule.immediate": "Sent as soon as the event happens.",
+  "automations.schedule.minutes": "minutes",
+  "automations.schedule.minutesAria": "Minutes",
+  "automations.schedule.before.appointment_start": "before the appointment starts",
+  "automations.schedule.before.appointment_end": "before the appointment ends",
+  "automations.schedule.before.no_show_marked": "before the no-show is marked",
+  "automations.schedule.before.invoice_issued": "before the invoice is issued",
+  "automations.schedule.before.event": "before the event",
+  "automations.schedule.after.appointment_start": "after the appointment starts",
+  "automations.schedule.after.appointment_end": "after the appointment ends",
+  "automations.schedule.after.no_show_marked": "after the no-show is marked",
+  "automations.schedule.after.invoice_issued": "after the invoice is issued",
+  "automations.schedule.after.event": "after the event",
+  "automations.schedule.at": "At",
+  "automations.schedule.timeAria": "Time of day",
+  "automations.schedule.daysAria": "Days before",
+  "automations.schedule.daysBeforeAppointment": "day(s) before the appointment",
+  "automations.schedule.firstAfter": "First after",
+  "automations.schedule.firstAfterAria": "Hours before the first reminder",
+  "automations.schedule.hoursThenEvery": "hours, then every",
+  "automations.schedule.everyAria": "Hours between reminders",
+  "automations.schedule.hoursUntilPaid": "hours until paid",
+  "automations.schedule.maxRuns": "max",
+  "automations.schedule.maxRunsAria": "Maximum reminders",
+
+  "automations.queue.title": "Message queue",
+  "automations.queue.desc":
+    "Everything the engine has scheduled. No provider is connected yet, so delivery is simulated.",
+  "automations.queue.runNow": "Run now",
+  "automations.queue.clear": "Reset",
+  "automations.queue.empty":
+    "Nothing queued. Book, complete or miss an appointment and the messages appear here.",
+  "automations.queue.tickResult": "Processed {processed} · delivered {sent} · failed {failed}",
+  "automations.queue.status.pending": "Scheduled",
+  "automations.queue.status.simulated": "Simulated",
+  "automations.queue.status.sent": "Sent",
+  "automations.queue.status.failed": "Failed",
+  "automations.queue.status.cancelled": "Cancelled",
+
+  /* ---------------------------------------------------------------------- */
+  /* Patient-facing pages                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  "public.loading": "Loading…",
+  "public.back": "Back",
+  "public.token.unknown": "This link is not valid",
+  "public.token.expired": "This link has expired",
+  "public.token.used": "This link has already been used",
+  "public.token.contactClinic": "Please contact the clinic and we'll send a new one.",
+
+  "public.respond.title": "Your appointment",
+  "public.respond.subtitle": "{when}",
+  "public.respond.unknownSlot": "Appointment details are no longer available.",
+  "public.respond.confirm": "Confirm I'll be there",
+  "public.respond.reschedule": "Move to another time",
+  "public.respond.cancel": "Cancel this appointment",
+  "public.respond.footnote":
+    "Cancelling lets us offer the slot to someone else. If you're unsure, move it instead.",
+  "public.respond.rescheduleTitle": "Pick a new time",
+  "public.respond.rescheduleSubtitle": "These are the times currently open.",
+  "public.respond.done.confirmed": "Thanks — you're confirmed",
+  "public.respond.done.cancelled": "Your appointment is cancelled",
+  "public.respond.done.rescheduled": "Your new time is requested",
+  "public.respond.done.body": "The clinic has been notified. You can close this page.",
+
+  "public.slots.pickDay": "Choose a day",
+  "public.slots.pickTime": "Choose a time",
+  "public.slots.count": "{count} free",
+  "public.slots.none": "No open times right now. Please contact the clinic.",
+
+  "public.book.title": "Register and book",
+  "public.book.subtitle":
+    "A few details first, then pick a time that works for you.",
+  "public.book.fullName": "Full name",
+  "public.book.phone": "Phone",
+  "public.book.email": "Email",
+  "public.book.dob": "Date of birth",
+  "public.book.type": "Visit type",
+  "public.book.reason": "What brings you in?",
+  "public.book.documents": "Medical documents",
+  "public.book.documentsHint": "Add imaging, referrals or insurance forms",
+  "public.book.removeDocument": "Remove",
+  "public.book.continue": "Continue to times",
+  "public.book.privacy":
+    "Your details go directly to the clinic and are used only for your care.",
+  "public.book.errorRequired": "Please add your name and phone number.",
+  "public.book.errorDocuments": "Please attach at least one document.",
+  "public.book.disabled": "Online booking is currently closed. Please contact the clinic.",
+  "public.book.slotTitle": "Pick a time",
+  "public.book.slotSubtitle": "These are the times currently open for new bookings.",
+  "public.book.doneTitle": "Request sent",
+  "public.book.doneBody":
+    "The clinic will confirm your appointment shortly. You'll get a WhatsApp message once it's approved.",
+
+  "public.questionnaire.title": "Progress check-in",
+  "public.questionnaire.subtitle": "A short review after {session} sessions.",
+  "public.questionnaire.submit": "Send my answers",
+  "public.questionnaire.privacy": "Your answers go straight into your clinical file.",
+  "public.questionnaire.errorRequired": "Please answer the required questions.",
+  "public.questionnaire.doneTitle": "Thank you",
+  "public.questionnaire.doneBody":
+    "Your answers are with the clinic and will be reviewed before your next session.",
+
+  "questionnaire.q.painNow": "How much pain are you in right now?",
+  "questionnaire.q.painWorst": "At its worst this week, how bad was the pain?",
+  "questionnaire.q.change": "Compared with when you started, how do you feel?",
+  "questionnaire.q.function": "How well are you managing daily activities?",
+  "questionnaire.q.sleep": "How well are you sleeping?",
+  "questionnaire.q.exercises": "Are you doing the home exercises?",
+  "questionnaire.q.concerns": "Anything worrying you or getting worse?",
+  "questionnaire.q.goal": "What would you most like to be able to do again?",
+  "questionnaire.opt.muchBetter": "Much better",
+  "questionnaire.opt.better": "Somewhat better",
+  "questionnaire.opt.same": "About the same",
+  "questionnaire.opt.worse": "Worse",
+  "questionnaire.opt.always": "Always",
+  "questionnaire.opt.sometimes": "Sometimes",
+  "questionnaire.opt.rarely": "Rarely",
+  "questionnaire.opt.never": "Never",
+  "questionnaire.scale.low": "None",
+  "questionnaire.scale.high": "Worst imaginable",
+  "questionnaire.recordTitle": "Progress questionnaire",
+  "questionnaire.session": "session",
+
+  /* ---------------------------------------------------------------------- */
+  /* Dashboard signals from patient self-service                             */
+  /* ---------------------------------------------------------------------- */
+
+  "signal.patientCancelled": "Patient cancelled — {patient}",
+  "signal.patientRescheduled": "Patient moved their appointment — {patient}",
+  "signal.questionnaireReturned": "Progress questionnaire returned — {patient}",
+  "signal.newIntake": "Approve new patient registration — {patient}",
+  "signal.due.justNow": "Slot is now free",
+  "signal.due.newSlot": "New time {date} {time}",
+  "signal.due.inFile": "Filed under Progress",
+  "signal.due.requested": "Requested {date} {time}",
 }

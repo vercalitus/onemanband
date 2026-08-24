@@ -1,3 +1,6 @@
+import { DEFAULT_CLINIC_TIMEZONE } from "@/features/automations/lib/clinic-time"
+import { defaultSequences } from "@/features/automations/lib/default-sequences"
+import type { AvailabilityWindow, ClinicAutomations } from "@/types/automation"
 import type { AppointmentType } from "@/types/domain"
 import type {
   CarePlan,
@@ -66,11 +69,43 @@ export function defaultNotifications(): ClinicNotifications {
   return {
     whatsappEnabled: true,
     smsEnabled: false,
+    emailEnabled: true,
     hoursBefore: 24,
     messageTemplate:
       "Hi {patient_name}, reminder: appointment at {clinic_name} on {date} at {time}. Reply to reschedule.",
     dailyDigest: true,
     weeklyReport: false,
+  }
+}
+
+/**
+ * Windows a patient may pick when rescheduling themselves. Narrower than the
+ * clinic's opening hours by design — the point is to steer self-service traffic
+ * into slots the practitioner is happy to give away.
+ */
+function defaultFutureAvailability(): AvailabilityWindow[] {
+  return [
+    { id: "av-mon-am", weekdayIndex: 0, startTime: "09:00", endTime: "13:00" },
+    { id: "av-tue-pm", weekdayIndex: 1, startTime: "14:00", endTime: "18:00" },
+    { id: "av-wed-am", weekdayIndex: 2, startTime: "09:00", endTime: "13:00" },
+    { id: "av-thu-pm", weekdayIndex: 3, startTime: "14:00", endTime: "18:00" },
+  ]
+}
+
+export function defaultAutomations(): ClinicAutomations {
+  return {
+    timezone: DEFAULT_CLINIC_TIMEZONE,
+    sequences: defaultSequences(),
+    futureAvailability: defaultFutureAvailability(),
+    noShowGraceMinutes: 20,
+    progressQuestionnaireEverySessions: 6,
+    selfBooking: {
+      enabled: true,
+      requireDocuments: false,
+      allowedTypes: ["first", "adjustments", "kupa"],
+      leadTimeHours: 12,
+      horizonDays: 30,
+    },
   }
 }
 
@@ -91,5 +126,6 @@ export function createDefaultClinicSettings(): ClinicSettings {
     carePlans: defaultCarePlans(),
     integrations: defaultIntegrations(),
     notifications: defaultNotifications(),
+    automations: defaultAutomations(),
   }
 }

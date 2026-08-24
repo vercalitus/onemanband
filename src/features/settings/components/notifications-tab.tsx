@@ -48,6 +48,14 @@ export function NotificationsTab({
               <span className="text-sm font-semibold text-slate-900">{t("settings.notifications.whatsappLabel")}</span>
             </div>
             <div className="flex items-center gap-3 sm:ps-6">
+              <Switch
+                checked={n.emailEnabled}
+                aria-label={t("settings.notifications.emailAria")}
+                onCheckedChange={(v) => patch({ emailEnabled: v })}
+              />
+              <span className="text-sm font-semibold text-slate-900">{t("settings.notifications.emailLabel")}</span>
+            </div>
+            <div className="flex items-center gap-3 sm:ps-6">
               <Switch checked={n.smsEnabled} aria-label={t("settings.notifications.smsAria")} onCheckedChange={(v) => patch({ smsEnabled: v })} />
               <span className="text-sm font-semibold text-slate-900">{t("settings.notifications.smsLabel")}</span>
             </div>

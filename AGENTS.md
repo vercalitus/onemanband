@@ -77,7 +77,12 @@ scripts/
 | `/calendar` | `features/calendar` | Week/month views, waitlist, appointment grid |
 | `/finances` | `features/finances` | Billing KPIs, pending/history, export hooks |
 | `/clinical-feed` | `features/clinical-feed` | Curated clinical headlines and sources |
-| `/settings` | `features/settings` | Profile, hours, treatment types, integrations, notifications |
+| `/settings` | `features/settings` | Profile, hours, treatment types, integrations, notifications, automations |
+| `/book/[token]` | `features/automations` | **Public** — patient self-registration, document upload, slot picking |
+| `/r/[token]` | `features/automations` | **Public** — confirm / cancel / reschedule from a reminder |
+| `/q/[token]` | `features/automations` | **Public** — progress questionnaire |
+| `/api/automations/tick` | — | Cron entry point: deliver due messages |
+| `/api/automations/webhook/whatsapp` | — | Inbound WhatsApp button taps (provider stub) |
 
 Navigation labels and descriptions live in `src/lib/navigation.ts`.
 
@@ -124,6 +129,27 @@ Defined in `src/types/domain.ts` and enforced in Postgres:
 - Currency display: ILS formatting via `src/lib/format-ils.ts` and locale formatters
 - Treatment prices and care plans come from `ClinicSettings.treatmentTypes` / `carePlans`
 - Mock billing data: `src/lib/mock-finances.ts`, derived logic in `features/finances/lib/`
+
+### Automations
+
+Patient-facing reminders, self-service links and questionnaires live in `src/features/automations/`. The design separates three concerns and you should keep them separate:
+
+| Concern | Module | Note |
+|---------|--------|------|
+| **What** message should exist and **when** | `lib/plan-messages.ts` | Pure function. No I/O, no clock beyond the `now` you pass — testable without any provider. |
+| **Where** it is stored | `lib/automation-store.ts` | localStorage in the browser, module memory on the server. **The only file to rewrite for Supabase.** |
+| **How** it is delivered | `lib/dispatcher.ts` | `MessageDispatcher` interface. Only `SimulatedDispatcher` exists today. **The only file to rewrite for a real provider.** |
+
+Rules that matter:
+
+- **Clinic timezone (`Asia/Jerusalem`) is authoritative.** Wall-clock rules like "18:00 the evening before" resolve through `lib/clinic-time.ts`, never through the viewer's clock or a fixed offset — Israel observes DST.
+- Feature code must call `lib/events.ts` (`onAppointmentBooked`, `onTreatmentCompleted`, `onNoShow`, …), never the planner or the store directly.
+- Patients have no accounts. The token in the URL *is* the authorisation — see `lib/tokens.ts`. Public routes are exempted in `lib/supabase/middleware.ts`.
+- A token carries a snapshot of what the message said (`AccessTokenContext`), so public pages never read clinic records.
+- `simulated` is a real terminal state, not a fake success. Do not make it report `sent`.
+- Self-registration lands as `PatientIntake`, **not** as a patient record — it is unverified data until approved.
+
+Defaults for the whole playbook are seeded in `lib/default-sequences.ts` and become editable under Settings → Automations.
 
 ### Clinic settings
 
@@ -236,6 +262,8 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 | `src/lib/clinic-settings-defaults.ts` | Default practice configuration |
 | `src/lib/env.ts` | Zod-validated env (optional Supabase keys) |
 | `src/types/domain.ts` | Core enums and interfaces |
+| `src/types/automation.ts` | Sequences, outbox, tokens, intakes, questionnaires |
+| `src/features/automations/lib/default-sequences.ts` | The out-of-the-box reminder playbook |
 | `supabase/migrations/` | Ordered DDL: schema + RLS, storage, audit, consent (source of truth) |
 | `components.json` | shadcn config (`base-nova`, `@/` aliases) |
 
@@ -250,6 +278,9 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 - ⬜ Auth / login flow
 - ⬜ Live Supabase CRUD in the app
 - ⬜ API routes / server actions for backend operations
+- ✅ Automation engine, patient self-service pages, message queue (delivery simulated)
 - ⬜ Google Calendar / billing integrations (UI placeholders in settings)
+- ⬜ Live WhatsApp / email provider behind `MessageDispatcher`
+- ⬜ Vercel Cron hitting `/api/automations/tick`
 
 When in doubt, read the closest `features/*` module and follow its patterns.

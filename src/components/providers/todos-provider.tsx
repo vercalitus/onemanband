@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -11,6 +12,8 @@ import {
   type SetStateAction,
 } from "react"
 
+import { AUTOMATION_STORE_EVENT } from "@/features/automations/lib/automation-store"
+import { deriveAutomationTodos } from "@/features/dashboard/lib/automation-signals"
 import { deriveReactiveTodos } from "@/features/dashboard/lib/reactive-signals"
 import { dashboardTodos } from "@/lib/mock-data"
 import type { TodoItem } from "@/types/domain"
@@ -28,6 +31,13 @@ function normalize(seed: TodoItem[]): TodoItem[] {
  * active/completed seeds. The old hardcoded reactive rows are replaced by the
  * reactive-signal engine (see reactive-signals.ts).
  */
+/** Board rows owned by the automation store rather than by clinic data. */
+const isAutomationRow = (id: string) =>
+  id.startsWith("rx-patientcancel-") ||
+  id.startsWith("rx-patientmove-") ||
+  id.startsWith("rx-questionnaire-") ||
+  id.startsWith("rx-newpatient-")
+
 function seedTodos(): TodoItem[] {
   const authored = dashboardTodos.filter((t) => t.kind && t.kind !== "reactive")
   return normalize([...deriveReactiveTodos(), ...authored])
@@ -58,6 +68,32 @@ export function useTodos(): TodosContextValue {
  */
 export function TodosProvider({ children }: { children: ReactNode }) {
   const [todos, setTodos] = useState<TodoItem[]>(seedTodos)
+
+  /**
+   * Fold in signals from patient self-service (cancellations, reschedules,
+   * registrations, returned questionnaires).
+   *
+   * After mount, never during render: the automation store is localStorage in
+   * mock mode, so deriving these in `seedTodos` would make the server and the
+   * client produce different lists and break hydration. Completion state
+   * already in the board is preserved on refresh.
+   */
+  useEffect(() => {
+    const sync = () => {
+      const derived = deriveAutomationTodos()
+      setTodos((prev) => {
+        const byId = new Map(prev.map((t) => [t.id, t]))
+        const fresh = derived.filter((t) => !byId.has(t.id))
+        // Drop rows whose source response has since been handled elsewhere.
+        const stillValid = new Set(derived.map((t) => t.id))
+        const kept = prev.filter((t) => !isAutomationRow(t.id) || stillValid.has(t.id))
+        return fresh.length ? [...kept, ...fresh] : kept
+      })
+    }
+    sync()
+    window.addEventListener(AUTOMATION_STORE_EVENT, sync)
+    return () => window.removeEventListener(AUTOMATION_STORE_EVENT, sync)
+  }, [])
 
   const addActiveTask = useCallback(({ title, due }: { title: string; due: string }) => {
     const trimmed = title.trim()

@@ -1,0 +1,213 @@
+import {
+  addResponse,
+  cancelPendingForAppointment,
+  cancelPendingForInvoice,
+  enqueueMessages,
+  randomId,
+} from "@/features/automations/lib/automation-store"
+import { planMessages, type AutomationEvent, type PlanContext } from "@/features/automations/lib/plan-messages"
+import { createQuestionnaire } from "@/features/automations/lib/questionnaire"
+import type { ClinicSettings } from "@/types/clinic-settings"
+import type {
+  MessageChannel,
+  OutboxMessage,
+  PatientResponse,
+  PatientResponseKind,
+} from "@/types/automation"
+
+/**
+ * Everything the rest of the app calls to drive automations.
+ *
+ * Feature code should never touch the planner, the store or the dispatcher
+ * directly — it emits a business fact ("this visit is done") and this module
+ * turns it into queued messages. That keeps the automation rules in one place
+ * instead of smeared across the calendar, finances and patient screens.
+ */
+
+/** Fold ClinicSettings into the shape the planner wants. */
+export function planContextFromSettings(
+  settings: ClinicSettings,
+  options: { origin?: string; locale?: string; now?: Date } = {},
+): PlanContext {
+  const { notifications } = settings
+  const channelEnabled: Record<MessageChannel, boolean> = {
+    whatsapp: notifications.whatsappEnabled,
+    email: notifications.emailEnabled,
+    sms: notifications.smsEnabled,
+  }
+  return {
+    automations: settings.automations,
+    clinicName: settings.profile.clinicName,
+    practitionerName: settings.profile.practitionerName || undefined,
+    channelEnabled,
+    origin: options.origin,
+    locale: options.locale,
+    now: options.now,
+  }
+}
+
+/** Plan + queue in one step. Returns only what was newly queued. */
+function emit(event: AutomationEvent, ctx: PlanContext): OutboxMessage[] {
+  return enqueueMessages(planMessages(event, ctx))
+}
+
+/* -------------------------------------------------------------------------- */
+/* Appointment lifecycle                                                       */
+/* -------------------------------------------------------------------------- */
+
+export interface AppointmentEventInput {
+  patientId: string
+  patientName: string
+  phone?: string
+  email?: string
+  appointmentId: string
+  appointmentDate: string
+  appointmentStart: string
+  appointmentEnd: string
+}
+
+/**
+ * A visit was booked — by the clinic or by the patient themselves.
+ * Fires the confirmation and lays down the whole reminder ladder at once, so
+ * a single tick loop can deliver them without re-planning.
+ */
+export function onAppointmentBooked(
+  input: AppointmentEventInput,
+  ctx: PlanContext,
+): OutboxMessage[] {
+  return [
+    ...emit({ ...input, trigger: "appointment.booked" }, ctx),
+    ...emit({ ...input, trigger: "appointment.reminder" }, ctx),
+  ]
+}
+
+/**
+ * A visit moved. The old ladder is cancelled before the new one is planned —
+ * without this a rescheduled patient receives both.
+ */
+export function onAppointmentRescheduled(
+  input: AppointmentEventInput,
+  ctx: PlanContext,
+): OutboxMessage[] {
+  cancelPendingForAppointment(input.appointmentId)
+  return onAppointmentBooked(input, ctx)
+}
+
+/** A visit was cancelled — drop everything still queued for it. */
+export function onAppointmentCancelled(appointmentId: string): number {
+  return cancelPendingForAppointment(appointmentId)
+}
+
+/**
+ * The session finished. Triggers the post-treatment sequence, and every Nth
+ * session also opens a progress questionnaire.
+ */
+export function onTreatmentCompleted(
+  input: AppointmentEventInput & { invoiceAmount?: string; completedSessions?: number },
+  ctx: PlanContext,
+): OutboxMessage[] {
+  const queued = emit({ ...input, trigger: "treatment.completed" }, ctx)
+
+  const every = ctx.automations.progressQuestionnaireEverySessions
+  const sessions = input.completedSessions
+  if (every > 0 && sessions && sessions % every === 0) {
+    // The questionnaire row must exist before the message is planned — the
+    // planner mints a token pointing at it, and a token referencing nothing
+    // gives the patient a dead link.
+    const questionnaire = createQuestionnaire(input.patientId, input.patientName, sessions)
+    queued.push(
+      ...emit(
+        {
+          ...input,
+          trigger: "progress.checkpoint",
+          sessionNumber: sessions,
+          questionnaireId: questionnaire.id,
+        },
+        ctx,
+      ),
+    )
+  }
+
+  return queued
+}
+
+/**
+ * The patient never turned up and never said so. Called after
+ * `noShowGraceMinutes` has elapsed past the slot end.
+ */
+export function onNoShow(
+  input: AppointmentEventInput & { invoiceId?: string; invoiceAmount?: string },
+  ctx: PlanContext,
+): OutboxMessage[] {
+  cancelPendingForAppointment(input.appointmentId)
+  return emit(
+    {
+      ...input,
+      trigger: "appointment.no_show",
+      noShowMarkedAt: (ctx.now ?? new Date()).toISOString(),
+    },
+    ctx,
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Billing                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export interface InvoiceEventInput {
+  patientId: string
+  patientName: string
+  phone?: string
+  email?: string
+  invoiceId: string
+  invoiceAmount: string
+  /** Clinic-local ISO date the invoice was issued. */
+  invoiceIssuedDate: string
+}
+
+/** Start the dunning ladder: 24h after issue, then daily until settled. */
+export function onInvoiceIssued(input: InvoiceEventInput, ctx: PlanContext): OutboxMessage[] {
+  return emit({ ...input, trigger: "invoice.unpaid" }, ctx)
+}
+
+/** Payment landed — stop the ladder immediately. */
+export function onInvoicePaid(invoiceId: string): number {
+  return cancelPendingForInvoice(invoiceId)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Inbound patient actions                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Record something the patient did through a link or a WhatsApp button.
+ * Cancellations and reschedules also clear the queue for that visit, and every
+ * response except a plain confirmation surfaces on the dashboard as work for
+ * the practitioner.
+ */
+export function recordPatientResponse(input: {
+  kind: PatientResponseKind
+  patientId: string
+  patientName: string
+  appointmentId?: string
+  questionnaireId?: string
+  newDate?: string
+  newStart?: string
+}): PatientResponse {
+  if (
+    (input.kind === "cancelled" || input.kind === "rescheduled") &&
+    input.appointmentId
+  ) {
+    cancelPendingForAppointment(input.appointmentId)
+  }
+
+  const response: PatientResponse = {
+    id: randomId("resp"),
+    ...input,
+    receivedAt: new Date().toISOString(),
+    // A confirmation needs no follow-up; everything else does.
+    handled: input.kind === "confirmed",
+  }
+  addResponse(response)
+  return response
+}

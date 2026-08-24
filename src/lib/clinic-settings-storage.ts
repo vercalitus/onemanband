@@ -1,5 +1,6 @@
 import { createDefaultClinicSettings } from "@/lib/clinic-settings-defaults"
 import { appointmentTypeVisual } from "@/lib/appointment-types"
+import type { ClinicAutomations } from "@/types/automation"
 import type { AppointmentType } from "@/types/domain"
 import type { ClinicSettings, TreatmentColorPreset } from "@/types/clinic-settings"
 
@@ -71,6 +72,49 @@ export function readClinicSettings(): ClinicSettings {
   }
 }
 
+/**
+ * Merge stored automation sequences over the defaults.
+ *
+ * Saved settings are the user's edits and always win, but a sequence or step
+ * added to the default playbook in a later release must still show up for
+ * clinics that saved before it existed — otherwise upgrading silently drops
+ * new automation behaviour. Matching is by id; unknown stored ids are kept.
+ */
+function mergeAutomations(
+  stored: Partial<ClinicAutomations> | undefined,
+  d: ClinicAutomations,
+): ClinicAutomations {
+  if (!stored) return d
+  const storedSequences = stored.sequences ?? []
+  const byId = new Map(storedSequences.map((s) => [s.id, s]))
+
+  const sequences = d.sequences.map((defSeq) => {
+    const own = byId.get(defSeq.id)
+    if (!own) return defSeq
+    byId.delete(defSeq.id)
+    const ownSteps = new Map((own.steps ?? []).map((s) => [s.id, s]))
+    const steps = defSeq.steps.map((defStep) => {
+      const ownStep = ownSteps.get(defStep.id)
+      if (!ownStep) return defStep
+      ownSteps.delete(defStep.id)
+      return { ...defStep, ...ownStep, template: { ...defStep.template, ...ownStep.template } }
+    })
+    return { ...defSeq, ...own, steps: [...steps, ...ownSteps.values()] }
+  })
+
+  return {
+    timezone: stored.timezone || d.timezone,
+    sequences: [...sequences, ...byId.values()],
+    futureAvailability: stored.futureAvailability?.length
+      ? stored.futureAvailability
+      : d.futureAvailability,
+    noShowGraceMinutes: stored.noShowGraceMinutes ?? d.noShowGraceMinutes,
+    progressQuestionnaireEverySessions:
+      stored.progressQuestionnaireEverySessions ?? d.progressQuestionnaireEverySessions,
+    selfBooking: { ...d.selfBooking, ...stored.selfBooking },
+  }
+}
+
 function normalizeClinicSettings(partial: Partial<ClinicSettings>): ClinicSettings {
   const d = createDefaultClinicSettings()
   return {
@@ -82,6 +126,7 @@ function normalizeClinicSettings(partial: Partial<ClinicSettings>): ClinicSettin
     carePlans: partial.carePlans?.length ? partial.carePlans : d.carePlans,
     integrations: { ...d.integrations, ...partial.integrations },
     notifications: { ...d.notifications, ...partial.notifications },
+    automations: mergeAutomations(partial.automations, d.automations),
   }
 }
 
