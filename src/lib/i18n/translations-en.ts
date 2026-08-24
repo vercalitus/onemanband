@@ -62,11 +62,11 @@ export const EN_MESSAGES: Record<string, string> = {
 
   "dashboard.todayClinic": "Today's Clinic",
   "dashboard.todoBoard": "To Do List",
-  "dashboard.todo.reactive": "Reactive",
+  "dashboard.todo.reactive": "Needs attention",
   "dashboard.todo.active": "Active",
   "dashboard.todo.completed": "Completed",
   "dashboard.todo.add": "Add task",
-  "dashboard.todo.noReactive": "No reactive items right now.",
+  "dashboard.todo.noReactive": "Nothing needs your attention.",
   "dashboard.todo.noActive": "No active tasks — add one with +.",
   "dashboard.todo.duePrefix": "Due",
   "dashboard.todo.overduePrefix": "Overdue",
@@ -953,4 +953,11 @@ export const EN_MESSAGES: Record<string, string> = {
   "header.search.unmute": "Messages muted",
   "header.search.muted": "Automated messages are off for this patient",
   "header.search.unmuted": "Automated messages are back on",
+
+  "dashboard.todo.dismiss": "Dismiss",
+  "dashboard.todo.showAll": "Show {count} more",
+  "dashboard.todo.showLess": "Show less",
+  "dashboard.badge.fault": "Failed",
+  "signal.sendFailed": "Message failed to send — {patient}",
+  "signal.due.sendFailed": "{channel} · {error}",
 }

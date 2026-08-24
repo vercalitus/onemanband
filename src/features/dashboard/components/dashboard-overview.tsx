@@ -3,6 +3,7 @@
 import {
   ArrowDownRight,
   ArrowUpRight,
+  Bell,
   CalendarCheck2,
   CircleCheckBig,
   Coins,
@@ -10,9 +11,11 @@ import {
   ListTodo,
   Plus,
   TrendingUp,
+  TriangleAlert,
   Wallet,
+  X,
 } from "lucide-react"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +24,11 @@ import { useAddTask } from "@/components/providers/add-task-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { useTodos } from "@/components/providers/todos-provider"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
+import {
+  DISMISSED_SIGNALS_EVENT,
+  dismissSignal,
+  pruneDismissals,
+} from "@/features/dashboard/lib/dismissed-signals"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
 import { localizedPulseMetrics, localizeTodoTitle } from "@/lib/i18n/localized-seed"
@@ -35,6 +43,17 @@ const trendIcon = {
 }
 
 const pulseIconChrome = "bg-sky-100 text-sky-600"
+
+/**
+ * How many attention rows show before the list folds.
+ *
+ * Small on purpose. An unbounded column of signals is the same failure as a
+ * notification badge that only climbs: it stops being read. The rest stays one
+ * click away and the count is stated, so nothing is silently hidden.
+ */
+const ATTENTION_VISIBLE = 5
+
+const PRIORITY_RANK: Record<TodoItem["priority"], number> = { high: 0, medium: 1, low: 2 }
 
 const metricAccent = {
   visits: {
@@ -63,12 +82,24 @@ const metricAccent = {
   },
 } as const
 
+/**
+ * One board row.
+ *
+ * Two shapes, because the halves of the board mean different things. An active
+ * task is work you finish, so it gets a checkbox. An attention signal is
+ * derived from clinic data — ticking "invoice overdue" would not pay it, and
+ * the row would return on the next derivation — so it gets a dismiss instead:
+ * "I've seen this", recorded separately and self-clearing once the underlying
+ * fact resolves.
+ */
 function TodoRow({
   item,
   onToggleComplete,
+  onDismiss,
 }: {
   item: TodoItem
   onToggleComplete: (id: string) => void
+  onDismiss?: (id: string) => void
 }) {
   const { t } = useLocale()
   const done = Boolean(item.completed)
@@ -77,38 +108,69 @@ function TodoRow({
   const dueText = item.dueKey ? t(item.dueKey, item.params) : item.due
   const dueTrimmed = dueText.trim()
   const markDoneAria = `${done ? t("dashboard.todo.markNotDone") : t("dashboard.todo.markDone")}: ${title}`
+  const isFault = item.tone === "fault"
 
   return (
     <div
       className={`flex items-center gap-3 rounded-xl border p-3.5 transition-all duration-200 hover:-translate-y-px ${
         done
           ? "border-slate-100 bg-slate-50/90"
-          : item.overdue
-            ? "border-[rgb(248,228,214)] bg-[rgb(255,247,242)] shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]"
-            : "border-slate-200/70 bg-white"
+          : isFault
+            ? "border-rose-200 bg-rose-50/70 shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]"
+            : item.overdue
+              ? "border-[rgb(248,228,214)] bg-[rgb(255,247,242)] shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]"
+              : "border-slate-200/70 bg-white"
       }`}
     >
-      <label className="flex shrink-0 cursor-pointer items-center">
-        <input
-          type="checkbox"
-          checked={done}
-          onChange={() => onToggleComplete(item.id)}
-          className="size-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/30"
-          aria-label={markDoneAria}
-        />
-      </label>
+      {onDismiss ? (
+        <span
+          className={`flex size-4 shrink-0 items-center justify-center ${isFault ? "text-rose-500" : "text-sky-500"}`}
+          aria-hidden
+        >
+          {isFault ? <TriangleAlert className="size-4" /> : <Bell className="size-4" />}
+        </span>
+      ) : (
+        <label className="flex shrink-0 cursor-pointer items-center">
+          <input
+            type="checkbox"
+            checked={done}
+            onChange={() => onToggleComplete(item.id)}
+            className="size-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/30"
+            aria-label={markDoneAria}
+          />
+        </label>
+      )}
+
       <div className="min-w-0 flex-1">
         <p className={`font-medium ${done ? "text-slate-400 line-through" : "text-slate-900"}`}>{title}</p>
-        <p className={`text-xs ${done ? "text-slate-400" : "text-slate-500"}`}>
+        <p className={`text-xs ${done ? "text-slate-400" : isFault ? "text-rose-700/80" : "text-slate-500"}`}>
           {dueTrimmed
             ? `${item.overdue && !done ? t("dashboard.todo.overduePrefix") : t("dashboard.todo.duePrefix")} ${dueTrimmed}`
             : t("dashboard.todo.noDue")}
         </p>
       </div>
-      {item.overdue && !done && (
+
+      {isFault && (
+        <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+          {t("dashboard.badge.fault")}
+        </Badge>
+      )}
+      {item.overdue && !done && !isFault && (
         <Badge variant="outline" className="border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(171,119,93)]">
           {t("dashboard.badge.attention")}
         </Badge>
+      )}
+
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={() => onDismiss(item.id)}
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white hover:text-slate-700"
+          aria-label={`${t("dashboard.todo.dismiss")}: ${title}`}
+          title={t("dashboard.todo.dismiss")}
+        >
+          <X className="size-4" aria-hidden />
+        </button>
       )}
     </div>
   )
@@ -141,12 +203,47 @@ export function DashboardOverview() {
     }))
   }, [t])
 
-  const { reactive, active, completed } = useMemo(() => {
-    const reactive = localizedTodos.filter((x) => !x.completed && x.kind === "reactive")
-    const active = localizedTodos.filter((x) => !x.completed && x.kind === "active")
-    const completed = localizedTodos.filter((x) => x.completed)
-    return { reactive, active, completed }
-  }, [localizedTodos])
+  /**
+   * Dismissals live outside the todo list so they survive a refresh, and are
+   * pruned against what is currently derived — a condition that resolves and
+   * later returns must not arrive pre-silenced.
+   */
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set())
+  const [showAllAttention, setShowAllAttention] = useState(false)
+
+  const attentionIds = useMemo(
+    () =>
+      localizedTodos
+        .filter((x) => !x.completed && x.kind === "reactive")
+        .map((x) => x.id),
+    [localizedTodos],
+  )
+
+  useEffect(() => {
+    const sync = () => setDismissed(pruneDismissals(attentionIds))
+    sync()
+    window.addEventListener(DISMISSED_SIGNALS_EVENT, sync)
+    return () => window.removeEventListener(DISMISSED_SIGNALS_EVENT, sync)
+  }, [attentionIds])
+
+  const { attention, attentionHidden, active, completed } = useMemo(() => {
+    const all = localizedTodos
+      .filter((x) => !x.completed && x.kind === "reactive" && !dismissed.has(x.id))
+      // Faults outrank everything: a message that never sent is the software
+      // failing, not a job on the list.
+      .sort((a, b) => {
+        const fault = Number(b.tone === "fault") - Number(a.tone === "fault")
+        if (fault !== 0) return fault
+        return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
+      })
+
+    return {
+      attention: showAllAttention ? all : all.slice(0, ATTENTION_VISIBLE),
+      attentionHidden: Math.max(0, all.length - ATTENTION_VISIBLE),
+      active: localizedTodos.filter((x) => !x.completed && x.kind === "active"),
+      completed: localizedTodos.filter((x) => x.completed),
+    }
+  }, [localizedTodos, dismissed, showAllAttention])
 
   return (
     <div>
@@ -176,12 +273,31 @@ export function DashboardOverview() {
                 {t("dashboard.todo.reactive")}
               </p>
               <div className="space-y-3">
-                {reactive.length === 0 ? (
+                {attention.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 px-3 py-4 text-center text-xs text-slate-500">
                     {t("dashboard.todo.noReactive")}
                   </p>
                 ) : (
-                  reactive.map((item) => <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />)
+                  attention.map((item) => (
+                    <TodoRow
+                      key={item.id}
+                      item={item}
+                      onToggleComplete={toggleComplete}
+                      onDismiss={dismissSignal}
+                    />
+                  ))
+                )}
+                {/* A capped list must say what it is hiding, or it reads as "all clear". */}
+                {attentionHidden > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllAttention((v) => !v)}
+                    className="w-full rounded-lg py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-50"
+                  >
+                    {showAllAttention
+                      ? t("dashboard.todo.showLess")
+                      : t("dashboard.todo.showAll", { count: attentionHidden })}
+                  </button>
                 )}
               </div>
             </div>

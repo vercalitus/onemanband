@@ -1,4 +1,4 @@
-import { listIntakes, listResponses } from "@/features/automations/lib/automation-store"
+import { listIntakes, listOutbox, listResponses } from "@/features/automations/lib/automation-store"
 import type { TodoItem } from "@/types/domain"
 
 /**
@@ -13,11 +13,36 @@ import type { TodoItem } from "@/types/domain"
  * must run after mount (see TodosProvider) or SSR and the client disagree.
  */
 
-/** Kept small: this list rides on top of the derived clinic signals. */
-const MAX_ITEMS = 4
-
 export function deriveAutomationTodos(): TodoItem[] {
   const items: TodoItem[] = []
+
+  /*
+   * Failed sends first, and unconditionally.
+   *
+   * The engine sends on its own, so a WhatsApp that never left is invisible
+   * everywhere else in the product — the patient simply doesn't turn up and
+   * nobody knows why. This is the one signal that reports the software
+   * failing rather than the clinic having work to do.
+   */
+  for (const message of listOutbox()) {
+    if (message.status !== "failed") continue
+    items.push({
+      id: `rx-sendfail-${message.id}`,
+      kind: "reactive",
+      priority: "high",
+      tone: "fault",
+      titleKey: "signal.sendFailed",
+      dueKey: "signal.due.sendFailed",
+      params: {
+        patient: message.patientName || message.to,
+        channel: message.channel,
+        error: message.error ?? "",
+      },
+      title: `Message failed to send — ${message.patientName || message.to}`,
+      due: message.error ?? "Send failed",
+      completed: false,
+    })
+  }
 
   for (const response of listResponses()) {
     if (response.handled) continue
@@ -93,5 +118,7 @@ export function deriveAutomationTodos(): TodoItem[] {
     })
   }
 
-  return items.slice(0, MAX_ITEMS)
+  // Uncapped on purpose: the board caps and paginates the combined list, and
+  // truncating here would silently drop a send failure behind a reschedule.
+  return items
 }

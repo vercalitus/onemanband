@@ -48,11 +48,11 @@ export const HE_MESSAGES: Record<string, string> = {
 
   "dashboard.todayClinic": "המרפאה היום",
   "dashboard.todoBoard": "משימות",
-  "dashboard.todo.reactive": "דחוף / מערכת",
+  "dashboard.todo.reactive": "דורש תשומת לב",
   "dashboard.todo.active": "פעיל",
   "dashboard.todo.completed": "בוצע",
   "dashboard.todo.add": "הוסף משימה",
-  "dashboard.todo.noReactive": "אין כרגע פריטים דחופים.",
+  "dashboard.todo.noReactive": "אין כרגע משהו שדורש תשומת לב.",
   "dashboard.todo.noActive": "אין משימות פעילות — הוסף באמצעות +.",
   "dashboard.todo.duePrefix": "יעד",
   "dashboard.todo.overduePrefix": "באיחור",
@@ -929,4 +929,11 @@ export const HE_MESSAGES: Record<string, string> = {
   "header.search.unmute": "ההודעות מושתקות",
   "header.search.muted": "הודעות אוטומטיות כבויות למטופל הזה",
   "header.search.unmuted": "הודעות אוטומטיות חזרו לפעול",
+
+  "dashboard.todo.dismiss": "התעלם",
+  "dashboard.todo.showAll": "הצג עוד {count}",
+  "dashboard.todo.showLess": "הצג פחות",
+  "dashboard.badge.fault": "נכשל",
+  "signal.sendFailed": "הודעה נכשלה בשליחה — {patient}",
+  "signal.due.sendFailed": "{channel} · {error}",
 }

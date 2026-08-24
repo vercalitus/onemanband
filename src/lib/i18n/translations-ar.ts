@@ -62,11 +62,11 @@ export const AR_MESSAGES: Record<string, string> = {
 
   "dashboard.todayClinic": "العيادة اليوم",
   "dashboard.todoBoard": "قائمة المهام",
-  "dashboard.todo.reactive": "استجابة فورية",
+  "dashboard.todo.reactive": "يحتاج انتباهك",
   "dashboard.todo.active": "نشطة",
   "dashboard.todo.completed": "مكتملة",
   "dashboard.todo.add": "إضافة مهمة",
-  "dashboard.todo.noReactive": "لا توجد عناصر تتطلب استجابة فورية حالياً.",
+  "dashboard.todo.noReactive": "لا شيء يحتاج انتباهك الآن.",
   "dashboard.todo.noActive": "لا توجد مهام نشطة — أضف مهمة عبر +.",
   "dashboard.todo.duePrefix": "الاستحقاق",
   "dashboard.todo.overduePrefix": "متأخر",
@@ -928,4 +928,11 @@ export const AR_MESSAGES: Record<string, string> = {
   "header.search.unmute": "الرسائل مكتومة",
   "header.search.muted": "الرسائل التلقائية موقوفة لهذا المريض",
   "header.search.unmuted": "عادت الرسائل التلقائية",
+
+  "dashboard.todo.dismiss": "تجاهل",
+  "dashboard.todo.showAll": "عرض {count} أخرى",
+  "dashboard.todo.showLess": "عرض أقل",
+  "dashboard.badge.fault": "فشلت",
+  "signal.sendFailed": "فشل إرسال رسالة — {patient}",
+  "signal.due.sendFailed": "{channel} · {error}",
 }

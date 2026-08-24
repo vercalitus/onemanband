@@ -33,6 +33,7 @@ function normalize(seed: TodoItem[]): TodoItem[] {
  */
 /** Board rows owned by the automation store rather than by clinic data. */
 const isAutomationRow = (id: string) =>
+  id.startsWith("rx-sendfail-") ||
   id.startsWith("rx-patientcancel-") ||
   id.startsWith("rx-patientmove-") ||
   id.startsWith("rx-questionnaire-") ||

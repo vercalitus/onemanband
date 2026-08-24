@@ -1,7 +1,5 @@
 "use client"
 
-import { BellDot } from "lucide-react"
-
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { HeaderBarDate } from "@/components/layout/header-bar-date"
 import { HeaderActions } from "@/components/layout/header-actions"
@@ -10,15 +8,11 @@ import { MobileNav } from "@/components/layout/mobile-nav"
 import { SignOutButton } from "@/components/layout/sign-out-button"
 import { AddTaskProvider } from "@/components/providers/add-task-provider"
 import { GlobalAddPatientProvider } from "@/components/providers/global-add-patient-provider"
-import { useLocale } from "@/components/providers/locale-provider"
 import { PatientExtrasProvider } from "@/components/providers/patient-extras-provider"
 import { ScheduleDayProvider } from "@/components/providers/schedule-day-provider"
 import { TodosProvider } from "@/components/providers/todos-provider"
-import { Button } from "@/components/ui/button"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { t } = useLocale()
-
   const mainColumn = (
     <div className="relative flex min-h-screen min-w-0 max-w-full flex-1 flex-col bg-background shadow-[-6px_0_28px_-14px_rgba(15,23,42,0.06)] rtl:shadow-[6px_0_28px_-14px_rgba(15,23,42,0.06)]">
       <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/95 backdrop-blur-md">
@@ -31,14 +25,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
             <HeaderActions />
             <LocaleSwitcher />
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="shrink-0 border-slate-100 bg-white shadow-none"
-              aria-label={t("header.notifications")}
-            >
-              <BellDot className="size-4 text-sky-600" />
-            </Button>
+            {/*
+             * No notification bell.
+             *
+             * It was a button with no handler and a permanently-lit dot — an
+             * alert that never meant anything, which trains you to ignore the
+             * ones that do. Everything needing attention (patient responses,
+             * failed sends, derived signals) lives in the dashboard board's
+             * "needs attention" half instead, where it can actually be acted
+             * on. The `header.notifications` i18n key is kept for reuse.
+             */}
             <SignOutButton />
           </div>
         </div>

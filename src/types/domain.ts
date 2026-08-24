@@ -67,6 +67,12 @@ export interface TodoItem {
   overdue?: boolean
   kind?: TodoKind
   completed?: boolean
+  /**
+   * `fault` marks something broken in the system rather than clinic work —
+   * a message that failed to send, a sync that died. Styled and sorted apart
+   * because "the software didn't do its job" is not a task on your list.
+   */
+  tone?: "fault"
   /** i18n: when set, the UI renders `t(titleKey, params)` instead of `title` (which is the English fallback). */
   titleKey?: string
   /** i18n: when set, the UI renders `t(dueKey, params)` instead of `due` for the due line. */
