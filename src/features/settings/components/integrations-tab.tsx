@@ -6,14 +6,31 @@ import { useState } from "react"
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { cn } from "@/lib/utils"
 import type { InvoiceProvider } from "@/types/domain"
 import type { ClinicSettings } from "@/types/clinic-settings"
 
-const PROVIDERS: InvoiceProvider[] = ["Green Invoice", "Morning", "Invoice4U"]
+const PROVIDERS: InvoiceProvider[] = ["SUMIT", "Green Invoice", "Morning", "Invoice4U"]
+
+/**
+ * Providers disagree about whether a VAT rate is `0.18` or `18`, and this is a
+ * display-only number, so accept either rather than guess wrong in public.
+ */
+function formatVatRate(rate: number): number {
+  const percent = rate <= 1 ? rate * 100 : rate
+  return Math.round(percent * 10) / 10
+}
+
+interface PingResponse {
+  ok: boolean
+  provider: string
+  live: boolean
+  draftsOnly: boolean
+  vatRate: number | null
+  message?: string
+}
 
 export function IntegrationsTab({
   settings,
@@ -25,16 +42,42 @@ export function IntegrationsTab({
   const { t } = useLocale()
   const { integrations } = settings
   const [testing, setTesting] = useState(false)
+  const [ping, setPing] = useState<PingResponse | null>(null)
 
-  const runTest = () => {
+  /**
+   * Ask the server whether the bookkeeping credentials actually work.
+   *
+   * The answer carries the VAT rate the accounting system is applying, which
+   * is worth showing: it is the one number in this integration that must never
+   * be assumed, and seeing it is how a wrong assumption gets caught before it
+   * reaches an invoice.
+   */
+  const runTest = async () => {
     setTesting(true)
-    window.setTimeout(() => {
-      setTesting(false)
+    try {
+      const res = await fetch("/api/billing/ping", { cache: "no-store" })
+      const data = (await res.json()) as PingResponse
+      setPing(data)
       onChange({
         ...settings,
-        integrations: { ...integrations, billingConnected: true },
+        integrations: { ...integrations, billingConnected: data.ok && data.live },
       })
-    }, 900)
+    } catch {
+      setPing({
+        ok: false,
+        provider: "—",
+        live: false,
+        draftsOnly: true,
+        vatRate: null,
+        message: t("settings.integrations.testFailed"),
+      })
+      onChange({
+        ...settings,
+        integrations: { ...integrations, billingConnected: false },
+      })
+    } finally {
+      setTesting(false)
+    }
   }
 
   return (
@@ -76,25 +119,9 @@ export function IntegrationsTab({
               ))}
             </select>
           </div>
-          <div className="grid gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500" htmlFor="api-key">
-              {t("settings.integrations.apiKeyLabel")}
-            </label>
-            <Input
-              id="api-key"
-              type="password"
-              autoComplete="off"
-              value={integrations.billingApiKey}
-              onChange={(e) =>
-                onChange({
-                  ...settings,
-                  integrations: { ...integrations, billingApiKey: e.target.value },
-                })
-              }
-              placeholder={t("settings.integrations.apiKeyPlaceholder")}
-              className="max-w-xl rounded-xl border-slate-200 font-mono text-sm"
-            />
-          </div>
+          <p className="max-w-xl rounded-xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
+            {t("settings.integrations.keyNotice")}
+          </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="secondary" disabled={testing} onClick={runTest} className="gap-2">
               {testing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Link2 className="size-4" aria-hidden />}
@@ -116,6 +143,34 @@ export function IntegrationsTab({
               {integrations.billingConnected ? t("settings.integrations.connected") : t("settings.integrations.notVerified")}
             </span>
           </div>
+          {ping && (
+            <dl className="grid max-w-xl gap-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-xs">
+              <Detail
+                label={t("settings.integrations.pingProvider")}
+                value={ping.live ? ping.provider : t("settings.integrations.simulated")}
+              />
+              {ping.draftsOnly && (
+                <Detail
+                  label={t("settings.integrations.pingMode")}
+                  value={t("settings.integrations.draftsOnly")}
+                  tone="warning"
+                />
+              )}
+              {ping.vatRate != null && (
+                <Detail
+                  label={t("settings.integrations.pingVat")}
+                  value={`${formatVatRate(ping.vatRate)}%`}
+                />
+              )}
+              {ping.message && !ping.ok && (
+                <Detail
+                  label={t("settings.integrations.pingProblem")}
+                  value={ping.message}
+                  tone="error"
+                />
+              )}
+            </dl>
+          )}
         </CardContent>
       </Card>
 
@@ -160,6 +215,34 @@ export function IntegrationsTab({
           </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function Detail({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: string
+  tone?: "warning" | "error"
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="text-slate-500">{label}</dt>
+      <dd
+        className={cn(
+          "text-end font-semibold",
+          tone === "error"
+            ? "text-rose-700"
+            : tone === "warning"
+              ? "text-amber-700"
+              : "text-slate-900",
+        )}
+      >
+        {value}
+      </dd>
     </div>
   )
 }

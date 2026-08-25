@@ -141,10 +141,56 @@ export interface FinanceRecord {
 }
 
 /** Provider that issues / syncs invoices on the clinic's behalf. */
-export type InvoiceProvider = "Green Invoice" | "Morning" | "Invoice4U"
+export type InvoiceProvider = "SUMIT" | "Green Invoice" | "Morning" | "Invoice4U"
 
-/** Sync state of an invoice against the external provider. */
-export type InvoiceSyncStatus = "synced" | "pending" | "failed"
+/**
+ * Sync state of an invoice against the external provider.
+ *
+ * `pending` means no tax document exists yet — the charge is real to the
+ * clinic, but nothing has been filed. `simulated` is a truthful terminal
+ * state, not a pretend success: the document was fully planned and validated
+ * but no provider was configured to file it. Same contract as the automation
+ * dispatcher's `simulated`.
+ */
+export type InvoiceSyncStatus = "synced" | "pending" | "failed" | "simulated"
+
+/**
+ * How the patient actually paid. Recorded on the receipt half of the tax
+ * document, so it has to be captured at the moment payment is taken.
+ */
+export type PaymentMethod =
+  | "cash"
+  | "bank_transfer"
+  | "cheque"
+  | "credit_card"
+  | "digital"
+
+/**
+ * Pointer to the tax document the provider issued for an invoice.
+ *
+ * The clinic's bookkeeping system owns document numbering — it is a legally
+ * sequential thing — so this app never mints one. It holds a pointer and a
+ * cached copy of what came back.
+ */
+export interface TaxDocumentLink {
+  /** `simulated` when no provider was configured — see `InvoiceSyncStatus`. */
+  provider: InvoiceProvider | "simulated"
+  /** Provider-side id, used for credit notes and PDF fetches. */
+  documentId: string
+  /** The legal document number. Null while a document is still a draft. */
+  documentNumber: number | null
+  /** Provider-side customer card this was filed against. */
+  customerId: string | null
+  /** Signed URL to the PDF, when the provider returns one. */
+  downloadUrl: string | null
+  /** ISO timestamp the document was filed. */
+  issuedAt: string
+  /**
+   * True when the document was filed as a draft rather than a numbered legal
+   * document — the safe default until `SUMIT_LIVE_DOCUMENTS` is set.
+   */
+  draft: boolean
+}
 
 /** Kinds of work that produced an invoice — drives the Insights breakdown. */
 export type BillingTreatmentType = "first" | "adjustments" | "kupa"
@@ -174,6 +220,17 @@ export interface BillingInvoice {
   treatmentType: BillingTreatmentType
   provider: InvoiceProvider
   syncStatus: InvoiceSyncStatus
+  /** Set when payment was taken; drives the receipt half of the tax document. */
+  paymentMethod?: PaymentMethod
+  /** The filed tax document, once one exists. Absent while `syncStatus` is `pending`. */
+  taxDocument?: TaxDocumentLink
+  /** Why the last filing attempt failed, shown on the row so it can be retried. */
+  syncError?: string
+  /**
+   * The visit this invoice bills. Doubles as the idempotency key sent to the
+   * provider, so a retry can never produce a second tax document for one visit.
+   */
+  appointmentId?: string
 }
 
 /**

@@ -1,4 +1,4 @@
-/** Arabic overrides — merges over English catalogue in dictionary.ts */
+﻿/** Arabic overrides — merges over English catalogue in dictionary.ts */
 
 export const AR_MESSAGES: Record<string, string> = {
   /** Locale switcher */
@@ -238,6 +238,29 @@ export const AR_MESSAGES: Record<string, string> = {
   "finances.pending.sendReminder": "إرسال تذكير",
   "finances.pending.needsInvoice": "بحاجة إلى فاتورة",
   "finances.pending.visitWord": "زيارة",
+
+  "billing.payment.title": "تسجيل الدفع",
+  "billing.payment.description":
+    "{patientName} · {amount}. تسجيل الدفع يُصدر فاتورة ضريبية/إيصال ويرسلها إلى بريد المريض.",
+  "billing.payment.amountLabel": "المبلغ المستلم",
+  "billing.payment.vatNote":
+    "أسعار العلاج تشمل ضريبة القيمة المضافة. النسبة تؤخذ من نظام المحاسبة.",
+  "billing.payment.methodLabel": "وسيلة الدفع",
+  "billing.payment.dateLabel": "تاريخ الدفع",
+  "billing.payment.confirm": "سجّل وأصدر",
+  "billing.payment.method.cash": "نقداً",
+  "billing.payment.method.digital": "بيت / رقمي",
+  "billing.payment.method.credit_card": "بطاقة",
+  "billing.payment.method.bank_transfer": "حوالة",
+  "billing.payment.method.cheque": "شيك",
+  "billing.payment.error.missing": "لم تعد هذه الفاتورة مفتوحة.",
+  "billing.payment.result.filed": "صدرت وأُرسلت. المستند رقم {number}.",
+  "billing.payment.result.draft": "حُفظت كمسودة في نظام المحاسبة — بلا رقم مستند بعد.",
+  "billing.payment.result.simulated":
+    "عُلّمت كمدفوعة. لا يوجد مزوّد محاسبة متصل، لذلك لم يصدر أي مستند.",
+  "billing.payment.result.blocked":
+    "سُجّل الدفع، لكن تعذّر تأكيد إصدار المستند. تحقّق من نظام المحاسبة قبل الإصدار مجدداً.",
+  "billing.payment.result.failed": "سُجّل الدفع، لكن الإصدار فشل: {reason}",
 
   "history.status.paid": "مدفوع",
   "history.status.void": "ملغاة",
@@ -486,11 +509,17 @@ export const AR_MESSAGES: Record<string, string> = {
   "settings.color.sky": "سماوي",
   "settings.color.rose": "وردي",
   "settings.integrations.billingTitle": "تكامل الفوترة",
-  "settings.integrations.billingDesc":
-    "اختر برنامج الفواتير واحفظ مفتاح الواجهة البرمجية محلياً للإعداد الأولي.",
+  "settings.integrations.billingDesc": "نظام المحاسبة الذي يُصدر مستنداتك الضريبية.",
   "settings.integrations.providerLabel": "المزوّد",
-  "settings.integrations.apiKeyLabel": "مفتاح API / رمز",
-  "settings.integrations.apiKeyPlaceholder": "الصق المفتاح — يُخزَّن في هذا المتصفح فقط",
+  "settings.integrations.keyNotice":
+    "مفتاح الواجهة البرمجية محفوظ في الخادم وليس في هذا المتصفح — فهو قادر على إصدار مستندات ضريبية باسمك. عيّن SUMIT_COMPANY_ID و SUMIT_API_KEY في بيئة النشر.",
+  "settings.integrations.testFailed": "تعذّر الوصول إلى الخادم.",
+  "settings.integrations.pingProvider": "المزوّد",
+  "settings.integrations.pingMode": "الوضع",
+  "settings.integrations.pingVat": "نسبة الضريبة السارية",
+  "settings.integrations.pingProblem": "مشكلة",
+  "settings.integrations.simulated": "غير متصل — محاكاة",
+  "settings.integrations.draftsOnly": "مسودات فقط — بلا أرقام مستندات",
   "settings.integrations.testConnection": "اختبار الاتصال",
   "settings.integrations.connected": "متصل",
   "settings.integrations.notVerified": "غير مُتحقَّق",

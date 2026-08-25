@@ -57,9 +57,11 @@ export function defaultProfile(): ClinicProfile {
 
 export function defaultIntegrations(): ClinicIntegrations {
   return {
-    billingProvider: "Morning",
-    billingApiKey: "",
-    billingConnected: true,
+    billingProvider: "SUMIT",
+    // Starts false and is only set by a real connection check. Claiming
+    // "connected" before anything has been checked is how a clinic discovers
+    // its invoices were never filed.
+    billingConnected: false,
     googleCalendarConnected: false,
     outlookConnected: false,
   }

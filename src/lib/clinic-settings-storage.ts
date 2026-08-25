@@ -2,7 +2,11 @@ import { createDefaultClinicSettings } from "@/lib/clinic-settings-defaults"
 import { appointmentTypeVisual } from "@/lib/appointment-types"
 import type { ClinicAutomations } from "@/types/automation"
 import type { AppointmentType } from "@/types/domain"
-import type { ClinicSettings, TreatmentColorPreset } from "@/types/clinic-settings"
+import type {
+  ClinicIntegrations,
+  ClinicSettings,
+  TreatmentColorPreset,
+} from "@/types/clinic-settings"
 
 export const CLINIC_SETTINGS_KEY = "clinic.settings.v1"
 
@@ -116,6 +120,27 @@ function mergeAutomations(
   }
 }
 
+/**
+ * Pick known integration fields explicitly rather than spreading.
+ *
+ * Earlier builds stored a billing API key in this object. Spreading would
+ * carry that key forward forever; listing the fields drops it on the next save
+ * — which is the migration. It also stops any future stray field from
+ * surviving in `localStorage` unnoticed.
+ */
+function normalizeIntegrations(
+  stored: Partial<ClinicIntegrations> | undefined,
+  d: ClinicIntegrations,
+): ClinicIntegrations {
+  if (!stored) return d
+  return {
+    billingProvider: stored.billingProvider ?? d.billingProvider,
+    billingConnected: stored.billingConnected ?? d.billingConnected,
+    googleCalendarConnected: stored.googleCalendarConnected ?? d.googleCalendarConnected,
+    outlookConnected: stored.outlookConnected ?? d.outlookConnected,
+  }
+}
+
 function normalizeClinicSettings(partial: Partial<ClinicSettings>): ClinicSettings {
   const d = createDefaultClinicSettings()
   return {
@@ -125,7 +150,7 @@ function normalizeClinicSettings(partial: Partial<ClinicSettings>): ClinicSettin
     treatmentTypes: partial.treatmentTypes?.length ? partial.treatmentTypes : d.treatmentTypes,
     defaultPlanSessions: partial.defaultPlanSessions ?? d.defaultPlanSessions,
     carePlans: partial.carePlans?.length ? partial.carePlans : d.carePlans,
-    integrations: { ...d.integrations, ...partial.integrations },
+    integrations: normalizeIntegrations(partial.integrations, d.integrations),
     notifications: { ...d.notifications, ...partial.notifications },
     automations: mergeAutomations(partial.automations, d.automations),
   }

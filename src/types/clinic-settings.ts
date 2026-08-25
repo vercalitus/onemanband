@@ -41,7 +41,13 @@ export interface ClinicProfile {
 
 export interface ClinicIntegrations {
   billingProvider: InvoiceProvider
-  billingApiKey: string
+  /**
+   * Result of the last connection check — not a setting the user types.
+   *
+   * There is deliberately no API key here. The bookkeeping key can issue tax
+   * documents, so it lives in the server environment and is never held in
+   * `localStorage`, where every script on the page can read it.
+   */
   billingConnected: boolean
   googleCalendarConnected: boolean
   outlookConnected: boolean

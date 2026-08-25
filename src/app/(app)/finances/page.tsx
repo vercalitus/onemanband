@@ -27,6 +27,7 @@ import {
   PendingInvoiceRow,
   PendingVisitRow,
 } from "@/features/finances/components/pending-row"
+import { RecordPaymentDialog } from "@/features/finances/components/record-payment-dialog"
 import {
   computeCollectionRate,
   computeMonthlyDeltaPct,
@@ -54,11 +55,13 @@ export default function BillingPage() {
     integration,
     failedSyncInvoices,
     generateInvoice,
-    markInvoicePaid,
+    settleInvoice,
     sendReminder,
     retrySync,
   } = useBilling()
 
+  /** The invoice whose payment is being recorded, if any. */
+  const [settlingId, setSettlingId] = useState<string | null>(null)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [historyQuery, setHistoryQuery] = useState("")
   const [pendingQuery, setPendingQuery] = useState("")
@@ -235,13 +238,7 @@ export default function BillingPage() {
                       invoice={inv}
                       patientBalance={balanceByPatient.get(inv.patientId) ?? 0}
                       onSendReminder={() => sendReminder(inv.id)}
-                      onMarkPaid={() => {
-                        markInvoicePaid(inv.id)
-                        setBillingToastMessage(
-                          t("finances.toast.markPaid", { patientName: inv.patientName }),
-                        )
-                        setBillingToastOpen(true)
-                      }}
+                      onMarkPaid={() => setSettlingId(inv.id)}
                     />
                   ))}
                   {pendingCount === 0 && (
@@ -351,6 +348,30 @@ export default function BillingPage() {
       >
         <InsightsPanel invoices={invoices} />
       </SidePanel>
+
+      {/* Looked up in `invoices`, not `pendingInvoices`: a settled invoice
+          leaves the pending list immediately, and sourcing it from there would
+          unmount the dialog before it can report whether a tax document was
+          actually filed — which is the only part of this the clinic must see. */}
+      <RecordPaymentDialog
+        invoice={invoices.find((inv) => inv.id === settlingId) ?? null}
+        open={settlingId !== null}
+        onOpenChange={(open) => setSettlingId(open ? settlingId : null)}
+        onConfirm={async (payment) => {
+          if (!settlingId) return { ok: false, message: "" }
+          const invoice = invoices.find((inv) => inv.id === settlingId)
+          const outcome = await settleInvoice(settlingId, payment)
+          // Success is confirmed in the page and the dialog closes itself.
+          // A failure keeps the dialog open with the reason still on screen.
+          if (outcome.ok && invoice) {
+            setBillingToastMessage(
+              t("finances.toast.markPaid", { patientName: invoice.patientName }),
+            )
+            setBillingToastOpen(true)
+          }
+          return outcome
+        }}
+      />
 
       <BillingToast
         open={billingToastOpen}

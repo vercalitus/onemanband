@@ -3,14 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { onInvoicePaid } from "@/features/automations/lib/events"
+import { planPaidVisitDocument } from "@/features/finances/lib/plan-tax-document"
+import { fileTaxDocument } from "@/features/finances/lib/tax-documents"
 import {
   seedIntegration,
   seedInvoices,
   seedUninvoicedVisits,
 } from "@/lib/mock-finances"
 import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
+import { patients } from "@/lib/mock-data"
 import type {
   BillingInvoice,
+  PaymentMethod,
   ProviderIntegration,
   UninvoicedVisit,
 } from "@/types/domain"
@@ -27,7 +32,7 @@ const STORAGE_KEY_INTEGRATION = "billing.integration.v1"
  * the server fetch and the same shape stays.
  */
 export function useBilling() {
-  const { formatMoney } = useLocale()
+  const { formatMoney, locale, t } = useLocale()
   const [invoices, setInvoices] = useState<BillingInvoice[]>(seedInvoices)
   const [uninvoicedVisits, setUninvoicedVisits] = useState<UninvoicedVisit[]>(
     seedUninvoicedVisits,
@@ -150,19 +155,97 @@ export function useBilling() {
   )
 
   /**
-   * Mark an issued/overdue invoice as paid. Moves it from Pending to History
-   * in the UI immediately.
+   * Settle an invoice: record how the patient paid, then file the tax document.
+   *
+   * These are one action because they are one event. A single-practitioner
+   * clinic bills on a cash basis, so the document is a חשבונית מס קבלה —
+   * invoice and receipt together — and it only comes into existence once the
+   * money has actually arrived. Marking paid without filing would leave income
+   * undocumented; filing without payment would invent a tax event.
+   *
+   * The invoice is marked paid whatever the filing does. A failed filing is a
+   * bookkeeping problem to retry, not a reason to pretend the patient did not
+   * pay — `syncStatus` carries that separately.
    */
-  const markInvoicePaid = useCallback((invoiceId: string) => {
-    const today = new Date().toISOString().slice(0, 10)
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === invoiceId
-          ? { ...inv, status: "paid", paymentStatus: "paid", paidAt: today }
-          : inv,
-      ),
-    )
-  }, [])
+  const settleInvoice = useCallback(
+    async (
+      invoiceId: string,
+      payment: { amount: number; method: PaymentMethod; date: string },
+    ) => {
+      const invoice = invoices.find((inv) => inv.id === invoiceId)
+      if (!invoice) return { ok: false, message: t("billing.payment.error.missing") }
+
+      const patient = patients.find((p) => p.id === invoice.patientId)
+      const request = planPaidVisitDocument({
+        invoice,
+        treatmentLabel: t(`billing.treatment.${invoice.treatmentType}`),
+        patient: {
+          id: invoice.patientId,
+          fullName: patient?.fullName ?? invoice.patientName,
+          email: patient?.email,
+          phone: patient?.phone,
+          address: patient?.address,
+        },
+        payment,
+        language: locale,
+        // Overridden server-side; the deploy decides, not the browser.
+        draft: true,
+      })
+
+      const outcome = await fileTaxDocument(request, { invoiceId })
+
+      const settled = (patch: Partial<BillingInvoice>) => {
+        setInvoices((prev) =>
+          prev.map((inv) =>
+            inv.id === invoiceId
+              ? {
+                  ...inv,
+                  status: "paid",
+                  paymentStatus: "paid",
+                  paidAt: payment.date,
+                  amount: payment.amount,
+                  displayAmount: formatMoney(payment.amount),
+                  paymentMethod: payment.method,
+                  ...patch,
+                }
+              : inv,
+          ),
+        )
+        // The patient has paid — stop chasing them, whatever the filing did.
+        onInvoicePaid(invoiceId)
+        setIntegration((prev) => ({ ...prev, lastSyncAt: new Date().toISOString() }))
+      }
+
+      if (outcome.status === "filed") {
+        settled({
+          syncStatus: outcome.document.provider === "simulated" ? "simulated" : "synced",
+          taxDocument: outcome.document,
+          syncError: undefined,
+        })
+        if (outcome.document.provider === "simulated") {
+          return { ok: true, message: t("billing.payment.result.simulated") }
+        }
+        if (outcome.document.draft) {
+          return { ok: true, message: t("billing.payment.result.draft") }
+        }
+        return {
+          ok: true,
+          message: t("billing.payment.result.filed", {
+            number: String(outcome.document.documentNumber ?? "—"),
+          }),
+        }
+      }
+
+      if (outcome.status === "blocked") {
+        settled({ syncStatus: "failed", syncError: outcome.message })
+        return { ok: false, blocked: true, message: t("billing.payment.result.blocked") }
+      }
+
+      settled({ syncStatus: "failed", syncError: outcome.message })
+      return { ok: false, message: t("billing.payment.result.failed", { reason: outcome.message }) }
+    },
+    [invoices, locale, t, formatMoney],
+  )
 
   /**
    * Send a reminder for an issued invoice. There's no real channel yet, but
@@ -231,7 +314,7 @@ export function useBilling() {
     integration,
     failedSyncInvoices,
     generateInvoice,
-    markInvoicePaid,
+    settleInvoice,
     sendReminder,
     retrySync,
   }

@@ -225,6 +225,28 @@ export const HE_MESSAGES: Record<string, string> = {
   "finances.pending.needsInvoice": "נדרשת חשבונית",
   "finances.pending.visitWord": "ביקור",
 
+  "billing.payment.title": "רישום תשלום",
+  "billing.payment.description":
+    "{patientName} · {amount}. רישום התשלום מנפיק חשבונית מס קבלה ושולח אותה במייל למטופל.",
+  "billing.payment.amountLabel": "סכום שהתקבל",
+  "billing.payment.vatNote": "מחירי הטיפולים כוללים מע\"מ. שיעור המע\"מ נלקח ממערכת החשבונאות.",
+  "billing.payment.methodLabel": "אמצעי תשלום",
+  "billing.payment.dateLabel": "תאריך התשלום",
+  "billing.payment.confirm": "רשום והנפק",
+  "billing.payment.method.cash": "מזומן",
+  "billing.payment.method.digital": "ביט / דיגיטלי",
+  "billing.payment.method.credit_card": "אשראי",
+  "billing.payment.method.bank_transfer": "העברה",
+  "billing.payment.method.cheque": "שיק",
+  "billing.payment.error.missing": "החשבונית כבר אינה פתוחה.",
+  "billing.payment.result.filed": "הונפק ונשלח. מסמך מס' {number}.",
+  "billing.payment.result.draft": "נשמר כטיוטה במערכת החשבונאות — עדיין ללא מספר מסמך.",
+  "billing.payment.result.simulated":
+    "סומן כשולם. אין ספק חשבונאות מחובר, ולכן לא הונפק מסמך.",
+  "billing.payment.result.blocked":
+    "התשלום נרשם, אך לא ניתן לאשר שהמסמך הונפק. בדקו במערכת החשבונאות לפני הנפקה חוזרת.",
+  "billing.payment.result.failed": "התשלום נרשם, אך ההנפקה נכשלה: {reason}",
+
   "history.status.paid": "שולם",
   "history.status.void": "בוטל",
 
@@ -482,13 +504,18 @@ export const HE_MESSAGES: Record<string, string> = {
   "settings.color.sky": "תכלת",
   "settings.color.rose": "ורוד",
   "settings.integrations.billingTitle": "חיבור חיוב",
-  "settings.integrations.billingDesc":
-    "בחרו תוכנת חשבוניות ושמרו את מפתח ה־API מקומית להגדרה ראשונית.",
+  "settings.integrations.billingDesc": "מערכת החשבונאות שמנפיקה את מסמכי המס.",
   "settings.integrations.providerLabel": "ספק",
-  "settings.integrations.apiKeyLabel": "מפתח API / טוקן",
-  "settings.integrations.apiKeyPlaceholder":
-    "הדביקו מפתח — נשמר רק בדפדפן זה",
+  "settings.integrations.keyNotice":
+    "מפתח ה־API נשמר בשרת ולעולם לא בדפדפן — הוא יכול להנפיק מסמכי מס בשמכם. הגדירו SUMIT_COMPANY_ID ו־SUMIT_API_KEY בסביבת הפריסה.",
   "settings.integrations.testConnection": "בדיקת חיבור",
+  "settings.integrations.testFailed": "לא ניתן להגיע לשרת.",
+  "settings.integrations.pingProvider": "ספק",
+  "settings.integrations.pingMode": "מצב",
+  "settings.integrations.pingVat": "שיעור מע\"מ בתוקף",
+  "settings.integrations.pingProblem": "תקלה",
+  "settings.integrations.simulated": "לא מחובר — סימולציה",
+  "settings.integrations.draftsOnly": "טיוטות בלבד — המסמכים ללא מספר",
   "settings.integrations.connected": "מחובר",
   "settings.integrations.notVerified": "לא אומת",
   "settings.integrations.calendarTitle": "סנכרון יומן",

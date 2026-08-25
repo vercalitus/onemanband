@@ -239,6 +239,29 @@ export const EN_MESSAGES: Record<string, string> = {
   "finances.pending.needsInvoice": "Needs invoice",
   "finances.pending.visitWord": "Visit",
 
+  "billing.payment.title": "Record payment",
+  "billing.payment.description":
+    "{patientName} · {amount}. Recording payment issues the tax invoice-receipt and emails it to the patient.",
+  "billing.payment.amountLabel": "Amount received",
+  "billing.payment.vatNote": "Treatment prices include VAT. The rate comes from your accounting system.",
+  "billing.payment.methodLabel": "Paid by",
+  "billing.payment.dateLabel": "Payment date",
+  "billing.payment.confirm": "Record and issue",
+  "billing.payment.method.cash": "Cash",
+  "billing.payment.method.digital": "Bit / digital",
+  "billing.payment.method.credit_card": "Card",
+  "billing.payment.method.bank_transfer": "Transfer",
+  "billing.payment.method.cheque": "Cheque",
+  "billing.payment.error.missing": "That invoice is no longer open.",
+  "billing.payment.result.filed": "Issued and sent. Document no. {number}.",
+  "billing.payment.result.draft":
+    "Saved as a draft at your accounting system — no document number yet.",
+  "billing.payment.result.simulated":
+    "Marked paid. No accounting provider is connected, so no document was filed.",
+  "billing.payment.result.blocked":
+    "Payment recorded, but we could not confirm the document was issued. Check your accounting system before issuing again.",
+  "billing.payment.result.failed": "Payment recorded, but issuing failed: {reason}",
+
   "history.status.paid": "Paid",
   "history.status.void": "Void",
 
@@ -493,11 +516,18 @@ export const EN_MESSAGES: Record<string, string> = {
   "settings.color.rose": "Rose",
   "settings.integrations.billingTitle": "Billing integration",
   "settings.integrations.billingDesc":
-    "Choose your invoicing software and store the API key locally for first-time setup.",
+    "The accounting system that issues your tax documents.",
   "settings.integrations.providerLabel": "Provider",
-  "settings.integrations.apiKeyLabel": "API key / token",
-  "settings.integrations.apiKeyPlaceholder": "Paste key — stored in this browser only",
+  "settings.integrations.keyNotice":
+    "The API key is held on the server, never in this browser — it can issue tax documents on your behalf. Set SUMIT_COMPANY_ID and SUMIT_API_KEY in the deployment environment.",
   "settings.integrations.testConnection": "Test connection",
+  "settings.integrations.testFailed": "Could not reach the server.",
+  "settings.integrations.pingProvider": "Provider",
+  "settings.integrations.pingMode": "Mode",
+  "settings.integrations.pingVat": "VAT rate in force",
+  "settings.integrations.pingProblem": "Problem",
+  "settings.integrations.simulated": "Not connected — simulated",
+  "settings.integrations.draftsOnly": "Drafts only — documents get no number",
   "settings.integrations.connected": "Connected",
   "settings.integrations.notVerified": "Not verified",
   "settings.integrations.calendarTitle": "Calendar sync",
