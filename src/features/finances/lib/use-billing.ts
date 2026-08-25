@@ -274,21 +274,42 @@ export function useBilling() {
   }, [])
 
   /**
-   * Retry sync for an invoice that previously failed to sync to the external
-   * provider. We optimistically flip to "pending" then to "synced" on a
-   * short timer to mimic the real call.
+   * Retry filing for an invoice whose document never made it.
+   *
+   * Genuinely re-files — it does not flip a badge on a timer. Nothing here
+   * decides whether the retry is safe: `fileTaxDocument` refuses when a
+   * previous attempt's outcome is unknown, which is the whole point of that
+   * guard. A retry that could not know is a duplicate tax invoice waiting to
+   * happen.
+   *
+   * Only settled invoices can be retried. An unpaid visit has no document to
+   * file in the first place.
    */
-  const retrySync = useCallback((invoiceId: string) => {
-    setInvoices((prev) =>
-      prev.map((inv) => (inv.id === invoiceId ? { ...inv, syncStatus: "pending" } : inv)),
-    )
-    window.setTimeout(() => {
+  const retrySync = useCallback(
+    async (invoiceId: string) => {
+      const invoice = invoices.find((inv) => inv.id === invoiceId)
+      if (!invoice?.paymentMethod || !invoice.paidAt) return
+
       setInvoices((prev) =>
-        prev.map((inv) => (inv.id === invoiceId ? { ...inv, syncStatus: "synced" } : inv)),
+        prev.map((inv) => (inv.id === invoiceId ? { ...inv, syncStatus: "pending" } : inv)),
       )
-      setIntegration((prev) => ({ ...prev, lastSyncAt: new Date().toISOString() }))
-    }, 900)
-  }, [])
+
+      const outcome = await settleInvoice(invoiceId, {
+        amount: invoice.amount,
+        method: invoice.paymentMethod,
+        date: invoice.paidAt,
+      })
+
+      if (!outcome.ok) {
+        setInvoices((prev) =>
+          prev.map((inv) =>
+            inv.id === invoiceId ? { ...inv, syncStatus: "failed", syncError: outcome.message } : inv,
+          ),
+        )
+      }
+    },
+    [invoices, settleInvoice],
+  )
 
   /** Convenience: list invoices that have ever failed to sync. */
   const failedSyncInvoices = useMemo(
