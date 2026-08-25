@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server"
 
-import {
-  documentsAreDrafts,
-  getBillingProvider,
-} from "@/features/finances/lib/provider-registry"
+import { billingGate, getBillingProvider } from "@/features/finances/lib/provider-registry"
 
 /**
  * Connection check for Settings → Integrations.
@@ -19,7 +16,23 @@ import {
 export const dynamic = "force-dynamic"
 
 export async function GET() {
+  const gate = billingGate()
   const provider = getBillingProvider()
+
+  // Surfaced rather than hidden: a deploy holding billing credentials with no
+  // login is misconfigured, and Settings is where someone would look.
+  if (!gate.allowed) {
+    return NextResponse.json({
+      ok: false,
+      provider: provider.name,
+      live: false,
+      draftsOnly: true,
+      vatRate: null,
+      message: gate.reason,
+      checkedAt: new Date().toISOString(),
+    })
+  }
+
   const result = await provider.ping()
 
   return NextResponse.json({
@@ -27,7 +40,7 @@ export async function GET() {
     provider: provider.name,
     live: provider.live,
     /** True while documents are filed as drafts — no number, no tax event. */
-    draftsOnly: documentsAreDrafts(),
+    draftsOnly: gate.drafts,
     vatRate: result.vatRate ?? null,
     message: result.message,
     checkedAt: new Date().toISOString(),

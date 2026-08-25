@@ -115,7 +115,6 @@ interface IssueApiResponse {
   provider?: string
   live?: boolean
   message?: string
-  details?: string
   safeToRetry?: boolean
   document?: {
     documentId: string

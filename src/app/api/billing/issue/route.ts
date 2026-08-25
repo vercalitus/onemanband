@@ -1,10 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod"
 
-import {
-  documentsAreDrafts,
-  getBillingProvider,
-} from "@/features/finances/lib/provider-registry"
+import { billingGate, getBillingProvider } from "@/features/finances/lib/provider-registry"
 import {
   validateTaxDocument,
   type TaxDocumentRequest,
@@ -20,9 +17,13 @@ import {
  * Two things are decided server-side and cannot be talked out of by the
  * request body: whether the document is a draft, and which provider files it.
  *
- * Access: gated by the Supabase session in `lib/supabase/middleware.ts` once
- * auth is configured. Until it is, `documentsAreDrafts()` forces drafts, so an
- * unauthenticated deploy cannot mint a numbered invoice.
+ * Access: gated by the Supabase session in `lib/supabase/middleware.ts`, and
+ * `billingGate()` refuses outright if billing credentials exist while auth
+ * does not — filing sends mail from the clinic's account, so it must never be
+ * reachable without a session.
+ *
+ * Cross-site POSTs are covered by the session cookie's SameSite=Lax: a form
+ * submitted from another origin arrives without it and fails the gate above.
  */
 
 export const dynamic = "force-dynamic"
@@ -61,6 +62,15 @@ const bodySchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
+  const gate = billingGate()
+  if (!gate.allowed) {
+    console.error(`[billing] refused: ${gate.reason}`)
+    return NextResponse.json(
+      { ok: false, message: "Document issuing is not available on this deploy." },
+      { status: 503 },
+    )
+  }
+
   let raw: unknown
   try {
     raw = await request.json()
@@ -78,7 +88,7 @@ export async function POST(request: NextRequest) {
 
   // `draft` is not read from the body on purpose — the deploy decides whether
   // it is allowed to create a legally numbered document, not the caller.
-  const document: TaxDocumentRequest = { ...parsed.data, draft: documentsAreDrafts() }
+  const document: TaxDocumentRequest = { ...parsed.data, draft: gate.drafts }
 
   const problem = validateTaxDocument(document)
   if (problem) {
@@ -89,12 +99,17 @@ export async function POST(request: NextRequest) {
   const result = await provider.issue(document)
 
   if (!result.ok) {
+    // Provider internals stay in the server log. `message` is the part written
+    // for a human; `details` can carry stack traces or an error page, and
+    // neither belongs in a response the browser can read.
+    if (result.details) {
+      console.error(`[billing] ${provider.name} rejected filing: ${result.details}`)
+    }
     return NextResponse.json(
       {
         ok: false,
         provider: provider.name,
         message: result.message,
-        details: result.details,
         safeToRetry: result.safeToRetry,
       },
       // 502 when the provider failed us, 422 when it refused us.
