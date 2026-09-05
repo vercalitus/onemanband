@@ -1,5 +1,9 @@
 import { serverEnv } from "@/lib/env"
-import type { SumitResponseStatus } from "@/lib/sumit/enums"
+import {
+  isSumitBusinessError,
+  isSumitSuccess,
+  type SumitStatusWire,
+} from "@/lib/sumit/enums"
 
 /**
  * SUMIT REST transport. **Server-only.**
@@ -28,7 +32,7 @@ export interface SumitCredentials {
 
 /** The envelope every endpoint answers with. */
 interface SumitEnvelope<T> {
-  Status: SumitResponseStatus
+  Status: SumitStatusWire
   UserErrorMessage: string | null
   TechnicalErrorDetails: string | null
   Data: T | null
@@ -135,12 +139,13 @@ export async function sumitPost<T>(
     }
   }
 
-  if (envelope.Status !== "Success") {
+  if (!isSumitSuccess(envelope.Status)) {
     return {
       ok: false,
-      kind: envelope.Status === "BusinessError" ? "business" : "technical",
+      kind: isSumitBusinessError(envelope.Status) ? "business" : "technical",
       message: envelope.UserErrorMessage || "SUMIT rejected the request.",
-      details: envelope.TechnicalErrorDetails ?? undefined,
+      details:
+        envelope.TechnicalErrorDetails ?? `status ${String(envelope.Status)}`,
     }
   }
 

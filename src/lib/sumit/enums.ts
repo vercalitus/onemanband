@@ -62,5 +62,32 @@ export const SumitCustomerSearchMode = {
   EmailAddress: 6,
 } as const
 
-/** Envelope status returned by every SUMIT endpoint. */
-export type SumitResponseStatus = "Success" | "BusinessError" | "TechnicalError"
+/**
+ * Envelope status returned by every SUMIT endpoint.
+ *
+ * The OpenAPI spec declares this as a *string* enum whose members are written
+ * `"Success (0)"` — the name and its numeric value in one label — which reads
+ * as though the wire carries the word. It does not: the live API answers with
+ * the bare number. Verified against the account on 2026-09-05, a good call
+ * returns `"Status":0` and bad credentials return `"Status":1`.
+ *
+ * Both forms are accepted below, because the only thing worse than trusting
+ * the spec here is trusting one observation of the wire.
+ */
+export const SumitResponseStatus = {
+  Success: 0,
+  BusinessError: 1,
+  TechnicalError: 2,
+} as const
+
+/** What `Status` may be on the wire — a number today, a name if that changes. */
+export type SumitStatusWire = number | string
+
+export function isSumitSuccess(status: SumitStatusWire): boolean {
+  return status === SumitResponseStatus.Success || status === "Success"
+}
+
+/** A refusal on the merits: the same payload will be refused again. */
+export function isSumitBusinessError(status: SumitStatusWire): boolean {
+  return status === SumitResponseStatus.BusinessError || status === "BusinessError"
+}
