@@ -24,20 +24,33 @@ const serverEnvSchema = clientEnvSchema.extend({
   BILLING_TEST_EMAIL: z.string().email().optional(),
 })
 
+/**
+ * A blank line in an env file means "not set", not "set to empty".
+ *
+ * `.env.local` is edited by hand, and a placeholder like `SUMIT_API_KEY=` is
+ * the normal state of a key that has not been pasted in yet. dotenv reports
+ * that as `""`, which would fail `.min(1)` and take the whole app down at
+ * import time — so an empty value is normalised to absent, and the feature
+ * simply stays switched off.
+ */
+function unset(value: string | undefined): string | undefined {
+  return value && value.trim().length > 0 ? value : undefined
+}
+
 export const clientEnv = clientEnvSchema.parse({
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_SUPABASE_URL: unset(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: unset(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
 })
 
 export const serverEnv = serverEnvSchema.parse({
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  APP_ENCRYPTION_KEY: process.env.APP_ENCRYPTION_KEY,
-  SUMIT_COMPANY_ID: process.env.SUMIT_COMPANY_ID,
-  SUMIT_API_KEY: process.env.SUMIT_API_KEY,
-  SUMIT_LIVE_DOCUMENTS: process.env.SUMIT_LIVE_DOCUMENTS,
-  BILLING_TEST_EMAIL: process.env.BILLING_TEST_EMAIL,
+  NEXT_PUBLIC_SUPABASE_URL: unset(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: unset(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  SUPABASE_SERVICE_ROLE_KEY: unset(process.env.SUPABASE_SERVICE_ROLE_KEY),
+  APP_ENCRYPTION_KEY: unset(process.env.APP_ENCRYPTION_KEY),
+  SUMIT_COMPANY_ID: unset(process.env.SUMIT_COMPANY_ID),
+  SUMIT_API_KEY: unset(process.env.SUMIT_API_KEY),
+  SUMIT_LIVE_DOCUMENTS: unset(process.env.SUMIT_LIVE_DOCUMENTS),
+  BILLING_TEST_EMAIL: unset(process.env.BILLING_TEST_EMAIL),
 })
 
 /**
