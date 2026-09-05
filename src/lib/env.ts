@@ -18,6 +18,10 @@ const serverEnvSchema = clientEnvSchema.extend({
   // Off by default. SUMIT has no sandbox, so until this is "1" every document
   // is filed as a draft: no number, no tax event, nothing to credit back.
   SUMIT_LIVE_DOCUMENTS: z.enum(["0", "1"]).optional(),
+  // Where every document goes while this deploy is not filing live. A draft is
+  // still a real API call against a real company account, and SUMIT mails the
+  // address we hand it — so mock patients must never be a delivery target.
+  BILLING_TEST_EMAIL: z.string().email().optional(),
 })
 
 export const clientEnv = clientEnvSchema.parse({
@@ -33,6 +37,7 @@ export const serverEnv = serverEnvSchema.parse({
   SUMIT_COMPANY_ID: process.env.SUMIT_COMPANY_ID,
   SUMIT_API_KEY: process.env.SUMIT_API_KEY,
   SUMIT_LIVE_DOCUMENTS: process.env.SUMIT_LIVE_DOCUMENTS,
+  BILLING_TEST_EMAIL: process.env.BILLING_TEST_EMAIL,
 })
 
 /**

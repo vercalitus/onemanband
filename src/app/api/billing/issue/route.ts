@@ -6,6 +6,7 @@ import {
   validateTaxDocument,
   type TaxDocumentRequest,
 } from "@/features/finances/lib/plan-tax-document"
+import { serverEnv } from "@/lib/env"
 
 /**
  * File a tax document with the clinic's bookkeeping provider.
@@ -61,6 +62,32 @@ const bodySchema = z.object({
   description: z.string().optional(),
 })
 
+/**
+ * Redirect document delivery away from patients while this deploy is testing.
+ *
+ * A draft is not a dry run: it is a real call against the clinic's real SUMIT
+ * account, and SUMIT mails whatever address it is handed, from the clinic's
+ * own name. The dataset behind these tests is mock patients with made-up
+ * addresses, so an unredirected draft is a stranger receiving a tax document.
+ *
+ * `BILLING_TEST_EMAIL` names the one person allowed to receive test documents.
+ * With no such address configured, delivery is suppressed entirely rather than
+ * left to chance — the document is still created, it just is not posted.
+ *
+ * Live filing (`SUMIT_LIVE_DOCUMENTS=1`) passes through untouched: at that
+ * point the patient is the correct recipient.
+ */
+function withTestDelivery(document: TaxDocumentRequest): TaxDocumentRequest {
+  if (!document.draft) return document
+  const tester = serverEnv.BILLING_TEST_EMAIL
+  return {
+    ...document,
+    emailTo: tester,
+    // Also on the customer card, which SUMIT stores and can mail later.
+    customer: { ...document.customer, email: tester },
+  }
+}
+
 export async function POST(request: NextRequest) {
   const gate = billingGate()
   if (!gate.allowed) {
@@ -88,7 +115,10 @@ export async function POST(request: NextRequest) {
 
   // `draft` is not read from the body on purpose — the deploy decides whether
   // it is allowed to create a legally numbered document, not the caller.
-  const document: TaxDocumentRequest = { ...parsed.data, draft: gate.drafts }
+  const document: TaxDocumentRequest = withTestDelivery({
+    ...parsed.data,
+    draft: gate.drafts,
+  })
 
   const problem = validateTaxDocument(document)
   if (problem) {
