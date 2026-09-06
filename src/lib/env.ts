@@ -22,6 +22,22 @@ const serverEnvSchema = clientEnvSchema.extend({
   // still a real API call against a real company account, and SUMIT mails the
   // address we hand it — so mock patients must never be a delivery target.
   BILLING_TEST_EMAIL: z.string().email().optional(),
+  // Twilio — WhatsApp and SMS delivery. Server-only: the secret can send in the
+  // clinic's name and is billed per message. An API key pair is used rather
+  // than the account's auth token so it can be revoked on its own.
+  TWILIO_ACCOUNT_SID: z.string().startsWith("AC").optional(),
+  TWILIO_API_KEY_SID: z.string().startsWith("SK").optional(),
+  TWILIO_API_KEY_SECRET: z.string().min(1).optional(),
+  // Sender, WhatsApp-prefixed: `whatsapp:+14155238886` for the sandbox, the
+  // clinic's own number once Meta has approved it.
+  TWILIO_WHATSAPP_FROM: z.string().startsWith("whatsapp:").optional(),
+  /** Plain sender for SMS, if the fallback lane is ever switched on. */
+  TWILIO_SMS_FROM: z.string().optional(),
+  // Resend — email delivery. Server-only.
+  RESEND_API_KEY: z.string().min(1).optional(),
+  // Until a domain is verified with Resend, the only usable sender is
+  // `onboarding@resend.dev`, and it can only reach the account owner.
+  RESEND_FROM: z.string().optional(),
 })
 
 /**
@@ -51,6 +67,13 @@ export const serverEnv = serverEnvSchema.parse({
   SUMIT_API_KEY: unset(process.env.SUMIT_API_KEY),
   SUMIT_LIVE_DOCUMENTS: unset(process.env.SUMIT_LIVE_DOCUMENTS),
   BILLING_TEST_EMAIL: unset(process.env.BILLING_TEST_EMAIL),
+  TWILIO_ACCOUNT_SID: unset(process.env.TWILIO_ACCOUNT_SID),
+  TWILIO_API_KEY_SID: unset(process.env.TWILIO_API_KEY_SID),
+  TWILIO_API_KEY_SECRET: unset(process.env.TWILIO_API_KEY_SECRET),
+  TWILIO_WHATSAPP_FROM: unset(process.env.TWILIO_WHATSAPP_FROM),
+  TWILIO_SMS_FROM: unset(process.env.TWILIO_SMS_FROM),
+  RESEND_API_KEY: unset(process.env.RESEND_API_KEY),
+  RESEND_FROM: unset(process.env.RESEND_FROM),
 })
 
 /**

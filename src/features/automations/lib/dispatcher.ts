@@ -88,8 +88,16 @@ export interface TickSummary {
  * nothing meaningful to retry against, and silent retry loops hide real
  * configuration errors.
  */
-export async function runTick(now: Date = new Date()): Promise<TickSummary> {
-  const dispatcher = getDispatcher()
+export async function runTick(
+  now: Date = new Date(),
+  /**
+   * Passed in by the server, which is the only place the live providers exist:
+   * their credentials can send mail and bill messages in the clinic's name, so
+   * they must never be reachable from a module the browser bundles. The
+   * Settings queue card calls this with nothing and gets the simulator.
+   */
+  dispatcher: MessageDispatcher = getDispatcher(),
+): Promise<TickSummary> {
   const simulated = dispatcher.name === "simulated"
   const due = dueMessages(now)
   let sent = 0

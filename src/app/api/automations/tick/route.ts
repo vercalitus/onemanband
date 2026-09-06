@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { runTick } from "@/features/automations/lib/dispatcher"
+import { resolveServerDispatcher } from "@/features/automations/lib/live-dispatcher"
 import { isSupabaseConfigured } from "@/lib/env"
 
 /**
@@ -38,7 +39,9 @@ function isAuthorized(request: NextRequest): boolean {
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) return unauthorized()
 
-  const summary = await runTick()
+  // The live providers only exist here: this is the server, and their
+  // credentials must not travel any further than it.
+  const summary = await runTick(new Date(), resolveServerDispatcher())
   return NextResponse.json({
     ok: true,
     ranAt: new Date().toISOString(),
