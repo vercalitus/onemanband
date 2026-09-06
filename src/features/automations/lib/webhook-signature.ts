@@ -14,11 +14,15 @@ import { createHmac, timingSafeEqual } from "node:crypto"
  *
  *   - a signature header present  → it must verify, always
  *   - a secret configured, header absent → refuse
- *   - neither → accept, because this is a deploy with no provider attached and
- *     the route is being exercised by hand
+ *   - neither, in production → refuse
+ *   - neither, in development → accept, so the route can be exercised by hand
  *
- * So configuring a secret is what switches enforcement on, and it cannot be
- * switched off by an attacker simply omitting the header.
+ * The production clause was added after finding the deployed webhook answering
+ * 200 to an unsigned request. No provider pointed at it yet, but the URL is
+ * public and the route writes: a forged inbound message becomes a "patient
+ * wrote to you" card on a clinical dashboard, which is a worse thing to be able
+ * to inject than junk. An endpoint that writes does not get to be open because
+ * nobody has configured it yet.
  */
 
 export type SignatureCheck =
@@ -112,6 +116,14 @@ export function checkWebhookSignature(input: {
 
   if (twilioToken || metaSecret) {
     return { ok: false, reason: "a provider secret is configured but the request carried no signature" }
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return {
+      ok: false,
+      reason:
+        "no provider secret is configured, so nothing can be verified — refusing rather than accepting an unsigned write on a public URL",
+    }
   }
 
   return { ok: true, verifiedBy: "none" }
