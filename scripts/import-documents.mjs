@@ -66,6 +66,26 @@ async function loadDrive() {
 
 const downloadUrl = (id) => `https://drive.google.com/uc?export=download&id=${id}`
 
+/**
+ * A storage key the object store will actually accept.
+ *
+ * One file in this folder is named in Hebrew and the upload was refused: an
+ * object key is an identifier, not a label, and it lives in a URL. So the key
+ * is reduced to characters that survive that, and the real name is kept in
+ * `documents.file_name` where it belongs — which is what the practitioner
+ * sees, and it is unchanged.
+ *
+ * The Drive file id is appended when anything had to be replaced, so two
+ * differently-named files cannot collapse onto the same key.
+ */
+function storageKey(file, driveId) {
+  const safe = file.replace(/[^A-Za-z0-9 ._-]/g, "_").replace(/\s+/g, " ").trim()
+  const changed = safe !== file
+  if (!changed) return file
+  const stem = safe.replace(/\.pdf$/i, "").replace(/^_+|_+$/g, "") || "document"
+  return `${stem}-${driveId.slice(0, 8)}.pdf`
+}
+
 /* ------------------------------------------------------------- patients --- */
 
 async function loadPatients() {
@@ -180,13 +200,20 @@ if (limitArg) console.log(`\nlimited to ${queue.length} files`)
  * `documents` row is not — a second run would file the same treatment record
  * twice under one patient, which reads as two visits.
  */
+/*
+ * Keyed on patient and file name, not on storage path — learned the hard way.
+ * Sanitising the path changed it for fifteen files that were already stored,
+ * the guard did not recognise them, and they were filed a second time. The
+ * path is an implementation detail that can change; "this patient's copy of
+ * this file" is the thing that must not exist twice.
+ */
 const existing = new Set()
 for (let from = 0; ; from += 1000) {
   const page = await fetch(
-    `${SUPABASE}/rest/v1/documents?select=storage_path&order=storage_path&offset=${from}&limit=1000`,
+    `${SUPABASE}/rest/v1/documents?select=patient_id,file_name&order=patient_id&offset=${from}&limit=1000`,
     { headers: REST },
   ).then((r) => r.json())
-  for (const row of page) existing.add(row.storage_path)
+  for (const row of page) existing.add(`${row.patient_id}|${row.file_name}`)
   if (page.length < 1000) break
 }
 if (existing.size) console.log(`already stored: ${existing.size} — those are skipped`)
@@ -197,11 +224,11 @@ let failed = 0
 for (const item of queue) {
   // Path shape is the storage policy's business: the first segment is the
   // clinic, and that is what row-level security checks.
-  const path = `${clinicId}/${item.patientId}/${item.file}`
-  if (existing.has(path)) {
+  if (existing.has(`${item.patientId}|${item.file}`)) {
     skipped++
     continue
   }
+  const path = `${clinicId}/${item.patientId}/${storageKey(item.file, item.id)}`
 
   const file = await fetch(downloadUrl(item.id), { redirect: "follow" })
   if (!file.ok) {
