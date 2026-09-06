@@ -154,7 +154,12 @@ function dueInstants(
 /** Which token a set of action buttons needs, if any. */
 function tokenKindForActions(actions: AutomationAction[]) {
   if (actions.includes("open_questionnaire")) return "questionnaire" as const
-  if (actions.includes("open_invoice")) return "invoice" as const
+  // Both land on the invoice page. `declare_paid` reads it as a claim form and
+  // `open_invoice` as a document link, but the capability is the same one:
+  // this patient, this invoice.
+  if (actions.includes("open_invoice") || actions.includes("declare_paid")) {
+    return "invoice" as const
+  }
   if (
     actions.includes("confirm") ||
     actions.includes("cancel") ||

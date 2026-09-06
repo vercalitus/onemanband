@@ -7,6 +7,8 @@ import { useMemo, useState } from "react"
 import { useLocale } from "@/components/providers/locale-provider"
 import { useMergedPatients, usePatientExtras } from "@/components/providers/patient-extras-provider"
 import { Badge } from "@/components/ui/badge"
+import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-badge"
+import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -74,6 +76,7 @@ function relativeVisitLabel(
 
 export default function PatientsPage() {
   const { locale, t, formatBalanceDisplay } = useLocale()
+  const paymentClaims = usePaymentClaims()
   const merged = useMergedPatients()
   const { addPatient } = usePatientExtras()
   const [query, setQuery] = useState("")
@@ -161,6 +164,7 @@ export default function PatientsPage() {
     balance: number
   }) {
     const isSettled = balance === 0
+    const claimed = paymentClaims.patients.has(patient.id)
     return (
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_28px_-14px_rgba(15,23,42,0.12)]">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -183,6 +187,9 @@ export default function PatientsPage() {
             <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
               {t("finances.badge.settled")}
             </Badge>
+          ) : claimed ? (
+            // Outranks the debt badge: this person is not to be chased.
+            <PaymentClaimBadge amount={formatBalanceDisplay(patient.balance)} />
           ) : (
             <Badge className="border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-rose-100">
               {t("patients.debtBadge", { amount: formatBalanceDisplay(patient.balance) })}
@@ -280,6 +287,7 @@ export default function PatientsPage() {
                 ) : (
                   rows.map(({ patient, days, balance }) => {
                     const isSettled = balance === 0
+                    const claimed = paymentClaims.patients.has(patient.id)
                     return (
                       <TableRow
                         key={patient.id}
@@ -312,6 +320,8 @@ export default function PatientsPage() {
                             <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
                               {t("finances.badge.settled")}
                             </Badge>
+                          ) : claimed ? (
+                            <PaymentClaimBadge amount={formatBalanceDisplay(patient.balance)} />
                           ) : (
                             <Badge className="border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-rose-100">
                               {t("patients.debtBadge", { amount: formatBalanceDisplay(patient.balance) })}

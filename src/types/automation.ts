@@ -60,6 +60,13 @@ export type AutomationAction =
   | "open_invoice"
   | "open_questionnaire"
   | "reply_free_text"
+  /**
+   * "I already paid." A claim by the patient, never a settlement: no money has
+   * been verified and no document may be issued off the back of it. It opens a
+   * task for the practitioner, who checks the account and settles by hand —
+   * which is what actually issues the invoice-receipt.
+   */
+  | "declare_paid"
 
 /** Per-channel copy for one step. Bodies are editable in Settings → Automations. */
 export interface MessageTemplate {
@@ -288,7 +295,17 @@ export interface PatientIntake {
 /* Inbound patient responses                                                   */
 /* -------------------------------------------------------------------------- */
 
-export type PatientResponseKind = "confirmed" | "cancelled" | "rescheduled" | "questionnaire"
+export type PatientResponseKind =
+  | "confirmed"
+  | "cancelled"
+  | "rescheduled"
+  | "questionnaire"
+  /**
+   * The patient says they have paid. Unverified by definition — it is a
+   * message, not a bank record — so it settles nothing on its own. See
+   * `declare_paid`.
+   */
+  | "payment_claimed"
 
 /**
  * A patient action that came back through a link or a WhatsApp button. The
@@ -301,6 +318,8 @@ export interface PatientResponse {
   patientName: string
   appointmentId?: string
   questionnaireId?: string
+  /** The invoice a `payment_claimed` response is about. */
+  invoiceId?: string
   /** New slot for `rescheduled`, as ISO date + HH:mm. */
   newDate?: string
   newStart?: string

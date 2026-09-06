@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   BarChart3,
   Banknote,
@@ -67,6 +67,28 @@ export default function BillingPage() {
   const [pendingQuery, setPendingQuery] = useState("")
   const [billingToastOpen, setBillingToastOpen] = useState(false)
   const [billingToastMessage, setBillingToastMessage] = useState("")
+
+  /**
+   * `?settle=<invoiceId>` opens the payment dialog straight away.
+   *
+   * This is where the WhatsApp notice about a patient's payment claim lands.
+   * The link deliberately does not *issue* anything: issuing a tax document is
+   * irreversible, so it stays behind the session, and the link only saves the
+   * practitioner from hunting for the row. One tap either way, but the tap
+   * happens inside an authenticated app.
+   *
+   * Read from `window` rather than `useSearchParams` so this page needs no
+   * Suspense boundary; it is a client page and the query is only ever read
+   * after mount anyway.
+   */
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("settle")
+    if (!requested) return
+    // Only if it is still open — a link opened twice must not reopen a visit
+    // that has already been settled and filed.
+    const invoice = invoices.find((inv) => inv.id === requested)
+    if (invoice && invoice.status !== "paid") setSettlingId(requested)
+  }, [invoices])
 
   const outstanding = useMemo(() => computeOutstanding(invoices), [invoices])
   const monthlyRevenue = useMemo(() => computeMonthlyRevenue(invoices), [invoices])

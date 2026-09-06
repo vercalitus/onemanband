@@ -5,6 +5,8 @@ import { ArrowLeft, Check, ChevronDown, ChevronUp, Mail, MapPin, Pencil, Phone, 
 import { useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-badge"
+import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
 import { cn } from "@/lib/utils"
 import type { BodyMapView, PatientSummary, TreatmentMark } from "@/types/domain"
 import type { PatientContactOverrides } from "../lib/use-patient-cockpit"
@@ -47,6 +49,7 @@ export function PatientSmartHeader({
   onRemoveTreatmentMark,
 }: Props) {
   const { t } = useLocale()
+  const paymentClaimed = usePaymentClaims().patients.has(patient.id)
   const [mapOpen, setMapOpen] = useState(false)
   const clampedDone = Math.min(totalSessionsDone, planTarget)
   const pct = planTarget > 0 ? Math.round((clampedDone / planTarget) * 100) : 0
@@ -113,6 +116,10 @@ export function PatientSmartHeader({
               >
                 {t(`status.patient.${patient.status}`)}
               </span>
+              {/* Only ever shown for an open claim — an unpaid or settled
+                  account says so on the Billing page, but "says they paid"
+                  needs answering, so it follows the patient around. */}
+              {paymentClaimed && <PaymentClaimBadge />}
             </div>
 
             {editing ? (

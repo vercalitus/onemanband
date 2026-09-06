@@ -109,19 +109,10 @@ export function defaultSequences(): AutomationSequence[] {
               "the treatment, message me here directly — I'd rather hear it early.",
           },
         },
-        {
-          id: "step-post-invoice",
-          enabled: true,
-          name: "One hour later — send the invoice",
-          schedule: { mode: "offset", anchor: "appointment_end", minutes: 60 },
-          channels: ["whatsapp", "email"],
-          actions: ["open_invoice"],
-          template: {
-            emailSubject: "Invoice from {clinic_name} — {date}",
-            body:
-              "Hi {patient_name}, here is your invoice for today's session ({amount}): {link}",
-          },
-        },
+        // There is deliberately no "send the invoice" step here. The
+        // bookkeeping provider emails the invoice-receipt itself as part of
+        // issuing it, so a step of ours would put a second copy of the same
+        // document in the patient's inbox.
         {
           id: "step-post-wellbeing",
           enabled: true,
@@ -192,11 +183,15 @@ export function defaultSequences(): AutomationSequence[] {
             maxRuns: 14,
           },
           channels: ["whatsapp"],
-          actions: ["open_invoice"],
+          // A notice, not a document. The invoice-receipt is a receipt: it may
+          // only exist once the money has actually arrived, so this message
+          // carries no invoice and no payment link — just the amount and a way
+          // for the patient to say they have already paid.
+          actions: ["declare_paid"],
           template: {
             body:
-              "Hi {patient_name}, a gentle reminder that the invoice for {date} ({amount}) is still " +
-              "open: {link}",
+              "Hi {patient_name}, a gentle reminder that {amount} for your session on {date} is " +
+              "still open. Already paid? Let me know here: {link}",
           },
         },
       ],

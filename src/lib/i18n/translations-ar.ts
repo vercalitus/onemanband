@@ -164,6 +164,8 @@ export const AR_MESSAGES: Record<string, string> = {
   "patients.count.many": "مرضى",
   "patients.empty.filters": "لا يوجد مرضى يطابقون عوامل التصفية الحالية.",
   "patients.debtBadge": "دين: {amount}",
+  "patients.claimBadge": "يقول إنه دفع",
+  "patients.claimBadge.amount": "يقول إنه دفع {amount}",
   "patients.relative.today": "اليوم",
   "patients.relative.daysAgo": "منذ {n} أيام",
   "patients.relative.oneDayAgo": "منذ يوم واحد",
@@ -885,6 +887,13 @@ export const AR_MESSAGES: Record<string, string> = {
   "public.respond.done.cancelled": "تم إلغاء موعدك",
   "public.respond.done.rescheduled": "تم تسجيل وقتك الجديد",
   "public.respond.done.body": "أُبلغت العيادة. يمكنك إغلاق هذه الصفحة.",
+  "public.respond.done.payment_claimed": "شكراً — سنتحقق ونؤكد",
+
+  "public.payment.title": "دفعة مستحقة",
+  "public.payment.subtitle": "{amount} مقابل جلستك ما زالت غير مدفوعة.",
+  "public.payment.declare": "لقد دفعت بالفعل",
+  "public.payment.footnote":
+    "تصدر الفاتورة بعد تأكيد الدفع وتصلك بالبريد الإلكتروني. إن لم تدفع بعد، يمكنك التسوية في زيارتك القادمة.",
 
   "public.slots.pickDay": "اختر يوماً",
   "public.slots.pickTime": "اختر وقتاً",
@@ -946,10 +955,12 @@ export const AR_MESSAGES: Record<string, string> = {
   "signal.patientCancelled": "ألغى المريض — {patient}",
   "signal.patientRescheduled": "نقل المريض موعده — {patient}",
   "signal.questionnaireReturned": "عاد استبيان التقدّم — {patient}",
+  "signal.paymentClaimed": "يقول إنه دفع — {patient}",
   "signal.newIntake": "اعتماد تسجيل مريض جديد — {patient}",
   "signal.due.justNow": "أصبح الموعد شاغراً",
   "signal.due.newSlot": "وقت جديد {date} {time}",
   "signal.due.inFile": "حُفظ ضمن التقدّم",
+  "signal.due.verifyPayment": "تحقّق ثم أصدر الإيصال",
   "signal.due.requested": "طُلب {date} {time}",
 
   "header.search.invoiceNew": "إصدار فاتورة",

@@ -93,6 +93,23 @@ export function deriveAutomationTodos(): TodoItem[] {
         completed: false,
       })
     }
+
+    // High priority, and deliberately so: money the patient believes has
+    // changed hands is sitting without a receipt, and only the practitioner can
+    // check the account and close it. Nothing else in the system can.
+    if (response.kind === "payment_claimed") {
+      items.push({
+        id: `rx-paymentclaim-${response.id}`,
+        kind: "reactive",
+        priority: "high",
+        titleKey: "signal.paymentClaimed",
+        dueKey: "signal.due.verifyPayment",
+        params: { patient: response.patientName },
+        title: `Says they've paid — ${response.patientName}`,
+        due: "Verify, then issue the receipt",
+        completed: false,
+      })
+    }
   }
 
   // A submitted intake is a person waiting on the clinic, so it outranks

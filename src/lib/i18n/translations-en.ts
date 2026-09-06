@@ -164,6 +164,8 @@ export const EN_MESSAGES: Record<string, string> = {
   "patients.count.many": "patients",
   "patients.empty.filters": "No patients match the current filters.",
   "patients.debtBadge": "Debt: {amount}",
+  "patients.claimBadge": "Says they paid",
+  "patients.claimBadge.amount": "Says they paid {amount}",
   "patients.relative.today": "today",
   "patients.relative.daysAgo": "{n} days ago",
   "patients.relative.oneDayAgo": "1 day ago",
@@ -905,6 +907,14 @@ export const EN_MESSAGES: Record<string, string> = {
   "public.respond.done.cancelled": "Your appointment is cancelled",
   "public.respond.done.rescheduled": "Your new time is requested",
   "public.respond.done.body": "The clinic has been notified. You can close this page.",
+  "public.respond.done.payment_claimed": "Thanks — we'll check and confirm",
+
+  "public.payment.title": "Outstanding payment",
+  "public.payment.subtitle": "{amount} for your session is still showing as unpaid.",
+  "public.payment.declare": "I've already paid",
+  "public.payment.footnote":
+    "Your receipt is issued once the payment is confirmed, and it arrives by email. "
+    + "If you haven't paid yet, you can settle it at your next visit.",
 
   "public.slots.pickDay": "Choose a day",
   "public.slots.pickTime": "Choose a time",
@@ -972,10 +982,12 @@ export const EN_MESSAGES: Record<string, string> = {
   "signal.patientCancelled": "Patient cancelled — {patient}",
   "signal.patientRescheduled": "Patient moved their appointment — {patient}",
   "signal.questionnaireReturned": "Progress questionnaire returned — {patient}",
+  "signal.paymentClaimed": "Says they've paid — {patient}",
   "signal.newIntake": "Approve new patient registration — {patient}",
   "signal.due.justNow": "Slot is now free",
   "signal.due.newSlot": "New time {date} {time}",
   "signal.due.inFile": "Filed under Progress",
+  "signal.due.verifyPayment": "Verify, then issue the receipt",
   "signal.due.requested": "Requested {date} {time}",
 
   "header.search.invoiceNew": "Issue invoice",

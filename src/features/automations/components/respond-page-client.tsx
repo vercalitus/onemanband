@@ -17,8 +17,8 @@ import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
 import type { AccessTokenContext } from "@/types/automation"
 import type { ClinicSettings } from "@/types/clinic-settings"
 
-type View = "loading" | "invalid" | "choose" | "reschedule" | "done"
-type Outcome = "confirmed" | "cancelled" | "rescheduled"
+type View = "loading" | "invalid" | "choose" | "reschedule" | "payment" | "done"
+type Outcome = "confirmed" | "cancelled" | "rescheduled" | "payment_claimed"
 
 /**
  * Landing page for the action buttons in a reminder.
@@ -37,6 +37,7 @@ export function RespondPageClient({ token }: { token: string }) {
   const [context, setContext] = useState<AccessTokenContext | null>(null)
   const [appointmentId, setAppointmentId] = useState<string>("")
   const [patientId, setPatientId] = useState<string>("")
+  const [invoiceId, setInvoiceId] = useState<string>("")
   const [busy, setBusy] = useState(false)
 
   // Token resolution has to happen after mount: in mock mode the store is
@@ -51,9 +52,12 @@ export function RespondPageClient({ token }: { token: string }) {
     }
     setAppointmentId(resolution.token.appointmentId ?? "")
     setPatientId(resolution.token.patientId ?? "")
+    setInvoiceId(resolution.token.invoiceId ?? "")
     // The page renders from the token's own snapshot, not from clinic records.
     setContext(resolution.token.context ?? null)
-    setView("choose")
+    // An invoice token is a payment notice, not an appointment reminder — same
+    // route, different question to ask.
+    setView(resolution.token.kind === "invoice" ? "payment" : "choose")
   }, [token])
 
   const slots = useMemo<FreeSlot[]>(() => {
@@ -82,6 +86,7 @@ export function RespondPageClient({ token }: { token: string }) {
       patientId,
       patientName,
       appointmentId: appointmentId || undefined,
+      invoiceId: invoiceId || undefined,
       newDate: slot?.date,
       newStart: slot?.start,
     })
@@ -136,6 +141,36 @@ export function RespondPageClient({ token }: { token: string }) {
           new Date(`${context.appointmentDate}T00:00:00`),
         )} · ${context.appointmentStart}`
       : t("public.respond.unknownSlot")
+
+  /**
+   * Payment notice. There is deliberately no invoice to open and no amount to
+   * pay online: the invoice-receipt is a receipt, so it cannot exist before the
+   * money does. All the patient can do here is tell the clinic they have
+   * already paid — a claim the practitioner then checks against the account.
+   */
+  if (view === "payment") {
+    return (
+      <PublicShell
+        clinicName={clinicName}
+        title={t("public.payment.title")}
+        subtitle={t("public.payment.subtitle", { amount: context?.amount ?? "" })}
+      >
+        <div className="grid gap-3">
+          <Button
+            className="h-12 justify-start gap-3 text-base"
+            disabled={busy}
+            onClick={() => finish("payment_claimed")}
+          >
+            <Check className="size-5" aria-hidden />
+            {t("public.payment.declare")}
+          </Button>
+        </div>
+        <p className="mt-4 text-xs leading-relaxed text-slate-500">
+          {t("public.payment.footnote")}
+        </p>
+      </PublicShell>
+    )
+  }
 
   if (view === "reschedule") {
     return (

@@ -3,6 +3,8 @@ import {
   cancelPendingForAppointment,
   cancelPendingForInvoice,
   enqueueMessages,
+  listResponses,
+  markResponseHandled,
   randomId,
 } from "@/features/automations/lib/automation-store"
 import { setAppointmentOverlay } from "@/features/automations/lib/appointment-overlay"
@@ -180,8 +182,23 @@ export function onInvoiceIssued(input: InvoiceEventInput, ctx: PlanContext): Out
   return emit({ ...input, trigger: "invoice.unpaid" }, ctx)
 }
 
-/** Payment landed — stop the ladder immediately. */
+/**
+ * Payment landed — stop the ladder immediately, and answer any open claim.
+ *
+ * The practitioner recording the payment is the only thing that can close a
+ * `payment_claimed` response: it means a person went and looked. Nothing here
+ * expires on a timer, because a claim nobody checked is not a claim resolved.
+ */
 export function onInvoicePaid(invoiceId: string): number {
+  for (const response of listResponses()) {
+    if (
+      response.kind === "payment_claimed" &&
+      response.invoiceId === invoiceId &&
+      !response.handled
+    ) {
+      markResponseHandled(response.id)
+    }
+  }
   return cancelPendingForInvoice(invoiceId)
 }
 
@@ -201,6 +218,7 @@ export function recordPatientResponse(input: {
   patientName: string
   appointmentId?: string
   questionnaireId?: string
+  invoiceId?: string
   newDate?: string
   newStart?: string
 }): PatientResponse {
@@ -209,6 +227,14 @@ export function recordPatientResponse(input: {
     input.appointmentId
   ) {
     cancelPendingForAppointment(input.appointmentId)
+  }
+
+  // A patient who says they have paid stops being chased, even though nothing
+  // is settled yet. Continuing to dun someone daily while their claim sits in
+  // a queue is the rudest thing this system could do, and the claim is not a
+  // way to disappear: it leaves a task that only the practitioner can close.
+  if (input.kind === "payment_claimed" && input.invoiceId) {
+    cancelPendingForInvoice(input.invoiceId)
   }
 
   // Write the change through to the schedule. Without this the calendar keeps

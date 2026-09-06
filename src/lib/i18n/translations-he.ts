@@ -150,6 +150,8 @@ export const HE_MESSAGES: Record<string, string> = {
   "patients.count.many": "חולים",
   "patients.empty.filters": "אין חולים שמתאימים למסננים הנוכחיים.",
   "patients.debtBadge": "חוב: {amount}",
+  "patients.claimBadge": "מדווח/ת ששילם/ה",
+  "patients.claimBadge.amount": "מדווח/ת ששילם/ה {amount}",
   "patients.relative.today": "היום",
   "patients.relative.daysAgo": "לפני {n} ימים",
   "patients.relative.oneDayAgo": "לפני יום אחד",
@@ -884,6 +886,13 @@ export const HE_MESSAGES: Record<string, string> = {
   "public.respond.done.cancelled": "התור בוטל",
   "public.respond.done.rescheduled": "המועד החדש נרשם",
   "public.respond.done.body": "המרפאה עודכנה. אפשר לסגור את הדף.",
+  "public.respond.done.payment_claimed": "תודה — נבדוק ונאשר",
+
+  "public.payment.title": "תשלום פתוח",
+  "public.payment.subtitle": "{amount} עבור הטיפול עדיין מופיעים כלא שולמו.",
+  "public.payment.declare": "כבר שילמתי",
+  "public.payment.footnote":
+    "החשבונית מונפקת לאחר אישור התשלום ונשלחת במייל. אם עדיין לא שילמת, אפשר להסדיר בביקור הבא.",
 
   "public.slots.pickDay": "בחירת יום",
   "public.slots.pickTime": "בחירת שעה",
@@ -945,10 +954,12 @@ export const HE_MESSAGES: Record<string, string> = {
   "signal.patientCancelled": "המטופל ביטל — {patient}",
   "signal.patientRescheduled": "המטופל העביר את התור — {patient}",
   "signal.questionnaireReturned": "שאלון התקדמות חזר — {patient}",
+  "signal.paymentClaimed": "מדווח/ת ששילם/ה — {patient}",
   "signal.newIntake": "לאשר הרשמת מטופל חדש — {patient}",
   "signal.due.justNow": "התור התפנה",
   "signal.due.newSlot": "מועד חדש {date} {time}",
   "signal.due.inFile": "תויק תחת התקדמות",
+  "signal.due.verifyPayment": "לאמת ולהנפיק קבלה",
   "signal.due.requested": "התבקש {date} {time}",
 
   "header.search.invoiceNew": "הפקת חשבונית",
