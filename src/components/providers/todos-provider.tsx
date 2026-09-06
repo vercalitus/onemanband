@@ -13,6 +13,7 @@ import {
 } from "react"
 
 import { AUTOMATION_STORE_EVENT } from "@/features/automations/lib/automation-store"
+import { useRemoteResponses } from "@/features/automations/lib/remote-responses"
 import { deriveAutomationTodos } from "@/features/dashboard/lib/automation-signals"
 import { deriveReactiveTodos } from "@/features/dashboard/lib/reactive-signals"
 import { dashboardTodos } from "@/lib/mock-data"
@@ -79,9 +80,11 @@ export function TodosProvider({ children }: { children: ReactNode }) {
    * client produce different lists and break hydration. Completion state
    * already in the board is preserved on refresh.
    */
+  const remoteResponses = useRemoteResponses()
+
   useEffect(() => {
     const sync = () => {
-      const derived = deriveAutomationTodos()
+      const derived = deriveAutomationTodos(remoteResponses)
       setTodos((prev) => {
         const byId = new Map(prev.map((t) => [t.id, t]))
         const fresh = derived.filter((t) => !byId.has(t.id))
@@ -94,7 +97,7 @@ export function TodosProvider({ children }: { children: ReactNode }) {
     sync()
     window.addEventListener(AUTOMATION_STORE_EVENT, sync)
     return () => window.removeEventListener(AUTOMATION_STORE_EVENT, sync)
-  }, [])
+  }, [remoteResponses])
 
   const addActiveTask = useCallback(({ title, due }: { title: string; due: string }) => {
     const trimmed = title.trim()

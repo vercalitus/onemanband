@@ -1,4 +1,5 @@
 import { listIntakes, listOutbox, listResponses } from "@/features/automations/lib/automation-store"
+import type { PatientResponse } from "@/types/automation"
 import type { TodoItem } from "@/types/domain"
 
 /**
@@ -13,7 +14,12 @@ import type { TodoItem } from "@/types/domain"
  * must run after mount (see TodosProvider) or SSR and the client disagree.
  */
 
-export function deriveAutomationTodos(): TodoItem[] {
+/**
+ * @param remoteResponses Taps that happened on a patient's own device, fetched
+ * from the database. They are merged rather than replacing the local ones,
+ * because in mock mode both sources are real and neither is complete.
+ */
+export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): TodoItem[] {
   const items: TodoItem[] = []
 
   /*
@@ -44,8 +50,16 @@ export function deriveAutomationTodos(): TodoItem[] {
     })
   }
 
-  for (const response of listResponses()) {
+  // Deduplicated by id so a response that is both mirrored and local — which
+  // happens whenever the practitioner answers on the same machine that planned
+  // the message — produces one task, not two.
+  const responses = [...listResponses(), ...remoteResponses]
+  const seen = new Set<string>()
+
+  for (const response of responses) {
     if (response.handled) continue
+    if (seen.has(response.id)) continue
+    seen.add(response.id)
 
     if (response.kind === "cancelled") {
       items.push({

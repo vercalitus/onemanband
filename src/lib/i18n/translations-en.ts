@@ -891,6 +891,7 @@ export const EN_MESSAGES: Record<string, string> = {
   "public.token.unknown": "This link is not valid",
   "public.token.expired": "This link has expired",
   "public.token.used": "This link has already been used",
+  "public.token.unreachable": "We couldn't reach the clinic just now",
   "public.token.contactClinic": "Please contact the clinic and we'll send a new one.",
 
   "public.respond.title": "Your appointment",
@@ -911,6 +912,7 @@ export const EN_MESSAGES: Record<string, string> = {
 
   "public.payment.title": "Outstanding payment",
   "public.payment.subtitle": "{amount} for your session is still showing as unpaid.",
+  "public.payment.subtitleGeneric": "Your session is still showing as unpaid.",
   "public.payment.declare": "I've already paid",
   "public.payment.footnote":
     "Your receipt is issued once the payment is confirmed, and it arrives by email. "

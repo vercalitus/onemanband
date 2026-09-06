@@ -40,24 +40,70 @@ export function RespondPageClient({ token }: { token: string }) {
   const [invoiceId, setInvoiceId] = useState<string>("")
   const [busy, setBusy] = useState(false)
 
-  // Token resolution has to happen after mount: in mock mode the store is
-  // localStorage, which does not exist during server render.
+  /**
+   * Resolve the link after mount, locally first and then from the server.
+   *
+   * Local first because in mock mode the practitioner's own browser holds the
+   * token and carries the snapshot the message was built from — name, date,
+   * amount — which the server copy deliberately does not store. Server second
+   * because that is the normal case: the patient is on their own phone, where
+   * nothing local exists.
+   */
   useEffect(() => {
+    let cancelled = false
     setSettings(readClinicSettings())
-    const resolution = resolveToken(token)
-    if (!resolution.ok) {
-      setReason(resolution.reason)
-      setView("invalid")
+
+    const apply = (token: {
+      kind: string
+      patientId?: string
+      appointmentId?: string
+      invoiceId?: string
+      context?: AccessTokenContext | null
+    }) => {
+      setAppointmentId(token.appointmentId ?? "")
+      setPatientId(token.patientId ?? "")
+      setInvoiceId(token.invoiceId ?? "")
+      // The page renders from the token's own snapshot, never from clinic records.
+      setContext(token.context ?? null)
+      // An invoice token is a payment notice, not an appointment reminder —
+      // same route, different question to ask.
+      setView(token.kind === "invoice" ? "payment" : "choose")
+    }
+
+    const local = resolveToken(token)
+    if (local.ok) {
+      apply(local.token)
       return
     }
-    setAppointmentId(resolution.token.appointmentId ?? "")
-    setPatientId(resolution.token.patientId ?? "")
-    setInvoiceId(resolution.token.invoiceId ?? "")
-    // The page renders from the token's own snapshot, not from clinic records.
-    setContext(resolution.token.context ?? null)
-    // An invoice token is a payment notice, not an appointment reminder — same
-    // route, different question to ask.
-    setView(resolution.token.kind === "invoice" ? "payment" : "choose")
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/automations/public/token/${encodeURIComponent(token)}`, {
+          cache: "no-store",
+        })
+        const body = (await res.json()) as
+          | { ok: true; token: Parameters<typeof apply>[0] }
+          | { ok: false; reason: string }
+        if (cancelled) return
+        if (!body.ok) {
+          setReason(body.reason)
+          setView("invalid")
+          return
+        }
+        apply(body.token)
+      } catch {
+        if (cancelled) return
+        // Unreachable rather than invalid: telling someone their link is dead
+        // when the network simply failed would send them to the clinic for
+        // nothing.
+        setReason("unreachable")
+        setView("invalid")
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [token])
 
   const slots = useMemo<FreeSlot[]>(() => {
@@ -81,6 +127,7 @@ export function RespondPageClient({ token }: { token: string }) {
 
   const finish = (kind: Outcome, slot?: FreeSlot) => {
     setBusy(true)
+    // Local first, so the same-browser demo path keeps working unchanged.
     recordPatientResponse({
       kind,
       patientId,
@@ -90,6 +137,21 @@ export function RespondPageClient({ token }: { token: string }) {
       newDate: slot?.date,
       newStart: slot?.start,
     })
+    // And to the server, which is the copy that actually reaches the clinic:
+    // this page is running on the patient's phone, and nothing written here
+    // would otherwise leave it. The identity of the response is taken from the
+    // stored token, not from this body.
+    void fetch("/api/automations/public/respond", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token,
+        kind,
+        patientName,
+        newDate: slot?.date,
+        newStart: slot?.start,
+      }),
+    }).catch(() => {})
     // Reminder tokens stay reusable (a patient may confirm then reschedule),
     // so this only stamps `usedAt` for the audit trail.
     markTokenUsed(token)
@@ -153,7 +215,15 @@ export function RespondPageClient({ token }: { token: string }) {
       <PublicShell
         clinicName={clinicName}
         title={t("public.payment.title")}
-        subtitle={t("public.payment.subtitle", { amount: context?.amount ?? "" })}
+        subtitle={
+          // The amount comes from the token snapshot, which only the browser
+          // that minted the link holds. On the patient's phone it is absent,
+          // and a sentence with a hole where a number should be is worse than
+          // one written without it.
+          context?.amount
+            ? t("public.payment.subtitle", { amount: context.amount })
+            : t("public.payment.subtitleGeneric")
+        }
       >
         <div className="grid gap-3">
           <Button

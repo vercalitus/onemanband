@@ -6,6 +6,7 @@ import {
   AUTOMATION_STORE_EVENT,
   listResponses,
 } from "@/features/automations/lib/automation-store"
+import { useRemoteResponses } from "@/features/automations/lib/remote-responses"
 
 /**
  * Patients who have told us they paid, and whom nobody has checked yet.
@@ -26,13 +27,20 @@ export function usePaymentClaims(): {
   /** Invoice ids with an open claim. */
   invoices: Set<string>
 } {
+  // The claim almost always arrives on the patient's own phone, so the remote
+  // list is the one that matters; the local one only ever holds what this
+  // browser did.
+  const remote = useRemoteResponses()
+
   const read = useCallback(() => {
-    const open = listResponses().filter((r) => r.kind === "payment_claimed" && !r.handled)
+    const open = [...listResponses(), ...remote].filter(
+      (r) => r.kind === "payment_claimed" && !r.handled,
+    )
     return {
       patients: new Set(open.map((r) => r.patientId).filter(Boolean)),
       invoices: new Set(open.map((r) => r.invoiceId).filter(Boolean) as string[]),
     }
-  }, [])
+  }, [remote])
 
   // Starts empty and fills after mount: the store is localStorage in mock mode,
   // so reading during render would make the server and client disagree.

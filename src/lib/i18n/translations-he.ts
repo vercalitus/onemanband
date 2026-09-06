@@ -870,6 +870,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "public.token.unknown": "הקישור אינו תקין",
   "public.token.expired": "תוקף הקישור פג",
   "public.token.used": "הקישור כבר נוצל",
+  "public.token.unreachable": "לא הצלחנו להגיע למרפאה כרגע",
   "public.token.contactClinic": "אנא צרו קשר עם המרפאה ונשלח קישור חדש.",
 
   "public.respond.title": "התור שלך",
@@ -890,6 +891,7 @@ export const HE_MESSAGES: Record<string, string> = {
 
   "public.payment.title": "תשלום פתוח",
   "public.payment.subtitle": "{amount} עבור הטיפול עדיין מופיעים כלא שולמו.",
+  "public.payment.subtitleGeneric": "התשלום עבור הטיפול עדיין מופיע כלא שולם.",
   "public.payment.declare": "כבר שילמתי",
   "public.payment.footnote":
     "החשבונית מונפקת לאחר אישור התשלום ונשלחת במייל. אם עדיין לא שילמת, אפשר להסדיר בביקור הבא.",

@@ -8,8 +8,28 @@ import { clientEnv } from "@/lib/env"
  * patient-facing automation links. The latter are authorised by the capability
  * token in the URL (see features/automations/lib/tokens.ts) — patients never
  * get an account, so gating them behind the session would break every reminder.
+ *
+ * The automation API is listed route by route rather than as `/api/automations`
+ * on purpose. A blanket prefix was fine while everything under it was a webhook
+ * or a cron with its own secret; it stops being fine the moment a route under
+ * it writes on the practitioner's behalf. Anything not named here needs a
+ * session, which is the safer default for a route added later by someone who
+ * did not read this comment.
+ *
+ *  - `/api/automations/tick`     — cron, gated by CRON_SECRET
+ *  - `/api/automations/webhook`  — the provider posts here, no session exists
+ *  - `/api/automations/public`   — patient taps, gated by the capability token
  */
-const PUBLIC_PATHS = ["/login", "/auth", "/book", "/r", "/q", "/api/automations"]
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth",
+  "/book",
+  "/r",
+  "/q",
+  "/api/automations/tick",
+  "/api/automations/webhook",
+  "/api/automations/public",
+]
 
 const isPublicPath = (path: string) =>
   PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`))

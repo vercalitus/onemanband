@@ -50,7 +50,27 @@ export function mintToken(
     expiresAt: new Date(now.getTime() + TTL_DAYS[kind] * DAY_MS).toISOString(),
     singleUse: SINGLE_USE[kind],
   }
-  return saveToken(token)
+  saveToken(token)
+  mirrorToken(token)
+  return token
+}
+
+/**
+ * Copy a minted link to the database.
+ *
+ * A link that exists only in the practitioner's browser cannot be opened on a
+ * patient's phone, which is the whole purpose of minting one. Fire and forget
+ * on purpose: the local copy is already saved, so a deploy with no database —
+ * or a failed request — degrades to exactly the behaviour this had before,
+ * rather than blocking the message from being planned at all.
+ */
+function mirrorToken(token: AccessToken): void {
+  if (typeof window === "undefined") return
+  void fetch("/api/automations/tokens", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(token),
+  }).catch(() => {})
 }
 
 export type TokenResolution =

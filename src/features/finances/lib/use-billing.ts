@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale } from "@/components/providers/locale-provider"
 import { createTranslator } from "@/lib/i18n/dictionary"
 import { onInvoicePaid } from "@/features/automations/lib/events"
+import { clearRemoteClaim } from "@/features/automations/lib/remote-responses"
 import { planPaidVisitDocument } from "@/features/finances/lib/plan-tax-document"
 import { fileTaxDocument } from "@/features/finances/lib/tax-documents"
 import {
@@ -222,6 +223,10 @@ export function useBilling() {
         )
         // The patient has paid — stop chasing them, whatever the filing did.
         onInvoicePaid(invoiceId)
+        // And close the claim where it actually lives. The patient tapped
+        // "I've already paid" on their own phone, so the open row is in the
+        // database, not in this browser.
+        clearRemoteClaim(invoiceId)
         setIntegration((prev) => ({ ...prev, lastSyncAt: new Date().toISOString() }))
       }
 

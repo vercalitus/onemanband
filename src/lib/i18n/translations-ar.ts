@@ -871,6 +871,7 @@ export const AR_MESSAGES: Record<string, string> = {
   "public.token.unknown": "هذا الرابط غير صالح",
   "public.token.expired": "انتهت صلاحية هذا الرابط",
   "public.token.used": "استُخدم هذا الرابط بالفعل",
+  "public.token.unreachable": "تعذّر الوصول إلى العيادة الآن",
   "public.token.contactClinic": "يُرجى التواصل مع العيادة وسنرسل رابطاً جديداً.",
 
   "public.respond.title": "موعدك",
@@ -891,6 +892,7 @@ export const AR_MESSAGES: Record<string, string> = {
 
   "public.payment.title": "دفعة مستحقة",
   "public.payment.subtitle": "{amount} مقابل جلستك ما زالت غير مدفوعة.",
+  "public.payment.subtitleGeneric": "ما زالت جلستك غير مدفوعة.",
   "public.payment.declare": "لقد دفعت بالفعل",
   "public.payment.footnote":
     "تصدر الفاتورة بعد تأكيد الدفع وتصلك بالبريد الإلكتروني. إن لم تدفع بعد، يمكنك التسوية في زيارتك القادمة.",
