@@ -125,9 +125,7 @@ export async function fetchPatients(): Promise<PatientFetch> {
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await db
       .from("patients")
-      .select(
-        "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes",
-      )
+      .select(COLUMNS)
       .order("full_name", { ascending: true })
       .range(from, from + PAGE - 1)
 
