@@ -84,6 +84,29 @@ export function readClinicSettings(): ClinicSettings {
  * clinics that saved before it existed — otherwise upgrading silently drops
  * new automation behaviour. Matching is by id; unknown stored ids are kept.
  */
+/**
+ * Steps withdrawn from the playbook. A saved copy is dropped rather than
+ * carried forward as a custom extra, which is what the merge below would
+ * otherwise do with any step it no longer recognises.
+ *
+ * `step-post-invoice` sent the patient their invoice an hour after the
+ * session. The bookkeeping provider emails the document itself when it issues
+ * it, so this was a second copy of the same thing.
+ */
+const RETIRED_STEP_IDS = new Set(["step-post-invoice"])
+
+/**
+ * Steps whose *meaning* changed, not just their wording. The stored copy is
+ * discarded in favour of the current default, because merging would preserve
+ * exactly the part that is now wrong.
+ *
+ * `step-unpaid-daily` used to attach the invoice to a payment reminder. An
+ * invoice-receipt cannot exist before the payment does, so the step now asks
+ * the patient whether they have already paid. A saved copy would keep the
+ * `open_invoice` action and go on offering a document that must not be there.
+ */
+const RESET_STEP_IDS = new Set(["step-unpaid-daily"])
+
 function mergeAutomations(
   stored: Partial<ClinicAutomations> | undefined,
   d: ClinicAutomations,
@@ -96,11 +119,16 @@ function mergeAutomations(
     const own = byId.get(defSeq.id)
     if (!own) return defSeq
     byId.delete(defSeq.id)
-    const ownSteps = new Map((own.steps ?? []).map((s) => [s.id, s]))
+    const ownSteps = new Map(
+      (own.steps ?? [])
+        .filter((s) => !RETIRED_STEP_IDS.has(s.id))
+        .map((s) => [s.id, s]),
+    )
     const steps = defSeq.steps.map((defStep) => {
       const ownStep = ownSteps.get(defStep.id)
       if (!ownStep) return defStep
       ownSteps.delete(defStep.id)
+      if (RESET_STEP_IDS.has(defStep.id)) return defStep
       return { ...defStep, ...ownStep, template: { ...defStep.template, ...ownStep.template } }
     })
     return { ...defSeq, ...own, steps: [...steps, ...ownSteps.values()] }
