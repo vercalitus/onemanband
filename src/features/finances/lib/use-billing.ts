@@ -20,8 +20,8 @@ import {
   seedInvoices,
   seedUninvoicedVisits,
 } from "@/lib/mock-finances"
+import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
-import { patients } from "@/lib/mock-data"
 import type {
   BillingInvoice,
   PaymentMethod,
@@ -49,6 +49,15 @@ const he = createTranslator("he")
  */
 export function useBilling() {
   const { formatMoney, t } = useLocale()
+  /**
+   * The clinic's own patients, not the demo list.
+   *
+   * This lookup fills the customer card at the bookkeeping provider — name,
+   * email, phone, address. Against the mock list a real patient simply is not
+   * found, and the document goes out with no email on it, so nothing is
+   * delivered and nobody is told why.
+   */
+  const patients = useMergedPatients()
   const [invoices, setInvoices] = useState<BillingInvoice[]>(seedInvoices)
   const [uninvoicedVisits, setUninvoicedVisits] = useState<UninvoicedVisit[]>(
     seedUninvoicedVisits,
@@ -353,7 +362,7 @@ export function useBilling() {
       settled({ syncStatus: "failed", syncError: outcome.message })
       return { ok: false, message: t("billing.payment.result.failed", { reason: outcome.message }) }
     },
-    [invoices, t, formatMoney, live],
+    [invoices, t, formatMoney, live, patients],
   )
 
   /**

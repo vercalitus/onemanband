@@ -30,9 +30,10 @@ import { mintToken, tokenLink } from "@/features/automations/lib/tokens"
 import { readField, readOptOut, writeOptOut } from "@/features/patients/lib/patient-extras-store"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import { localizePatient } from "@/lib/i18n/localized-seed"
-import { patients, todaySchedule, financesByPatient } from "@/lib/mock-data"
+import { useMergedPatients } from "@/components/providers/patient-extras-provider"
+import { financesByPatient } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
-import type { AppointmentType } from "@/types/domain"
+import type { AppointmentType, ScheduleItem } from "@/types/domain"
 
 /** Today's date as YYYY-MM-DD, matching how mock appointments store `date`. */
 const todayISO = (() => {
@@ -40,9 +41,13 @@ const todayISO = (() => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 })()
 
-/** A session is completable when there's a visit today that isn't done/cancelled. */
-function hasSessionToComplete(patientId: string): boolean {
-  return todaySchedule.some(
+/**
+ * A session is completable when there's a visit today that isn't done or
+ * cancelled. Reads the shared schedule — the demo day while the clinic has no
+ * diary of its own, the real one the moment it does.
+ */
+function hasSessionToComplete(patientId: string, appointments: ScheduleItem[]): boolean {
+  return appointments.some(
     (a) =>
       a.patientId === patientId &&
       a.date === todayISO &&
@@ -78,9 +83,21 @@ export function HeaderActions() {
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  /**
+   * Search the clinic's own patients.
+   *
+   * This dialog kept its own copy of the mock list, so it went on offering six
+   * invented people after the real ones were imported — the most misleading
+   * place for that to happen, since search is where someone goes when they are
+   * looking for a specific person and will believe the answer.
+   *
+   * Localisation only applies to the demo seed, whose names are translated per
+   * locale. Real patients are stored under the name they gave.
+   */
+  const mergedPatients = useMergedPatients()
   const localizedPatients = useMemo(
-    () => patients.map((p) => localizePatient(p, locale)),
-    [locale],
+    () => mergedPatients.map((p) => localizePatient(p, locale)),
+    [mergedPatients, locale],
   )
 
   const results = useMemo(() => {
@@ -284,7 +301,9 @@ function ResultRow({
   onSchedule: () => void
 }) {
   const { t } = useLocale()
-  const pending = hasSessionToComplete(patient.id) || hasInvoiceAwaiting(patient.id)
+  const { appointments } = useScheduleDay()
+  const pending =
+    hasSessionToComplete(patient.id, appointments) || hasInvoiceAwaiting(patient.id)
   const waDigits = whatsappDigits(patient.phone)
 
   return (
@@ -385,7 +404,8 @@ const ACTION_TILE =
  */
 function PatientActionSheet({ patient, onBack, onNavigate, onSchedule }: ActionSheetProps) {
   const { t, localeTag } = useLocale()
-  const canComplete = hasSessionToComplete(patient.id)
+  const { appointments } = useScheduleDay()
+  const canComplete = hasSessionToComplete(patient.id, appointments)
   const canInvoice = hasInvoiceAwaiting(patient.id)
   const waDigits = whatsappDigits(patient.phone)
 

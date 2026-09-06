@@ -15,8 +15,9 @@ import {
 } from "@/features/automations/lib/events"
 import type { PlanContext } from "@/features/automations/lib/plan-messages"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
-import { patients, todaySchedule, weeklySchedule } from "@/lib/mock-data"
-import type { ScheduleItem } from "@/types/domain"
+import { useMergedPatients } from "@/components/providers/patient-extras-provider"
+import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
+import type { PatientSummary, ScheduleItem } from "@/types/domain"
 
 /**
  * Bridge between the schedule UI and the automation engine.
@@ -31,6 +32,13 @@ import type { ScheduleItem } from "@/types/domain"
  */
 export function useAppointmentAutomations() {
   const { localeTag } = useLocale()
+  /**
+   * The clinic's own patients. This lookup is where a reminder gets the number
+   * to send to — against the mock list a real patient is not found, `phone`
+   * and `email` come back undefined, and the planner drops every channel for
+   * want of a recipient. The visit saves, and no reminder is ever queued.
+   */
+  const patients = useMergedPatients()
 
   return useCallback(
     (next: ScheduleItem, meta: { isNew: boolean; previous?: ScheduleItem | null }) => {
@@ -80,14 +88,14 @@ export function useAppointmentAutomations() {
           // A missed visit is still billable, so it takes the same invoice
           // path as a completed one — the sequence attaches it to the notice.
           case "no_show":
-            onNoShow({ ...input, ...bill(settings, next, "no_show", ctx) }, ctx)
+            onNoShow({ ...input, ...bill(settings, next, "no_show", ctx, patients) }, ctx)
             break
 
           case "completed":
             onTreatmentCompleted(
               {
                 ...input,
-                ...bill(settings, next, "visit", ctx),
+                ...bill(settings, next, "visit", ctx, patients),
                 completedSessions: completedSessionsFor(next.patientId) + 1,
               },
               ctx,
@@ -101,7 +109,7 @@ export function useAppointmentAutomations() {
         // Never let an automation problem swallow a schedule edit.
       }
     },
-    [localeTag],
+    [localeTag, patients],
   )
 }
 
@@ -118,6 +126,8 @@ function bill(
   item: ScheduleItem,
   reason: "visit" | "no_show",
   ctx: PlanContext,
+  /** Passed in rather than imported — see the note in the hook above. */
+  patients: PatientSummary[],
 ): { invoiceId?: string; invoiceAmount?: string; invoiceIssuedDate?: string } {
   const row = settings.treatmentTypes.find((t) => t.type === item.appointmentType)
   if (!row) return {}
