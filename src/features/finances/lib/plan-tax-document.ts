@@ -37,6 +37,17 @@ export type TaxDocumentKind =
   | "credit_invoice_receipt"
   | "payment_request"
 
+/**
+ * Every document this clinic issues is in Hebrew.
+ *
+ * Not the practitioner's UI language: that is a preference about their own
+ * screen, while this is a tax document filed against an Israeli company and
+ * emailed to an Israeli patient. It also decides the layout direction — an
+ * English document comes out left-aligned — so a practitioner working in
+ * English would otherwise send LTR invoices to Hebrew-reading patients.
+ */
+const DOCUMENT_LANGUAGE = "he" as const
+
 export interface TaxDocumentRequest {
   kind: TaxDocumentKind
   /**
@@ -69,7 +80,11 @@ export interface TaxDocumentRequest {
 
 export interface PlanTaxDocumentInput {
   invoice: BillingInvoice
-  /** Display label for the treatment type, in the clinic's language. */
+  /**
+   * Treatment-type label for the line item. Must be the Hebrew one — the
+   * document is Hebrew, so a label pulled from the UI locale would put an
+   * English line item on it. See `DOCUMENT_LANGUAGE`.
+   */
   treatmentLabel: string
   patient: {
     id: string
@@ -79,7 +94,6 @@ export interface PlanTaxDocumentInput {
     address?: string
   }
   payment: { amount: number; method: PaymentMethod; date: string }
-  language: "he" | "en" | "ar"
   draft: boolean
 }
 
@@ -116,7 +130,7 @@ export function planPaidVisitDocument(input: PlanTaxDocumentInput): TaxDocumentR
     emailTo: patient.email,
     issueDate: payment.date,
     draft: input.draft,
-    language: input.language,
+    language: DOCUMENT_LANGUAGE,
   }
 }
 
@@ -133,7 +147,6 @@ export function planCreditDocument(input: {
   patient: PlanTaxDocumentInput["patient"]
   reason: string
   issueDate: string
-  language: "he" | "en" | "ar"
   draft: boolean
 }): TaxDocumentRequest | null {
   const original = input.invoice.taxDocument
@@ -158,7 +171,7 @@ export function planCreditDocument(input: {
     emailTo: input.patient.email,
     issueDate: input.issueDate,
     draft: input.draft,
-    language: input.language,
+    language: DOCUMENT_LANGUAGE,
     originalDocumentId: original.documentId,
     description: input.reason,
   }

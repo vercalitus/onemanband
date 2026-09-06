@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { createTranslator } from "@/lib/i18n/dictionary"
 import { onInvoicePaid } from "@/features/automations/lib/events"
 import { planPaidVisitDocument } from "@/features/finances/lib/plan-tax-document"
 import { fileTaxDocument } from "@/features/finances/lib/tax-documents"
@@ -25,6 +26,13 @@ const STORAGE_KEY_VISITS = "billing.uninvoiced.v1"
 const STORAGE_KEY_INTEGRATION = "billing.integration.v1"
 
 /**
+ * Translator pinned to Hebrew, for text that ends up on a tax document rather
+ * than on the practitioner's screen. See `DOCUMENT_LANGUAGE` in
+ * `plan-tax-document.ts` for why the document never follows the UI locale.
+ */
+const he = createTranslator("he")
+
+/**
  * Centralised billing store for the Financial OS page. State is hydrated
  * from LocalStorage on mount and re-persisted on every mutation, so user
  * actions (generate / mark paid / retry sync) survive a refresh and the UI
@@ -32,7 +40,7 @@ const STORAGE_KEY_INTEGRATION = "billing.integration.v1"
  * the server fetch and the same shape stays.
  */
 export function useBilling() {
-  const { formatMoney, locale, t } = useLocale()
+  const { formatMoney, t } = useLocale()
   const [invoices, setInvoices] = useState<BillingInvoice[]>(seedInvoices)
   const [uninvoicedVisits, setUninvoicedVisits] = useState<UninvoicedVisit[]>(
     seedUninvoicedVisits,
@@ -178,7 +186,9 @@ export function useBilling() {
       const patient = patients.find((p) => p.id === invoice.patientId)
       const request = planPaidVisitDocument({
         invoice,
-        treatmentLabel: t(`billing.treatment.${invoice.treatmentType}`),
+        // Deliberately not `t()` — that follows the practitioner's UI language
+        // and would print an English line item on a Hebrew tax document.
+        treatmentLabel: he(`billing.treatment.${invoice.treatmentType}`),
         patient: {
           id: invoice.patientId,
           fullName: patient?.fullName ?? invoice.patientName,
@@ -187,7 +197,6 @@ export function useBilling() {
           address: patient?.address,
         },
         payment,
-        language: locale,
         // Overridden server-side; the deploy decides, not the browser.
         draft: true,
       })
@@ -244,7 +253,7 @@ export function useBilling() {
       settled({ syncStatus: "failed", syncError: outcome.message })
       return { ok: false, message: t("billing.payment.result.failed", { reason: outcome.message }) }
     },
-    [invoices, locale, t, formatMoney],
+    [invoices, t, formatMoney],
   )
 
   /**
