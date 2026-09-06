@@ -62,9 +62,18 @@ export function computeCollectionRate(invoices: BillingInvoice[]): number | null
  * on the Monthly Revenue KPI. Returns null when prior month is 0 (can't
  * compute a percentage).
  */
-export function computeMonthlyDeltaPct(currentMonth: number): number | null {
-  if (PREVIOUS_MONTH_REVENUE === 0) return null
-  return Math.round(((currentMonth - PREVIOUS_MONTH_REVENUE) / PREVIOUS_MONTH_REVENUE) * 100)
+export function computeMonthlyDeltaPct(
+  currentMonth: number,
+  /**
+   * Last month's takings. Defaults to the demo figure, and callers working
+   * with a real ledger pass their own — or null, which is the honest answer
+   * for a clinic whose first month this is. Comparing real revenue against an
+   * invented previous month produces a confident, meaningless arrow.
+   */
+  previousMonth: number | null = PREVIOUS_MONTH_REVENUE,
+): number | null {
+  if (!previousMonth) return null
+  return Math.round(((currentMonth - previousMonth) / previousMonth) * 100)
 }
 
 /** Sum of estimated fees for visits already scheduled in the mock calendar window. */

@@ -22,6 +22,7 @@ import {
   fetchAppointments,
   saveAppointment,
 } from "@/features/calendar/lib/appointment-repository"
+import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
 import { useQuestionnaireFiling } from "@/features/automations/lib/use-questionnaire-filing"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import {
@@ -88,16 +89,29 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
    * booking retires the illustration for good.
    */
   const refresh = useCallback(() => {
-    void fetchAppointments().then((result) => {
-      if (result.source !== "live" || !result.appointments.length) {
-        if (result.source === "unavailable" && process.env.NODE_ENV === "development") {
-          console.warn(`[schedule] falling back to mock data: ${result.reason}`)
+    void Promise.all([fetchAppointments(), clinicHasPatients()]).then(
+      ([result, hasPatients]) => {
+        if (result.source !== "live") {
+          if (process.env.NODE_ENV === "development") {
+            console.warn(`[schedule] falling back to mock data: ${result.reason}`)
+          }
+          return
         }
-        return
-      }
-      setLive(true)
-      setAppointments(sortByStart(result.appointments))
-    })
+        if (!result.appointments.length) {
+          // A clinic with real patients and no bookings has an empty diary, and
+          // saying so is the truth. Showing the demo day here would offer
+          // visits by people who do not exist and link to records that are not
+          // there.
+          if (hasPatients) {
+            setLive(true)
+            setAppointments([])
+          }
+          return
+        }
+        setLive(true)
+        setAppointments(sortByStart(result.appointments))
+      },
+    )
   }, [])
 
   useEffect(() => refresh(), [refresh])

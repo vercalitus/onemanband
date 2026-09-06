@@ -12,6 +12,7 @@ import {
   fetchUninvoicedVisits,
   settleInvoiceRow,
 } from "@/features/finances/lib/finance-repository"
+import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
 import { planPaidVisitDocument } from "@/features/finances/lib/plan-tax-document"
 import { fileTaxDocument } from "@/features/finances/lib/tax-documents"
 import {
@@ -66,10 +67,21 @@ export function useBilling() {
    * retires them.
    */
   const refreshLive = useCallback(() => {
-    void fetchInvoices(formatMoney).then((result) => {
+    void Promise.all([fetchInvoices(formatMoney), clinicHasPatients()]).then(
+      ([result, hasPatients]) => {
       if (result.source !== "live" || !result.invoices.length) {
         if (result.source === "unavailable" && process.env.NODE_ENV === "development") {
           console.warn(`[billing] falling back to mock data: ${result.reason}`)
+        }
+        // Real patients and nothing billed is a real state: the page should
+        // say the ledger is empty, not invent debts owed by people who are not
+        // in the clinic's records.
+        if (result.source === "live" && hasPatients) {
+          setLive(true)
+          setInvoices([])
+          void fetchUninvoicedVisits(formatMoney, (type) =>
+            getTreatmentPriceIls(type) ?? 0,
+          ).then(setUninvoicedVisits)
         }
         return
       }
@@ -81,7 +93,8 @@ export function useBilling() {
       void fetchUninvoicedVisits(formatMoney, (type) =>
         getTreatmentPriceIls(type) ?? 0,
       ).then(setUninvoicedVisits)
-    })
+      },
+    )
   }, [formatMoney])
 
   useEffect(() => refreshLive(), [refreshLive])
@@ -434,5 +447,7 @@ export function useBilling() {
     settleInvoice,
     sendReminder,
     retrySync,
+    /** True when these figures are the clinic's, not the demonstration's. */
+    live,
   }
 }

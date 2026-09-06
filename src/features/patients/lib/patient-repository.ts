@@ -62,6 +62,39 @@ function toSummary(row: PatientRow): PatientSummary {
   }
 }
 
+/**
+ * Has this clinic entered real patients?
+ *
+ * The anchor for every other demo dataset. Each area used to decide on its own
+ * table — schedule empty means show the demo day, ledger empty means show the
+ * demo figures — which was right until the day patients arrived and the others
+ * had not. Then the dashboard offered visits by people who do not exist, whose
+ * names linked to records that were never there.
+ *
+ * Patients are the right anchor because nothing else in a clinic exists without
+ * them. Once there is one, the invented material is gone everywhere, and empty
+ * screens are the truth: no appointments have been booked yet.
+ *
+ * Cached for the page's lifetime — the answer flips once, on an import.
+ */
+let livePatientsAnswer: Promise<boolean> | null = null
+
+export function clinicHasPatients(): Promise<boolean> {
+  if (livePatientsAnswer) return livePatientsAnswer
+  livePatientsAnswer = (async () => {
+    const db = createSupabaseBrowserClient()
+    if (!db) return false
+    const { count, error } = await db
+      .from("patients")
+      .select("id", { count: "exact", head: true })
+    // A failure is not evidence of an empty clinic, so it leaves the demo in
+    // place rather than blanking the app.
+    if (error) return false
+    return (count ?? 0) > 0
+  })()
+  return livePatientsAnswer
+}
+
 export type PatientFetch =
   /** The database answered. An empty list is an answer, not a failure. */
   | { source: "live"; patients: PatientSummary[] }

@@ -58,6 +58,7 @@ export default function BillingPage() {
     settleInvoice,
     sendReminder,
     retrySync,
+    live: liveLedger,
   } = useBilling()
 
   /** The invoice whose payment is being recorded, if any. */
@@ -92,7 +93,12 @@ export default function BillingPage() {
 
   const outstanding = useMemo(() => computeOutstanding(invoices), [invoices])
   const monthlyRevenue = useMemo(() => computeMonthlyRevenue(invoices), [invoices])
-  const monthlyDelta = useMemo(() => computeMonthlyDeltaPct(monthlyRevenue), [monthlyRevenue])
+  // No invented previous month once the ledger is real. A clinic in its first
+  // month here has nothing to compare against, and saying so beats an arrow.
+  const monthlyDelta = useMemo(
+    () => computeMonthlyDeltaPct(monthlyRevenue, liveLedger ? null : undefined),
+    [monthlyRevenue, liveLedger],
+  )
   const collectionRate = useMemo(() => computeCollectionRate(invoices), [invoices])
   const snapshots = useMemo(() => computePatientSnapshots(invoices, formatMoney), [invoices, formatMoney])
 
@@ -157,7 +163,11 @@ export default function BillingPage() {
           value={formatMoney(monthlyRevenue)}
           icon={Banknote}
           delta={monthlyDelta}
-          context={t("finances.kpi.vsLastMonth", { amount: formatMoney(PREVIOUS_MONTH_REVENUE) })}
+          context={
+            liveLedger
+              ? undefined
+              : t("finances.kpi.vsLastMonth", { amount: formatMoney(PREVIOUS_MONTH_REVENUE) })
+          }
           contextMonospace
         />
         <KpiCard

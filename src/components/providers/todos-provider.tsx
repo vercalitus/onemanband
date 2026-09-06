@@ -17,6 +17,7 @@ import { useRemoteResponses } from "@/features/automations/lib/remote-responses"
 import { deriveAutomationTodos } from "@/features/dashboard/lib/automation-signals"
 import { fetchAppointments } from "@/features/calendar/lib/appointment-repository"
 import { deriveReactiveTodos } from "@/features/dashboard/lib/reactive-signals"
+import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
 import { dashboardTodos } from "@/lib/mock-data"
 import type { ScheduleItem, TodoItem } from "@/types/domain"
 
@@ -94,10 +95,34 @@ export function TodosProvider({ children }: { children: ReactNode }) {
    */
   const [liveSchedule, setLiveSchedule] = useState<ScheduleItem[] | undefined>(undefined)
   useEffect(() => {
-    void fetchAppointments().then((result) => {
-      if (result.source === "live" && result.appointments.length) {
-        setLiveSchedule(result.appointments)
-      }
+    void Promise.all([fetchAppointments(), clinicHasPatients()]).then(
+      ([result, hasPatients]) => {
+        if (result.source !== "live") return
+        // An empty array is an answer once the clinic is real: no bookings, so
+        // no signals. Leaving the seed would put fictional patients on the
+        // board beside genuine work.
+        if (result.appointments.length || hasPatients) {
+          setLiveSchedule(result.appointments)
+        }
+      },
+    )
+  }, [])
+
+  /**
+   * Clear the demo board once the clinic has real patients.
+   *
+   * The seeded to-dos name invented people and link to records that do not
+   * exist — "chase overdue payment" for someone who was never a patient here.
+   * They were useful while the whole app was a demonstration; beside real work
+   * they are noise at best and a wrong instruction at worst.
+   */
+  useEffect(() => {
+    void clinicHasPatients().then((hasPatients) => {
+      if (!hasPatients) return
+      const seeded = new Set(dashboardTodos.map((t) => t.id))
+      setTodos((prev) =>
+        prev.filter((t) => !seeded.has(t.id) && !t.id.startsWith("rx-")),
+      )
     })
   }, [])
 
