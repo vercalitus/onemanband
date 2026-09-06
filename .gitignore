@@ -42,3 +42,18 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Patient data must never enter version control.
+#
+# Import and export steps produce files full of real names, and `git add -A`
+# does not ask whether a file is sensitive. The scripts write outside the repo
+# for that reason; these patterns are the second line of defence, for anything
+# that lands here by accident.
+*-import-review.json
+*-review.json
+*patients*.csv
+*patients*.json
+*.vcf
+Table_*.csv
+/imports/
+/exports/
