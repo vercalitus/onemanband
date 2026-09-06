@@ -958,11 +958,13 @@ export const AR_MESSAGES: Record<string, string> = {
   "signal.patientRescheduled": "نقل المريض موعده — {patient}",
   "signal.questionnaireReturned": "عاد استبيان التقدّم — {patient}",
   "signal.paymentClaimed": "يقول إنه دفع — {patient}",
+  "signal.patientMessage": "{patient} كتب: {message}",
   "signal.newIntake": "اعتماد تسجيل مريض جديد — {patient}",
   "signal.due.justNow": "أصبح الموعد شاغراً",
   "signal.due.newSlot": "وقت جديد {date} {time}",
   "signal.due.inFile": "حُفظ ضمن التقدّم",
   "signal.due.verifyPayment": "تحقّق ثم أصدر الإيصال",
+  "signal.due.readIt": "ردّ على المريض",
   "signal.due.requested": "طُلب {date} {time}",
 
   "header.search.invoiceNew": "إصدار فاتورة",

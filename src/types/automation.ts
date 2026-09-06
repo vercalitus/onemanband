@@ -306,6 +306,12 @@ export type PatientResponseKind =
    * `declare_paid`.
    */
   | "payment_claimed"
+  /**
+   * The patient wrote something in their own words. The clinic asked them to
+   * ("message me here directly if anything feels sore"), so it is an open item
+   * until a person has read it — never categorised, never auto-answered.
+   */
+  | "message"
 
 /**
  * A patient action that came back through a link or a WhatsApp button. The
@@ -320,6 +326,10 @@ export interface PatientResponse {
   questionnaireId?: string
   /** The invoice a `payment_claimed` response is about. */
   invoiceId?: string
+  /** What the patient wrote, for `message`. Their words, never summarised. */
+  body?: string
+  /** The number a `message` arrived from, when no patient could be matched. */
+  fromAddress?: string
   /** New slot for `rescheduled`, as ISO date + HH:mm. */
   newDate?: string
   newStart?: string

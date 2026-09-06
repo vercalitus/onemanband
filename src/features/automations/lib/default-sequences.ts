@@ -147,13 +147,16 @@ export function defaultSequences(): AutomationSequence[] {
           // done by `noShowGraceMinutes` before the mark, not here.
           schedule: { mode: "offset", anchor: "no_show_marked", minutes: 0 },
           channels: ["whatsapp", "email"],
-          actions: ["open_invoice", "reschedule"],
+          // Rebooking only. There is no document to attach: a missed visit was
+          // never paid for, and the invoice-receipt is a receipt. If a fee is
+          // owed it is chased by the payment reminders, which is a different
+          // sequence doing a different job.
+          actions: ["reschedule"],
           template: {
             emailSubject: "Missed appointment at {clinic_name} — {date}",
             body:
               "Hi {patient_name}, we kept your {time} slot on {date} open and you weren't able to " +
-              "make it. The session fee ({amount}) is attached: {link}. " +
-              "Book a new time whenever you're ready.",
+              "make it. Book a new time whenever you're ready: {link}",
           },
         },
       ],

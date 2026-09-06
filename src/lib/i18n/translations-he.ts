@@ -957,11 +957,13 @@ export const HE_MESSAGES: Record<string, string> = {
   "signal.patientRescheduled": "המטופל העביר את התור — {patient}",
   "signal.questionnaireReturned": "שאלון התקדמות חזר — {patient}",
   "signal.paymentClaimed": "מדווח/ת ששילם/ה — {patient}",
+  "signal.patientMessage": "{patient} כתב/ה: {message}",
   "signal.newIntake": "לאשר הרשמת מטופל חדש — {patient}",
   "signal.due.justNow": "התור התפנה",
   "signal.due.newSlot": "מועד חדש {date} {time}",
   "signal.due.inFile": "תויק תחת התקדמות",
   "signal.due.verifyPayment": "לאמת ולהנפיק קבלה",
+  "signal.due.readIt": "להשיב למטופל/ת",
   "signal.due.requested": "התבקש {date} {time}",
 
   "header.search.invoiceNew": "הפקת חשבונית",

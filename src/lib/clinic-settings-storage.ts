@@ -100,12 +100,13 @@ const RETIRED_STEP_IDS = new Set(["step-post-invoice"])
  * discarded in favour of the current default, because merging would preserve
  * exactly the part that is now wrong.
  *
- * `step-unpaid-daily` used to attach the invoice to a payment reminder. An
- * invoice-receipt cannot exist before the payment does, so the step now asks
- * the patient whether they have already paid. A saved copy would keep the
- * `open_invoice` action and go on offering a document that must not be there.
+ * `step-unpaid-daily` used to attach the invoice to a payment reminder, and
+ * `step-no-show-notice` promised the session fee "attached". An
+ * invoice-receipt cannot exist before the payment does, so neither document
+ * was ever going to be there. A saved copy would keep the `open_invoice`
+ * action and go on offering it.
  */
-const RESET_STEP_IDS = new Set(["step-unpaid-daily"])
+const RESET_STEP_IDS = new Set(["step-unpaid-daily", "step-no-show-notice"])
 
 function mergeAutomations(
   stored: Partial<ClinicAutomations> | undefined,

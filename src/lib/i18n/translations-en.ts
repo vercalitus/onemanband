@@ -985,11 +985,13 @@ export const EN_MESSAGES: Record<string, string> = {
   "signal.patientRescheduled": "Patient moved their appointment — {patient}",
   "signal.questionnaireReturned": "Progress questionnaire returned — {patient}",
   "signal.paymentClaimed": "Says they've paid — {patient}",
+  "signal.patientMessage": "{patient} wrote: {message}",
   "signal.newIntake": "Approve new patient registration — {patient}",
   "signal.due.justNow": "Slot is now free",
   "signal.due.newSlot": "New time {date} {time}",
   "signal.due.inFile": "Filed under Progress",
   "signal.due.verifyPayment": "Verify, then issue the receipt",
+  "signal.due.readIt": "Reply to the patient",
   "signal.due.requested": "Requested {date} {time}",
 
   "header.search.invoiceNew": "Issue invoice",

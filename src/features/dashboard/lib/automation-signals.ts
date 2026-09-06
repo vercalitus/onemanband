@@ -108,6 +108,33 @@ export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): 
       })
     }
 
+    /*
+     * A patient wrote something, and it outranks everything else here.
+     *
+     * The clinic asked for it — "message me here directly if anything feels
+     * sore" — and nothing in this system can judge whether the words are
+     * small talk or a person describing sharp pain. So the message is carried
+     * verbatim into the task rather than summarised into a category, and it
+     * stays open until someone has actually read it.
+     */
+    if (response.kind === "message") {
+      items.push({
+        id: `rx-message-${response.id}`,
+        kind: "reactive",
+        priority: "high",
+        overdue: true,
+        titleKey: "signal.patientMessage",
+        dueKey: "signal.due.readIt",
+        params: {
+          patient: response.patientName || response.fromAddress || "—",
+          message: response.body ?? "",
+        },
+        title: `Message from ${response.patientName || response.fromAddress || "a patient"}`,
+        due: response.body ?? "Needs reading",
+        completed: false,
+      })
+    }
+
     // High priority, and deliberately so: money the patient believes has
     // changed hands is sitting without a receipt, and only the practitioner can
     // check the account and close it. Nothing else in the system can.

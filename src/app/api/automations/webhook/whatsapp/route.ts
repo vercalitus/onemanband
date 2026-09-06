@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-import { recordPatientResponse } from "@/features/automations/lib/events"
-import { resolveToken } from "@/features/automations/lib/tokens"
+import {
+  addInboundMessageRow,
+  addResponseRow,
+  findTokenRow,
+  markTokenUsedRow,
+  patientForRecipient,
+} from "@/features/automations/lib/server-store"
 import type { AutomationAction, PatientResponseKind } from "@/types/automation"
 
 /**
@@ -44,6 +49,47 @@ interface ButtonTap {
   token: string
 }
 
+/** An inbound message that is words rather than a button. */
+interface InboundText {
+  from: string
+  body: string
+}
+
+/**
+ * Pull a free-text message out of whichever provider sent it.
+ *
+ * This is the half that used to be missing, and its absence was the serious
+ * one: the clinic tells patients to write if something hurts, and anything
+ * that was not a button tap was acknowledged with a 200 and dropped. Nobody
+ * saw it.
+ *
+ * Two shapes because two providers: Twilio posts a flat form body, Meta posts
+ * a nested JSON envelope.
+ */
+function parseInboundText(payload: unknown): InboundText | null {
+  const body = payload as {
+    // Twilio: application/x-www-form-urlencoded, already turned into an object.
+    From?: string
+    Body?: string
+    // Meta Cloud API.
+    entry?: {
+      changes?: {
+        value?: { messages?: { from?: string; type?: string; text?: { body?: string } }[] }
+      }[]
+    }[]
+  }
+
+  if (typeof body?.Body === "string" && body.Body.trim() && typeof body.From === "string") {
+    return { from: body.From, body: body.Body.trim() }
+  }
+
+  const meta = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
+  if (meta?.type === "text" && meta.text?.body?.trim() && meta.from) {
+    return { from: meta.from, body: meta.text.body.trim() }
+  }
+  return null
+}
+
 /**
  * Pull `<action>:<token>` out of a Meta Cloud API payload.
  *
@@ -59,6 +105,8 @@ function parseButtonTap(payload: unknown): ButtonTap | null {
 
   const raw =
     body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.interactive?.button_reply?.id ??
+    // Twilio delivers a template button tap as ButtonPayload on the form body.
+    (payload as { ButtonPayload?: string })?.ButtonPayload ??
     body?.buttonId
 
   if (typeof raw !== "string" || !raw.includes(":")) return null
@@ -67,38 +115,74 @@ function parseButtonTap(payload: unknown): ButtonTap | null {
   return { action: action as AutomationAction, token }
 }
 
-export async function POST(request: NextRequest) {
-  // TODO(provider): verify the X-Hub-Signature-256 HMAC against the app secret
-  // before trusting anything in the body. Left open while no provider signs it.
-  let payload: unknown
+/**
+ * Providers disagree about encoding: Meta posts JSON, Twilio posts a form.
+ * Both end up as one object so the parsers above can stay shape-driven.
+ */
+async function readPayload(request: NextRequest): Promise<unknown | null> {
+  const type = request.headers.get("content-type") ?? ""
   try {
-    payload = await request.json()
+    if (type.includes("application/json")) return await request.json()
+    if (type.includes("form")) {
+      return Object.fromEntries((await request.formData()).entries())
+    }
+    // Unlabelled: try JSON, since that is what a hand-rolled test will send.
+    return JSON.parse(await request.text())
   } catch {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 })
+    return null
+  }
+}
+
+export async function POST(request: NextRequest) {
+  // TODO(provider): verify the signature — X-Hub-Signature-256 for Meta,
+  // X-Twilio-Signature for Twilio — before trusting anything in the body.
+  // Open until a provider is actually signing, and it must close before the
+  // webhook URL is given to one.
+  const payload = await readPayload(request)
+  if (!payload) return NextResponse.json({ error: "unreadable body" }, { status: 400 })
+
+  // Words first. A button tap is a fact the system can act on; a message is a
+  // person talking, and dropping it is the failure this route used to have.
+  const text = parseInboundText(payload)
+  if (text) {
+    const match = await patientForRecipient(text.from)
+    await addInboundMessageRow({
+      fromAddress: text.from,
+      body: text.body,
+      patientId: match?.patientId,
+    })
+    return NextResponse.json({ ok: true, recorded: "message" })
   }
 
   const tap = parseButtonTap(payload)
-  // Meta retries anything that isn't a 2xx, so unrecognised events are
+  // Providers retry anything that isn't a 2xx, so unrecognised events are
   // acknowledged rather than rejected — otherwise one odd payload loops.
   if (!tap) return NextResponse.json({ ok: true, ignored: true })
 
-  const resolution = resolveToken(tap.token)
-  if (!resolution.ok) {
-    return NextResponse.json({ ok: true, ignored: true, reason: resolution.reason })
+  // From the database, not the local store: this is the server, and the store
+  // that mints tokens lives in the practitioner's browser.
+  const token = await findTokenRow(tap.token)
+  if (!token) return NextResponse.json({ ok: true, ignored: true, reason: "unknown" })
+  if (new Date(token.expiresAt).getTime() < Date.now()) {
+    return NextResponse.json({ ok: true, ignored: true, reason: "expired" })
   }
 
   const kind = ACTION_TO_RESPONSE[tap.action]
   if (!kind) return NextResponse.json({ ok: true, ignored: true, reason: "no state change" })
 
-  const { token } = resolution
-  recordPatientResponse({
+  await addResponseRow({
+    id: "",
     kind,
     patientId: token.patientId ?? "",
     // The clinic app resolves the display name from patientId; the webhook has
     // no patient directory of its own.
     patientName: "",
     appointmentId: token.appointmentId,
+    invoiceId: token.invoiceId,
+    receivedAt: new Date().toISOString(),
+    handled: kind === "confirmed",
   })
+  await markTokenUsedRow(token.token)
 
   return NextResponse.json({ ok: true, action: tap.action })
 }

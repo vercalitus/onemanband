@@ -255,6 +255,59 @@ export async function addResponseRow(response: PatientResponse): Promise<boolean
   return !error
 }
 
+/**
+ * Record something a patient wrote in their own words.
+ *
+ * Separate from `addResponseRow` because it arrives differently and is trusted
+ * differently: there is no capability token behind it, only a phone number the
+ * provider says it came from. So it is stored as an unattributed message
+ * unless the number matches a link we sent, and it is never allowed to change
+ * anything — it opens an item for a person to read, and that is all.
+ */
+export async function addInboundMessageRow(input: {
+  fromAddress: string
+  body: string
+  patientId?: string
+  patientName?: string
+}): Promise<boolean> {
+  const db = createSupabaseAdminClient()
+  const clinicId = await soleClinicId()
+  if (!db || !clinicId) return false
+
+  const { error } = await db.from("patient_responses").insert({
+    clinic_id: clinicId,
+    kind: "message",
+    external_patient_id: input.patientId ?? null,
+    patient_name: input.patientName ?? null,
+    from_address: input.fromAddress,
+    body: input.body,
+    handled: false,
+    received_at: new Date().toISOString(),
+  })
+  return !error
+}
+
+/**
+ * The most recent link we sent to this number, used only to put a name to an
+ * inbound message. A miss is fine — the message is still stored, just without
+ * a patient attached.
+ */
+export async function patientForRecipient(
+  recipient: string,
+): Promise<{ patientId?: string } | null> {
+  const db = createSupabaseAdminClient()
+  if (!db) return null
+  const { data } = await db
+    .from("automation_outbox")
+    .select("external_patient_id")
+    .eq("recipient", recipient)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!data?.external_patient_id) return null
+  return { patientId: data.external_patient_id }
+}
+
 /** Everything still waiting on the practitioner. */
 export async function listOpenResponseRows(): Promise<PatientResponse[]> {
   const db = createSupabaseAdminClient()
@@ -274,6 +327,8 @@ export async function listOpenResponseRows(): Promise<PatientResponse[]> {
     patientName: row.patient_name ?? "",
     appointmentId: row.external_appointment_id ?? undefined,
     invoiceId: row.external_invoice_id ?? undefined,
+    body: row.body ?? undefined,
+    fromAddress: row.from_address ?? undefined,
     receivedAt: row.received_at,
     handled: row.handled,
   }))
