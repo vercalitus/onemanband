@@ -6,6 +6,12 @@ import { useLocale } from "@/components/providers/locale-provider"
 import { createTranslator } from "@/lib/i18n/dictionary"
 import { onInvoicePaid } from "@/features/automations/lib/events"
 import { clearRemoteClaim } from "@/features/automations/lib/remote-responses"
+import {
+  createInvoice,
+  fetchInvoices,
+  fetchUninvoicedVisits,
+  settleInvoiceRow,
+} from "@/features/finances/lib/finance-repository"
 import { planPaidVisitDocument } from "@/features/finances/lib/plan-tax-document"
 import { fileTaxDocument } from "@/features/finances/lib/tax-documents"
 import {
@@ -48,6 +54,37 @@ export function useBilling() {
   )
   const [integration, setIntegration] = useState<ProviderIntegration>(seedIntegration)
   const [hydrated, setHydrated] = useState(false)
+  /** True once the ledger is coming from Postgres rather than localStorage. */
+  const [live, setLive] = useState(false)
+
+  /**
+   * Replace the demo ledger with the clinic's real one, if there is one.
+   *
+   * Same rule as patients and the diary: an empty table means nothing has been
+   * billed yet, and an empty billing page is indistinguishable from a broken
+   * one, so the demo figures stay until a real invoice exists. The first one
+   * retires them.
+   */
+  const refreshLive = useCallback(() => {
+    void fetchInvoices(formatMoney).then((result) => {
+      if (result.source !== "live" || !result.invoices.length) {
+        if (result.source === "unavailable" && process.env.NODE_ENV === "development") {
+          console.warn(`[billing] falling back to mock data: ${result.reason}`)
+        }
+        return
+      }
+      setLive(true)
+      setInvoices(result.invoices)
+      // And the visits nobody has billed yet, which are the other half of this
+      // page. Derived from real appointments once there are any, so the demo
+      // "needs invoice" rows do not sit beside a real debt.
+      void fetchUninvoicedVisits(formatMoney, (type) =>
+        getTreatmentPriceIls(type) ?? 0,
+      ).then(setUninvoicedVisits)
+    })
+  }, [formatMoney])
+
+  useEffect(() => refreshLive(), [refreshLive])
 
   // Hydrate persisted state on mount. Done in an effect (not initialiser) so
   // SSR markup matches the first client render and avoids hydration warnings.
@@ -79,10 +116,14 @@ export function useBilling() {
   // user state with seed defaults on first paint.
   useEffect(() => {
     if (!hydrated) return
+    // Once the ledger is live, Postgres is the record and this cache would
+    // only be a second, staler copy — one that hydration would then show for a
+    // moment on the next load before the real figures arrive.
+    if (live) return
     try {
       window.localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(invoices))
     } catch {}
-  }, [invoices, hydrated])
+  }, [invoices, hydrated, live])
 
   useEffect(() => {
     if (!hydrated) return
@@ -154,13 +195,36 @@ export function useBilling() {
           paymentStatus: "pending",
           treatmentType: visit.treatmentType,
           provider: integration.provider,
-          syncStatus: "synced",
+          // Nothing has been filed yet: an invoice exists here, but the tax
+          // document only comes into being when the money does. `synced` would
+          // have claimed a document that is not there.
+          syncStatus: "pending",
         }
         setInvoices((current) => [newInvoice, ...current])
+        // Persist it, and take back the row the database made — its id is the
+        // one everything else will key on.
+        if (live) {
+          void createInvoice(
+            {
+              patientId: visit.patientId,
+              amount: unit,
+              treatmentType: visit.treatmentType,
+              issuedAt,
+              dueAt: dueDate.toISOString().slice(0, 10),
+            },
+            formatMoney,
+          ).then((written) => {
+            if (written.ok) {
+              setInvoices((current) =>
+                [written.invoice, ...current.filter((inv) => inv.id !== id)],
+              )
+            }
+          })
+        }
         return prev.filter((v) => v.id !== visitId)
       })
     },
-    [integration.provider, formatMoney],
+    [integration.provider, formatMoney, live],
   )
 
   /**
@@ -228,6 +292,24 @@ export function useBilling() {
         // database, not in this browser.
         clearRemoteClaim(invoiceId)
         setIntegration((prev) => ({ ...prev, lastSyncAt: new Date().toISOString() }))
+        // Write the settlement down. The filing outcome goes with it, whatever
+        // it was: an invoice can be paid and its document missing, and that
+        // pair has to survive a refresh or the money is recorded with no
+        // receipt and no trace of why.
+        if (live) {
+          void settleInvoiceRow(
+            {
+              id: invoiceId,
+              amount: payment.amount,
+              method: payment.method,
+              paidAt: payment.date,
+              syncStatus: (patch.syncStatus as BillingInvoice["syncStatus"]) ?? "pending",
+              taxDocument: patch.taxDocument,
+              syncError: patch.syncError,
+            },
+            formatMoney,
+          )
+        }
       }
 
       if (outcome.status === "filed") {
@@ -258,7 +340,7 @@ export function useBilling() {
       settled({ syncStatus: "failed", syncError: outcome.message })
       return { ok: false, message: t("billing.payment.result.failed", { reason: outcome.message }) }
     },
-    [invoices, t, formatMoney],
+    [invoices, t, formatMoney, live],
   )
 
   /**
