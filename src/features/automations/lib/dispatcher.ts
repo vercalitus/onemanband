@@ -71,6 +71,24 @@ export function getDispatcher(): MessageDispatcher {
   return activeDispatcher
 }
 
+/**
+ * Where the queue lives for one run of the tick.
+ *
+ * Two answers, and the difference is the whole point: in the browser it is
+ * localStorage, which only ever holds what this machine planned; on the server
+ * it is Postgres, which is the only copy a cron can reach at three in the
+ * morning with every browser closed.
+ */
+export interface MessageQueue {
+  due(now: Date): Promise<OutboxMessage[]> | OutboxMessage[]
+  update(id: string, patch: Partial<OutboxMessage>): Promise<void> | void
+}
+
+const localQueue: MessageQueue = {
+  due: (now) => dueMessages(now),
+  update: (id, patch) => updateOutboxMessage(id, patch),
+}
+
 export interface TickSummary {
   processed: number
   sent: number
@@ -97,9 +115,10 @@ export async function runTick(
    * Settings queue card calls this with nothing and gets the simulator.
    */
   dispatcher: MessageDispatcher = getDispatcher(),
+  queue: MessageQueue = localQueue,
 ): Promise<TickSummary> {
   const simulated = dispatcher.name === "simulated"
-  const due = dueMessages(now)
+  const due = await queue.due(now)
   let sent = 0
   let failed = 0
 
@@ -107,13 +126,13 @@ export async function runTick(
     const result = await dispatcher.send(message)
     if (result.ok) {
       sent += 1
-      updateOutboxMessage(message.id, {
+      await queue.update(message.id, {
         status: simulated ? "simulated" : "sent",
         sentAt: new Date().toISOString(),
       })
     } else {
       failed += 1
-      updateOutboxMessage(message.id, { status: "failed", error: result.error })
+      await queue.update(message.id, { status: "failed", error: result.error })
     }
   }
 

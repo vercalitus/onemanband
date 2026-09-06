@@ -1,7 +1,7 @@
 import {
   addResponse,
-  cancelPendingForAppointment,
-  cancelPendingForInvoice,
+  cancelPendingForAppointment as cancelLocalForAppointment,
+  cancelPendingForInvoice as cancelLocalForInvoice,
   enqueueMessages,
   listResponses,
   markResponseHandled,
@@ -51,7 +51,54 @@ export function planContextFromSettings(
 
 /** Plan + queue in one step. Returns only what was newly queued. */
 function emit(event: AutomationEvent, ctx: PlanContext): OutboxMessage[] {
-  return enqueueMessages(planMessages(event, ctx))
+  const queued = enqueueMessages(planMessages(event, ctx))
+  mirrorQueued(queued)
+  return queued
+}
+
+/**
+ * Copy what was just queued to the server, where the cron can reach it.
+ *
+ * Fire and forget, and only the newly added messages: `enqueueMessages` has
+ * already dropped anything it had seen before, and the database has a unique
+ * index for the case where two tabs plan the same event at once. A failure
+ * here leaves the message queued locally exactly as it was, which is the
+ * behaviour this had before the server queue existed.
+ */
+function mirrorQueued(messages: OutboxMessage[]): void {
+  if (!messages.length || typeof window === "undefined") return
+  void fetch("/api/automations/outbox", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+  }).catch(() => {})
+}
+
+/**
+ * Cancelling has to reach the server for the same reason queueing does, and
+ * more urgently: an un-mirrored cancel means the cron cheerfully sends "see
+ * you in an hour" to someone who cancelled this morning. Wrapping both calls
+ * together is what keeps the two copies from drifting.
+ */
+function cancelPendingForAppointment(appointmentId: string): number {
+  const count = cancelLocalForAppointment(appointmentId)
+  mirrorCancel({ appointmentId })
+  return count
+}
+
+function cancelPendingForInvoice(invoiceId: string): number {
+  const count = cancelLocalForInvoice(invoiceId)
+  mirrorCancel({ invoiceId })
+  return count
+}
+
+function mirrorCancel(target: { appointmentId?: string; invoiceId?: string }): void {
+  if (typeof window === "undefined") return
+  void fetch("/api/automations/outbox", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(target),
+  }).catch(() => {})
 }
 
 /* -------------------------------------------------------------------------- */

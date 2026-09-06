@@ -2,6 +2,10 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { runTick } from "@/features/automations/lib/dispatcher"
 import { resolveServerDispatcher } from "@/features/automations/lib/live-dispatcher"
+import {
+  dueMessageRows,
+  updateMessageRow,
+} from "@/features/automations/lib/server-store"
 import { isSupabaseConfigured } from "@/lib/env"
 
 /**
@@ -21,7 +25,10 @@ import { isSupabaseConfigured } from "@/lib/env"
 /** Never cached — a cron hitting a cached tick would deliver nothing. */
 export const dynamic = "force-dynamic"
 
-function unauthorized() {
+function unauthorized(reason: string) {
+  // The reason goes to the server log, not to the caller: an unauthenticated
+  // request has no business learning how the gate is configured.
+  console.error(`[automations/tick] refused: ${reason}`)
   return NextResponse.json({ error: "unauthorized" }, { status: 401 })
 }
 
@@ -29,19 +36,35 @@ function unauthorized() {
  * Shared-secret gate. Vercel Cron sends `Authorization: Bearer $CRON_SECRET`.
  * With no secret configured the route stays open in mock mode (there is
  * nothing to protect yet) but refuses once real credentials are in play.
+ *
+ * The refusal used to be a bare 401, which is indistinguishable from a wrong
+ * secret and cost an afternoon to diagnose — the deploy had simply grown a
+ * database and locked its own cron out. It now says which of the two happened.
  */
-function isAuthorized(request: NextRequest): boolean {
+function authorize(request: NextRequest): string | null {
   const secret = process.env.CRON_SECRET
-  if (!secret) return !isSupabaseConfigured()
+  if (!secret) {
+    return isSupabaseConfigured()
+      ? "CRON_SECRET is not set, and this deploy is configured. Set it here and in the cron caller."
+      : null
+  }
   return request.headers.get("authorization") === `Bearer ${secret}`
+    ? null
+    : "Authorization header does not carry the expected bearer secret."
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) return unauthorized()
+  const refusal = authorize(request)
+  if (refusal) return unauthorized(refusal)
 
   // The live providers only exist here: this is the server, and their
-  // credentials must not travel any further than it.
-  const summary = await runTick(new Date(), resolveServerDispatcher())
+  // credentials must not travel any further than it. The queue is the database
+  // for the same reason the cron exists at all — nothing in a browser is
+  // reachable at 18:00 when the browser is closed.
+  const summary = await runTick(new Date(), resolveServerDispatcher(), {
+    due: dueMessageRows,
+    update: updateMessageRow,
+  })
   return NextResponse.json({
     ok: true,
     ranAt: new Date().toISOString(),
