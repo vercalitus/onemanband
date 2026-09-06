@@ -12,14 +12,9 @@ import type { PatientStatus, PatientSummary } from "@/types/domain"
  * session at all; using it here would step around the only access control this
  * data has.
  *
- * Two fields on `PatientSummary` are deliberately not filled here:
- *
- *   - `lastVisit` comes from appointments
- *   - `balance` comes from finances
- *
- * Neither table is live yet. Rather than invent a plausible value, they come
- * back empty and the callers that care fall back to what they already do. They
- * fill in when those stages land, and nothing else has to change.
+ * `balance` is deliberately left empty: it derives from finances, which holds
+ * nothing until the clinic starts billing from here. Inventing a plausible
+ * number would be worse than an absent one.
  */
 
 export interface PatientDraft {
@@ -43,7 +38,11 @@ interface PatientRow {
   tags: string[] | null
   medical_history_summary: string | null
   general_notes: string | null
+  last_seen_at: string | null
 }
+
+const COLUMNS =
+  "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes, last_seen_at"
 
 function toSummary(row: PatientRow): PatientSummary {
   return {
@@ -53,8 +52,17 @@ function toSummary(row: PatientRow): PatientSummary {
     phone: row.phone ?? "",
     email: row.email ?? "",
     address: row.address ?? undefined,
-    // Derived from tables that are not live yet — see the note above.
-    lastVisit: "",
+    /*
+     * The best date anyone has. Backfilled at import from the bookkeeping
+     * history: most patients here pay at the session, so the date of their
+     * last document approximates their last visit, and for the years before
+     * this app existed it is the only evidence there is. Empty when even that
+     * is unknown, which the UI shows as a dash rather than a guess.
+     *
+     * Superseded by real appointments and payments as they accumulate.
+     */
+    lastVisit: row.last_seen_at ?? "",
+    // Derived from finances, which is empty until the clinic bills from here.
     balance: "",
     tags: row.tags ?? [],
     medicalHistorySummary: row.medical_history_summary ?? "",
@@ -179,7 +187,7 @@ export async function createPatient(draft: PatientDraft): Promise<PatientWrite> 
       tags: draft.tags ?? [],
     })
     .select(
-      "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes",
+      COLUMNS,
     )
     .single()
 

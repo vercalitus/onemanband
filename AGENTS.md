@@ -129,6 +129,22 @@ Defined in `src/types/domain.ts` and enforced in Postgres:
 - Currency display: ILS formatting via `src/lib/format-ils.ts` and locale formatters
 - Treatment prices and care plans come from `ClinicSettings.treatmentTypes` / `carePlans`
 - Mock billing data: `src/lib/mock-finances.ts`, derived logic in `features/finances/lib/`
+- Money is stored in agorot (`finances.amount_cents`) and worked with in shekels. The conversion lives only in `finance-repository.ts` — a float a hundredth off is a rounding error in a VAT return.
+
+#### This app is not the book of record
+
+**SUMIT is.** A `finances` row exists for two reasons, and neither is "keeping a copy of an invoice":
+
+1. **A debt.** The clinic bills on a cash basis, so a tax document is only issued once the money arrives — which means SUMIT never hears about a visit that was not paid for. An unpaid visit exists *nowhere else*. Without this row there is nothing to chase, no outstanding balance, and no payment reminder.
+2. **A pointer.** After payment the row keeps `documentId`, the document number and a link. That is a reference, not a copy: the document itself, with its legal weight, lives at SUMIT and only there. It is needed to show a practitioner the receipt for a visit, and to issue a credit note — an issued invoice-receipt cannot be deleted, and the only lawful undo references the original document id.
+
+So:
+
+- **Never store the document itself.** No PDF, no rendered copy, no second version of anything the accountant relies on. Store the pointer.
+- **Do not import historical invoices.** Documents from before this app existed have neither job — they are paid, and nothing here will credit them. A local copy would just be a second record that can disagree with the accountant's.
+- **Do not make this configurable.** A mode that skips the local row does not degrade debt collection, it removes it, and two modes means two behaviours to keep correct.
+
+What a settled row holds, in full: who, how much, when, whether it was paid, and the SUMIT document id.
 
 ### Automations
 

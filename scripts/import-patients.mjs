@@ -278,6 +278,32 @@ const reviewPath =
 writeFileSync(reviewPath, JSON.stringify(review, null, 1), "utf8")
 console.log(`\nnear matches written to ${reviewPath} (outside the repo — it names patients)`)
 
+/*
+ * The people left out, so a human can disagree with the rule.
+ *
+ * Every one of them is a patient the clinic treated at some point; they are
+ * excluded because nothing about them is recent, not because they are not
+ * real. That is a judgement worth being able to check.
+ */
+const skippedPath = resolve(ROOT, "..", "onemanband-import-skipped.json")
+writeFileSync(
+  skippedPath,
+  JSON.stringify(
+    skipped
+      .map((p) => ({
+        name: p.name,
+        lastFileYear: p.latestYear || null,
+        files: p.driveFiles.length,
+        inSumit: p.sources.has("sumit"),
+      }))
+      .sort((a, b) => (b.lastFileYear ?? 0) - (a.lastFileYear ?? 0)),
+    null,
+    1,
+  ),
+  "utf8",
+)
+console.log(`skipped patients written to ${skippedPath} (${skipped.length})`)
+
 /* ---------------------------------------------------------------- write --- */
 
 if (!WRITE) {
