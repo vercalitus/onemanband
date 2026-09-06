@@ -1,6 +1,6 @@
 import { patients, todaySchedule, weeklySchedule } from "@/lib/mock-data"
 import { seedIntegration, seedInvoices, seedUninvoicedVisits } from "@/lib/mock-finances"
-import type { TodoItem } from "@/types/domain"
+import type { ScheduleItem, TodoItem } from "@/types/domain"
 
 /**
  * Reactive-signal engine.
@@ -51,10 +51,18 @@ const PRIORITY_RANK: Record<TodoItem["priority"], number> = { high: 0, medium: 1
  * Build the reactive to-do list from current clinic data.
  * `now` is injectable for testing; defaults to the real clock.
  */
-export function deriveReactiveTodos(now: Date = new Date()): TodoItem[] {
+/**
+ * @param schedule The clinic's real diary once it has one. Defaults to the mock
+ * seed, which is what the demo runs on — a signal about a fictional visit next
+ * to a real one would be worse than no signal at all.
+ */
+export function deriveReactiveTodos(
+  now: Date = new Date(),
+  schedule?: ScheduleItem[],
+): TodoItem[] {
   const items: TodoItem[] = []
   const tomorrowIso = isoDay(new Date(now.getTime() + MS_PER_DAY))
-  const appointments = [...todaySchedule, ...weeklySchedule]
+  const appointments = schedule ?? [...todaySchedule, ...weeklySchedule]
 
   // 1 — Overdue invoices: money already past due.
   for (const inv of seedInvoices.filter((i) => i.status === "overdue")) {

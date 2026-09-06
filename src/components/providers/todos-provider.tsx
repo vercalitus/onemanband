@@ -15,9 +15,10 @@ import {
 import { AUTOMATION_STORE_EVENT } from "@/features/automations/lib/automation-store"
 import { useRemoteResponses } from "@/features/automations/lib/remote-responses"
 import { deriveAutomationTodos } from "@/features/dashboard/lib/automation-signals"
+import { fetchAppointments } from "@/features/calendar/lib/appointment-repository"
 import { deriveReactiveTodos } from "@/features/dashboard/lib/reactive-signals"
 import { dashboardTodos } from "@/lib/mock-data"
-import type { TodoItem } from "@/types/domain"
+import type { ScheduleItem, TodoItem } from "@/types/domain"
 
 function normalize(seed: TodoItem[]): TodoItem[] {
   return seed.map((t) => ({
@@ -81,6 +82,38 @@ export function TodosProvider({ children }: { children: ReactNode }) {
    * already in the board is preserved on refresh.
    */
   const remoteResponses = useRemoteResponses()
+
+  /**
+   * The clinic's real diary, for the signals derived from it ("confirm
+   * tomorrow's appointment").
+   *
+   * Fetched here rather than taken from ScheduleDayProvider because this
+   * provider sits above it in the tree. One extra query on the dashboard is a
+   * better trade than reordering the provider stack, and it disappears when
+   * the schedule finds a single owner.
+   */
+  const [liveSchedule, setLiveSchedule] = useState<ScheduleItem[] | undefined>(undefined)
+  useEffect(() => {
+    void fetchAppointments().then((result) => {
+      if (result.source === "live" && result.appointments.length) {
+        setLiveSchedule(result.appointments)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    // Re-derive the schedule-driven signals once the real diary arrives.
+    if (!liveSchedule) return
+    // The three signals that read the diary. The rest of `deriveReactiveTodos`
+    // is about invoices and patients and is not this stage's business.
+    const fromSchedule = (id: string) =>
+      id.startsWith("rx-confirm-") || id.startsWith("rx-intake-") || id.startsWith("rx-noshow-")
+    const derived = deriveReactiveTodos(new Date(), liveSchedule)
+    setTodos((prev) => [
+      ...prev.filter((t) => !fromSchedule(t.id)),
+      ...derived.filter((t) => fromSchedule(t.id)),
+    ])
+  }, [liveSchedule])
 
   useEffect(() => {
     const sync = () => {
