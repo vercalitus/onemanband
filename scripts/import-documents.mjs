@@ -166,12 +166,42 @@ const clinicId = (
 )[0]?.id
 if (!clinicId) throw new Error("no clinic row")
 
+/**
+ * `--limit N` uploads only the first N. Worth using once before committing to
+ * eight hundred: a wrong bucket path or a rejected insert is much cheaper to
+ * find after three files than after a gigabyte.
+ */
+const limitArg = process.argv.find((a) => a.startsWith("--limit="))
+const queue = limitArg ? planned.slice(0, Number(limitArg.split("=")[1])) : planned
+if (limitArg) console.log(`\nlimited to ${queue.length} files`)
+
+/**
+ * What is already here. The upload itself is idempotent (`x-upsert`), but the
+ * `documents` row is not — a second run would file the same treatment record
+ * twice under one patient, which reads as two visits.
+ */
+const existing = new Set()
+for (let from = 0; ; from += 1000) {
+  const page = await fetch(
+    `${SUPABASE}/rest/v1/documents?select=storage_path&order=storage_path&offset=${from}&limit=1000`,
+    { headers: REST },
+  ).then((r) => r.json())
+  for (const row of page) existing.add(row.storage_path)
+  if (page.length < 1000) break
+}
+if (existing.size) console.log(`already stored: ${existing.size} — those are skipped`)
+
 let stored = 0
+let skipped = 0
 let failed = 0
-for (const item of planned) {
+for (const item of queue) {
   // Path shape is the storage policy's business: the first segment is the
   // clinic, and that is what row-level security checks.
   const path = `${clinicId}/${item.patientId}/${item.file}`
+  if (existing.has(path)) {
+    skipped++
+    continue
+  }
 
   const file = await fetch(downloadUrl(item.id), { redirect: "follow" })
   if (!file.ok) {
@@ -213,7 +243,7 @@ for (const item of planned) {
   }
 
   stored++
-  if (stored % 50 === 0) console.log(`stored ${stored}/${planned.length}`)
+  if (stored % 50 === 0) console.log(`stored ${stored}/${queue.length}`)
 }
 
-console.log(`stored ${stored}/${planned.length}, failed ${failed}`)
+console.log(`stored ${stored}, skipped ${skipped}, failed ${failed}, of ${queue.length}`)
