@@ -7,6 +7,7 @@ import {
   markTokenUsedRow,
   patientForRecipient,
 } from "@/features/automations/lib/server-store"
+import { checkWebhookSignature } from "@/features/automations/lib/webhook-signature"
 import type { AutomationAction, PatientResponseKind } from "@/types/automation"
 
 /**
@@ -117,29 +118,47 @@ function parseButtonTap(payload: unknown): ButtonTap | null {
 
 /**
  * Providers disagree about encoding: Meta posts JSON, Twilio posts a form.
- * Both end up as one object so the parsers above can stay shape-driven.
+ *
+ * The body is read once as text and parsed from there, because both signature
+ * schemes need the bytes exactly as they arrived — reading it twice is not
+ * possible, and re-serialising a parsed object would not reproduce them.
  */
-async function readPayload(request: NextRequest): Promise<unknown | null> {
-  const type = request.headers.get("content-type") ?? ""
+function parsePayload(
+  raw: string,
+  contentType: string,
+): { payload: unknown; formParams?: Record<string, string> } | null {
   try {
-    if (type.includes("application/json")) return await request.json()
-    if (type.includes("form")) {
-      return Object.fromEntries((await request.formData()).entries())
+    if (contentType.includes("form")) {
+      const params = Object.fromEntries(new URLSearchParams(raw).entries())
+      return { payload: params, formParams: params }
     }
-    // Unlabelled: try JSON, since that is what a hand-rolled test will send.
-    return JSON.parse(await request.text())
+    return { payload: JSON.parse(raw) }
   } catch {
     return null
   }
 }
 
 export async function POST(request: NextRequest) {
-  // TODO(provider): verify the signature — X-Hub-Signature-256 for Meta,
-  // X-Twilio-Signature for Twilio — before trusting anything in the body.
-  // Open until a provider is actually signing, and it must close before the
-  // webhook URL is given to one.
-  const payload = await readPayload(request)
-  if (!payload) return NextResponse.json({ error: "unreadable body" }, { status: 400 })
+  const rawBody = await request.text()
+  const parsed = parsePayload(rawBody, request.headers.get("content-type") ?? "")
+  if (!parsed) return NextResponse.json({ error: "unreadable body" }, { status: 400 })
+
+  // Before anything in the body is believed. This URL is public and the
+  // payload shape is documented, so without this anyone who finds the address
+  // can cancel a stranger's appointment or invent a message from them.
+  const signature = checkWebhookSignature({
+    request,
+    rawBody,
+    formParams: parsed.formParams,
+  })
+  if (!signature.ok) {
+    // The reason stays in the log. An unverified caller learns only that it
+    // was refused, not how the gate is configured.
+    console.error(`[automations/webhook] refused: ${signature.reason}`)
+    return NextResponse.json({ error: "unauthorized" }, { status: 403 })
+  }
+
+  const payload = parsed.payload
 
   // Words first. A button tap is a fact the system can act on; a message is a
   // person talking, and dropping it is the failure this route used to have.
