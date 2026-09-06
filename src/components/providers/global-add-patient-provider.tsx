@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 import { AddPatientDialog } from "@/features/patients/components/add-patient-dialog"
 
-import { usePatientExtras } from "@/components/providers/patient-extras-provider"
+import { useAddPatient } from "@/components/providers/patient-extras-provider"
 
 type GlobalAddPatientContextValue = {
   openGlobalAddPatient: () => void
@@ -22,7 +22,7 @@ export function useGlobalAddPatient(): GlobalAddPatientContextValue {
 
 /** Opens Add Patient from layout/header without navigating away. Must sit under PatientExtrasProvider. */
 export function GlobalAddPatientProvider({ children }: { children: ReactNode }) {
-  const { addPatient } = usePatientExtras()
+  const addPatient = useAddPatient()
   const [open, setOpen] = useState(false)
 
   const openGlobalAddPatient = useCallback(() => {
@@ -38,7 +38,9 @@ export function GlobalAddPatientProvider({ children }: { children: ReactNode }) 
         open={open}
         onOpenChange={setOpen}
         onSave={(patient) => {
-          addPatient(patient)
+          // Closing does not wait on the write: the dialog has said its piece,
+          // and the list refreshes itself when the row lands.
+          void addPatient(patient)
           setOpen(false)
         }}
       />

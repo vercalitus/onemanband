@@ -5,7 +5,7 @@ import { Activity, Search, UserPlus } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { useMergedPatients, usePatientExtras } from "@/components/providers/patient-extras-provider"
+import { useAddPatient, useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { Badge } from "@/components/ui/badge"
 import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-badge"
 import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
@@ -78,7 +78,7 @@ export default function PatientsPage() {
   const { locale, t, formatBalanceDisplay } = useLocale()
   const paymentClaims = usePaymentClaims()
   const merged = useMergedPatients()
-  const { addPatient } = usePatientExtras()
+  const addPatient = useAddPatient()
   const [query, setQuery] = useState("")
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
@@ -357,7 +357,11 @@ export default function PatientsPage() {
         </CardContent>
       </Card>
 
-      <AddPatientDialog open={addOpen} onOpenChange={setAddOpen} onSave={addPatient} />
+      <AddPatientDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onSave={(patient) => void addPatient(patient)}
+      />
 
       <ExportDialog
         open={exportOpen}
