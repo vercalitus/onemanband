@@ -101,19 +101,37 @@ export type PatientFetch =
   /** No database on this deploy, or it could not be read. */
   | { source: "unavailable"; reason: string }
 
+/**
+ * PostgREST caps a response at 1,000 rows and says nothing about it — the
+ * request succeeds, the list is simply short. A clinic with 1,178 patients was
+ * shown 1,000 of them and told it had 1,000, which is worse than an error
+ * because nothing looks wrong. So the rows are paged explicitly.
+ */
+const PAGE = 1000
+
 export async function fetchPatients(): Promise<PatientFetch> {
   const db = createSupabaseBrowserClient()
   if (!db) return { source: "unavailable", reason: "supabase not configured" }
 
-  const { data, error } = await db
-    .from("patients")
-    .select(
-      "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes",
-    )
-    .order("full_name", { ascending: true })
+  const patients: PatientSummary[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db
+      .from("patients")
+      .select(
+        "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes",
+      )
+      .order("full_name", { ascending: true })
+      .range(from, from + PAGE - 1)
 
-  if (error) return { source: "unavailable", reason: error.message }
-  return { source: "live", patients: (data as PatientRow[]).map(toSummary) }
+    if (error) return { source: "unavailable", reason: error.message }
+    const rows = data as PatientRow[]
+    patients.push(...rows.map(toSummary))
+    // A short page is the last page. Asking again after an exactly-full one
+    // costs a round trip and removes the guesswork.
+    if (rows.length < PAGE) break
+  }
+
+  return { source: "live", patients }
 }
 
 /**

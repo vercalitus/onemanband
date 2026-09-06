@@ -39,8 +39,17 @@ const patientsWithFutureVisit = new Set<string>([
 
 const TODAY = new Date()
 
-function daysSince(iso: string): number {
+/**
+ * Days since a visit, or null when there is no date to count from.
+ *
+ * An imported patient may have no visit on record at all, and arithmetic on an
+ * absent date produced "Invalid Date (NaN years ago)" on screen — which reads
+ * like a broken record rather than a missing one.
+ */
+function daysSince(iso: string): number | null {
+  if (!iso) return null
   const then = new Date(iso)
+  if (Number.isNaN(then.getTime())) return null
   const ms = TODAY.getTime() - then.getTime()
   return Math.floor(ms / (1000 * 60 * 60 * 24))
 }
@@ -61,9 +70,11 @@ function statusBadgeClasses(status: PatientSummary["status"]) {
 }
 
 function relativeVisitLabel(
-  days: number,
+  days: number | null,
   tr: (key: string, params?: Record<string, string | number | undefined>) => string,
 ) {
+  // No visit on record. Say nothing rather than guess how long ago it was.
+  if (days === null) return null
   if (days <= 0) return tr("patients.relative.today")
   if (days === 1) return tr("patients.relative.oneDayAgo")
   if (days < 30) return tr("patients.relative.daysAgo", { n: days })
@@ -89,12 +100,17 @@ export default function PatientsPage() {
     [merged, locale],
   )
 
-  const formatVisitDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(localeToBcp47(locale), {
+  /** An em dash where there is no visit on record — never "Invalid Date". */
+  const formatVisitDate = (iso: string) => {
+    if (!iso) return "—"
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return "—"
+    return d.toLocaleDateString(localeToBcp47(locale), {
       day: "numeric",
       month: "short",
       year: "numeric",
     })
+  }
 
   const filterButtons = useMemo(
     () => [
@@ -116,7 +132,9 @@ export default function PatientsPage() {
         days,
         balance,
         hasFuture,
-        isRelevant: days <= 365,
+        // Unknown is not recent. A patient with no visit on record does not
+        // belong in "still relevant" just because there is nothing to measure.
+        isRelevant: days !== null && days <= 365,
       }
     })
 
@@ -141,7 +159,10 @@ export default function PatientsPage() {
         const futureA = a.hasFuture ? 1 : 0
         const futureB = b.hasFuture ? 1 : 0
         if (futureA !== futureB) return futureB - futureA
-        return b.days < a.days ? 1 : -1
+        // Patients with no visit on record sort last, not first.
+        const dayA = a.days ?? Number.POSITIVE_INFINITY
+        const dayB = b.days ?? Number.POSITIVE_INFINITY
+        return dayB < dayA ? 1 : -1
       })
   }, [query, activeFilters, localizedPatients])
 
@@ -160,7 +181,7 @@ export default function PatientsPage() {
     balance,
   }: {
     patient: PatientSummary
-    days: number
+    days: number | null
     balance: number
   }) {
     const isSettled = balance === 0
@@ -180,7 +201,9 @@ export default function PatientsPage() {
         </div>
         <p className="mt-3 font-mono text-xs tabular-nums text-slate-700">
           {formatVisitDate(patient.lastVisit)}{" "}
-          <span className="font-sans text-slate-400">({relativeVisitLabel(days, t)})</span>
+          {relativeVisitLabel(days, t) && (
+            <span className="font-sans text-slate-400">({relativeVisitLabel(days, t)})</span>
+          )}
         </p>
         <div className="mt-2">
           {isSettled ? (
@@ -310,9 +333,11 @@ export default function PatientsPage() {
 
                         <TableCell className="py-5 align-middle">
                           <span className="font-mono text-sm tabular-nums text-slate-800">{formatVisitDate(patient.lastVisit)}</span>
-                          <span className="mt-1 block text-xs text-slate-400 sm:mt-0 sm:ms-2 sm:inline">
-                            ({relativeVisitLabel(days, t)})
-                          </span>
+                          {relativeVisitLabel(days, t) && (
+                            <span className="mt-1 block text-xs text-slate-400 sm:mt-0 sm:ms-2 sm:inline">
+                              ({relativeVisitLabel(days, t)})
+                            </span>
+                          )}
                         </TableCell>
 
                         <TableCell className="py-5 align-middle">
