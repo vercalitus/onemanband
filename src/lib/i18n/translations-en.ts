@@ -718,6 +718,7 @@ export const EN_MESSAGES: Record<string, string> = {
   "patientChart.docPreview.storedBody":
     "Opens in a new tab, with a link that expires after a minute.",
   "patientChart.docPreview.open": "Open",
+  "patientChart.docPreview.openTab": "Open in a new tab",
   "patientChart.docPreview.opening": "Opening…",
   "patientChart.docPreview.failed": "Could not open this file.",
 

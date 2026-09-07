@@ -21,6 +21,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
+/**
+ * Long enough for a large scan to finish loading into a preview pane, short
+ * enough that the link is worthless by the time anyone could pass it on. Some
+ * of these files are 35 MB, and a minute is not always enough to fetch one.
+ */
+const PREVIEW_TTL_SECONDS = 300
+
 const bodySchema = z.object({ documentId: z.string().uuid() })
 
 export async function POST(request: NextRequest) {
@@ -52,7 +59,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, reason: "not found" }, { status: 404 })
   }
 
-  const url = await createSignedMediaUrl(data.storage_path)
+  const url = await createSignedMediaUrl(data.storage_path, PREVIEW_TTL_SECONDS)
   if (!url) return NextResponse.json({ ok: false, reason: "not found" }, { status: 404 })
 
   return NextResponse.json({ ok: true, url })

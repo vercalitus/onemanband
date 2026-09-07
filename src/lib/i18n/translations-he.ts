@@ -712,6 +712,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "patientChart.docPreview.storedTitle": "נשמר באחסון מאובטח",
   "patientChart.docPreview.storedBody": "נפתח בלשונית חדשה, בקישור שפג תוך דקה.",
   "patientChart.docPreview.open": "פתיחה",
+  "patientChart.docPreview.openTab": "פתיחה בלשונית חדשה",
   "patientChart.docPreview.opening": "פותח…",
   "patientChart.docPreview.failed": "לא הצלחנו לפתוח את הקובץ.",
 

@@ -709,6 +709,7 @@ export const AR_MESSAGES: Record<string, string> = {
   "patientChart.docPreview.storedTitle": "محفوظ بأمان",
   "patientChart.docPreview.storedBody": "يُفتح في علامة تبويب جديدة برابط ينتهي خلال دقيقة.",
   "patientChart.docPreview.open": "فتح",
+  "patientChart.docPreview.openTab": "فتح في علامة تبويب جديدة",
   "patientChart.docPreview.opening": "جارٍ الفتح…",
   "patientChart.docPreview.failed": "تعذّر فتح الملف.",
   "patientChart.docPreview.storedAt": "يُخزَّن المستند في:",
