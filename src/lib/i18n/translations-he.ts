@@ -523,6 +523,18 @@ export const HE_MESSAGES: Record<string, string> = {
   "settings.integrations.calendarTitle": "סנכרון יומן",
   "settings.integrations.calendarDesc":
     "סנכרון ליומן אישי כדי שהחוסמים יעברו אתכם (מצב דמו בלבד).",
+  "settings.calendarFeed.title": "הקישור ליומן שלך",
+  "settings.calendarFeed.how":
+    "הוסיפו אותו ביומן Google — יומנים אחרים ← + ← הוספה באמצעות כתובת URL — והתורים יופיעו שם, "
+    + "עם ההתראות שלכם. הקישור לקריאה בלבד: תורים נקבעים כאן.",
+  "settings.calendarFeed.copy": "העתקה",
+  "settings.calendarFeed.copied": "הועתק",
+  "settings.calendarFeed.replace": "החלפת קישור",
+  "settings.calendarFeed.replaceConfirm":
+    "להחליף את הקישור? כל יומן שכבר מנוי יפסיק להתעדכן בשקט, ותצטרכו להוסיף את הקישור החדש מחדש.",
+  "settings.calendarFeed.warning":
+    "שמרו את הקישור פרטי — כל מי שמחזיק בו רואה את התורים ואת שמות המטופלים. אם הוא דלף, החליפו אותו.",
+
   "settings.integrations.googleTitle": "יומן Google",
   "settings.integrations.googleSub": "סימון זמני תור כ־\"עסוק\" ביומן",
   "settings.integrations.googleAria": "יומן Google",

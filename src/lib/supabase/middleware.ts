@@ -29,9 +29,11 @@ const PUBLIC_PATHS = [
   "/api/automations/tick",
   "/api/automations/webhook",
   "/api/automations/public",
-  // The calendar subscription. Google polls it with no session; the secret in
-  // the path is what stands in for one.
-  "/api/calendar",
+  // The calendar feed. Google polls it with no session; the secret in the path
+  // is what stands in for one. Its own prefix on purpose — the route that hands
+  // that secret out lives under `/api/calendar/` and must stay behind a login,
+  // and this list matches by prefix.
+  "/api/calendar-feed",
 ]
 
 const isPublicPath = (path: string) =>

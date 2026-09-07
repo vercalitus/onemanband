@@ -528,6 +528,18 @@ export const AR_MESSAGES: Record<string, string> = {
   "settings.integrations.calendarTitle": "مزامنة التقويم",
   "settings.integrations.calendarDesc":
     "زامن التقويمات الشخصية لتنتقل حجوزات الوقت معك (تبديلات العرض التوضيحي فقط).",
+  "settings.calendarFeed.title": "رابط التقويم الخاص بك",
+  "settings.calendarFeed.how":
+    "أضفه إلى تقويم Google — تقويمات أخرى ← + ← إضافة عبر عنوان URL — وستظهر مواعيدك هناك مع تنبيهاتك. "
+    + "الرابط للقراءة فقط: المواعيد تُحدَّد من هنا.",
+  "settings.calendarFeed.copy": "نسخ",
+  "settings.calendarFeed.copied": "تم النسخ",
+  "settings.calendarFeed.replace": "استبدال الرابط",
+  "settings.calendarFeed.replaceConfirm":
+    "استبدال الرابط؟ أي تقويم مشترك حالياً سيتوقف عن التحديث بصمت، وستحتاج إلى إضافة الرابط الجديد.",
+  "settings.calendarFeed.warning":
+    "احتفظ بالرابط خاصاً — من يملكه يرى مواعيدك وأسماء المرضى. استبدله إذا تسرّب.",
+
   "settings.integrations.googleTitle": "Google Calendar",
   "settings.integrations.googleSub": "إرسال المواعيد ككتل مشغولة",
   "settings.integrations.googleAria": "Google Calendar",

@@ -535,6 +535,18 @@ export const EN_MESSAGES: Record<string, string> = {
   "settings.integrations.calendarTitle": "Calendar sync",
   "settings.integrations.calendarDesc":
     "Sync personal calendars so blocks travel with you (demo toggles only).",
+  "settings.calendarFeed.title": "Your calendar link",
+  "settings.calendarFeed.how":
+    "Add this to Google Calendar — Other calendars → + → From URL — and your appointments appear there, "
+    + "with your own reminders. It is read-only: appointments are still made here.",
+  "settings.calendarFeed.copy": "Copy",
+  "settings.calendarFeed.copied": "Copied",
+  "settings.calendarFeed.replace": "Replace link",
+  "settings.calendarFeed.replaceConfirm":
+    "Replace the link? Any calendar already subscribed will quietly stop updating, and you will need to add the new link again.",
+  "settings.calendarFeed.warning":
+    "Keep this link private — anyone with it can see your appointments and patient names. Replace it if it gets out.",
+
   "settings.integrations.googleTitle": "Google Calendar",
   "settings.integrations.googleSub": "Push appointments as busy blocks",
   "settings.integrations.googleAria": "Google Calendar",

@@ -1,13 +1,19 @@
 import "server-only"
 
+import { randomBytes } from "node:crypto"
+
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 
 /**
- * The clinic's diary rendered as iCalendar text.
+ * The clinic's diary rendered as iCalendar text, and the secret that addresses
+ * it.
  *
- * Read with the service role because the caller is Google, which has no
- * session — the route above proves the request is entitled to this before it
- * gets here.
+ * The token belongs to a clinic rather than to the deploy. One token per
+ * practitioner is what makes this work for more than one of them: the feed
+ * resolves the token to a clinic and returns only that clinic's appointments,
+ * so a link can never show someone else's day. It also means a leaked link is
+ * fixed by the person holding it, from Settings, rather than by editing a
+ * deploy.
  *
  * Times go out as UTC instants (`...Z`) rather than local wall-clock with a
  * timezone reference. It is the one form every calendar client agrees on, and
@@ -23,14 +29,63 @@ interface FeedRow {
   start_time: string
   end_time: string
   status: string
-  appointment_type: string
   notes: string | null
   updated_at: string | null
   patients?: { full_name: string } | null
 }
 
+/* ---------------------------------------------------------------- token --- */
+
+const newToken = () => randomBytes(24).toString("base64url")
+
+/** The clinic a subscription link belongs to, or null if it belongs to none. */
+export async function clinicForFeedToken(token: string): Promise<string | null> {
+  const db = createSupabaseAdminClient()
+  if (!db || token.length < 24) return null
+  const { data } = await db
+    .from("clinics")
+    .select("id")
+    .eq("calendar_feed_token", token)
+    .maybeSingle()
+  return data?.id ?? null
+}
+
+/**
+ * This clinic's subscription token, minted on first use.
+ *
+ * `rotate` replaces it, which is what "the link leaked" looks like from the
+ * inside: the old URL stops resolving to anything the moment the new one
+ * exists, because the lookup is by exact value.
+ */
+export async function feedTokenForClinic(
+  clinicId: string,
+  { rotate = false }: { rotate?: boolean } = {},
+): Promise<string | null> {
+  const db = createSupabaseAdminClient()
+  if (!db) return null
+
+  if (!rotate) {
+    const { data } = await db
+      .from("clinics")
+      .select("calendar_feed_token")
+      .eq("id", clinicId)
+      .maybeSingle()
+    if (data?.calendar_feed_token) return data.calendar_feed_token
+  }
+
+  const token = newToken()
+  const { error } = await db
+    .from("clinics")
+    .update({ calendar_feed_token: token })
+    .eq("id", clinicId)
+  return error ? null : token
+}
+
+/* ------------------------------------------------------------ ical text --- */
+
 /** `YYYYMMDDTHHMMSSZ`, which is what iCalendar wants. */
-const stamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
+const stamp = (iso: string) =>
+  new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
 
 /**
  * Escape per RFC 5545: commas, semicolons and backslashes are separators in
@@ -59,7 +114,7 @@ function fold(line: string): string {
   return out.join("\r\n")
 }
 
-export async function fetchAppointmentsForFeed(): Promise<string> {
+export async function buildFeedForClinic(clinicId: string): Promise<string> {
   const db = createSupabaseAdminClient()
   const now = new Date()
 
@@ -82,7 +137,9 @@ export async function fetchAppointmentsForFeed(): Promise<string> {
 
     const { data } = await db
       .from("appointments")
-      .select("id, start_time, end_time, status, appointment_type, notes, updated_at, patients(full_name)")
+      .select("id, start_time, end_time, status, notes, updated_at, patients(full_name)")
+      // The whole point of the token belonging to a clinic.
+      .eq("clinic_id", clinicId)
       .gte("start_time", from)
       .lte("start_time", to)
       .order("start_time", { ascending: true })

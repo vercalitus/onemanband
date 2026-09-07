@@ -7,6 +7,7 @@ import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
+import { CalendarSubscription } from "@/features/settings/components/calendar-subscription"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { cn } from "@/lib/utils"
 import type { InvoiceProvider } from "@/types/domain"
@@ -185,21 +186,13 @@ export function IntegrationsTab({
           </div>
         </CardHeader>
         <CardContent className={elevatedCardBodyClass}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* The Google switch that used to sit here connected nothing — it
+              flipped a stored boolean no code read. A subscription link that
+              works replaces it. */}
+          <CalendarSubscription />
+
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <Switch
-                checked={integrations.googleCalendarConnected}
-                aria-label={t("settings.integrations.googleAria")}
-                onCheckedChange={(googleCalendarConnected) =>
-                  onChange({ ...settings, integrations: { ...integrations, googleCalendarConnected } })
-                }
-              />
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{t("settings.integrations.googleTitle")}</p>
-                <p className="text-xs text-slate-500">{t("settings.integrations.googleSub")}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 sm:border-s border-slate-200 sm:ps-8">
               <Switch
                 checked={integrations.outlookConnected}
                 aria-label={t("settings.integrations.outlookAria")}
