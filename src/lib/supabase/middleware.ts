@@ -29,6 +29,9 @@ const PUBLIC_PATHS = [
   "/api/automations/tick",
   "/api/automations/webhook",
   "/api/automations/public",
+  // The calendar subscription. Google polls it with no session; the secret in
+  // the path is what stands in for one.
+  "/api/calendar",
 ]
 
 const isPublicPath = (path: string) =>

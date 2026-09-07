@@ -38,6 +38,10 @@ const serverEnvSchema = clientEnvSchema.extend({
   // Until a domain is verified with Resend, the only usable sender is
   // `onboarding@resend.dev`, and it can only reach the account owner.
   RESEND_FROM: z.string().optional(),
+  // The secret in the calendar subscription URL. Google fetches that feed with
+  // no session, so this is the whole authorisation — and anyone holding the URL
+  // can see who is booked and when. Changing it invalidates the old link.
+  CALENDAR_FEED_TOKEN: z.string().min(24).optional(),
 })
 
 /**
@@ -74,6 +78,7 @@ export const serverEnv = serverEnvSchema.parse({
   TWILIO_SMS_FROM: unset(process.env.TWILIO_SMS_FROM),
   RESEND_API_KEY: unset(process.env.RESEND_API_KEY),
   RESEND_FROM: unset(process.env.RESEND_FROM),
+  CALENDAR_FEED_TOKEN: unset(process.env.CALENDAR_FEED_TOKEN),
 })
 
 /**
