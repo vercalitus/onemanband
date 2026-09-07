@@ -20,6 +20,7 @@ import type {
   BodyMapView,
 } from "@/types/domain"
 import { renderStrokesToDataUrl, type Stroke } from "@/features/patients/lib/canvas-strokes"
+import { fetchPatientDocuments } from "@/features/patients/lib/document-repository"
 import {
   PATIENT_EXTRAS_EVENT,
   readAddedFinances,
@@ -256,12 +257,34 @@ export function usePatientCockpit(patientId: string) {
       .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
   }, [patientId, addedTreatments, deletedTreatmentIds, locale])
 
+  /**
+   * The patient's real documents, when this clinic has any.
+   *
+   * Null while unknown or unavailable, which is what keeps the demo dataset on
+   * screen for a deploy with no database — and what stops a failed request from
+   * making a patient's file look empty.
+   */
+  const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[] | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void fetchPatientDocuments(patientId).then((docs) => {
+      if (!cancelled) setLiveDocuments(docs)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [patientId])
+
   const documentRecords: DocumentRecord[] = useMemo(() => {
+    // A real record is never localised: its name is the file's name.
+    if (liveDocuments) {
+      return liveDocuments.filter((r) => !deletedDocumentIds.includes(r.id))
+    }
     const all = documentsByPatient[patientId] ?? []
     return all
       .filter((r) => !deletedDocumentIds.includes(r.id))
       .map((r) => localizeDocumentRecord(r, locale))
-  }, [patientId, deletedDocumentIds, locale])
+  }, [patientId, deletedDocumentIds, locale, liveDocuments])
 
   const financeRecords: FinanceRecord[] = useMemo(() => {
     // Auto-issued invoices first — they are the most recent by construction.

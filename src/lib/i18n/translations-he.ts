@@ -709,6 +709,11 @@ export const HE_MESSAGES: Record<string, string> = {
   "patientChart.docPreview.body":
     "חיבור לאחסון בענן (למשל Supabase Storage) יאפשר תצוגה מובנית של הקבצים.",
   "patientChart.docPreview.storedAt": "המסמך נשמר בנתיב:",
+  "patientChart.docPreview.storedTitle": "נשמר באחסון מאובטח",
+  "patientChart.docPreview.storedBody": "נפתח בלשונית חדשה, בקישור שפג תוך דקה.",
+  "patientChart.docPreview.open": "פתיחה",
+  "patientChart.docPreview.opening": "פותח…",
+  "patientChart.docPreview.failed": "לא הצלחנו לפתוח את הקובץ.",
 
   "common.closePanel": "סגירת לוח",
   "common.sidePanelDescription": "לוח צד",

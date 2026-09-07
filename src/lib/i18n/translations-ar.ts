@@ -706,6 +706,11 @@ export const AR_MESSAGES: Record<string, string> = {
   "patientChart.docPreview.title": "معاينة المستند",
   "patientChart.docPreview.body":
     "اربط التخزين السحابي (مثل Supabase Storage) لتمكين معاينة الملفات داخل الواجهة.",
+  "patientChart.docPreview.storedTitle": "محفوظ بأمان",
+  "patientChart.docPreview.storedBody": "يُفتح في علامة تبويب جديدة برابط ينتهي خلال دقيقة.",
+  "patientChart.docPreview.open": "فتح",
+  "patientChart.docPreview.opening": "جارٍ الفتح…",
+  "patientChart.docPreview.failed": "تعذّر فتح الملف.",
   "patientChart.docPreview.storedAt": "يُخزَّن المستند في:",
 
   /** Shared chrome */

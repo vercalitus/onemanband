@@ -1,8 +1,10 @@
 "use client"
 
 import { FileImage, FileScan, FileText, X } from "lucide-react"
+import { useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { openDocument } from "@/features/patients/lib/document-repository"
 import type { DocumentRecord } from "@/types/domain"
 
 const DOC_ICONS: Record<string, React.ElementType> = {
@@ -39,6 +41,29 @@ interface Props {
 
 export function DocumentPreviewModal({ doc, onClose }: Props) {
   const { t, localeTag } = useLocale()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  /**
+   * Ask the server for a link and follow it.
+   *
+   * The link is minted per click and expires in about a minute, so it is not
+   * kept anywhere — not in state, not in the DOM. A patient record that stayed
+   * openable from a stale tab would be a link that outlives the session that
+   * earned it.
+   */
+  const open = async () => {
+    if (!doc?.storagePath) return
+    setBusy(true)
+    setError(null)
+    const url = await openDocument(doc.id)
+    setBusy(false)
+    if (!url) {
+      setError(t("patientChart.docPreview.failed"))
+      return
+    }
+    window.open(url, "_blank", "noopener,noreferrer")
+  }
 
   if (!doc) return null
 
@@ -83,13 +108,29 @@ export function DocumentPreviewModal({ doc, onClose }: Props) {
           <div className="flex size-16 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50">
             <Icon className="size-8 text-slate-300" aria-hidden />
           </div>
-          <p className="text-sm font-medium text-slate-500">{t("patientChart.docPreview.title")}</p>
-          <p className="max-w-xs text-xs leading-relaxed text-slate-400">
-            {t("patientChart.docPreview.body")}{" "}
-            <span className="font-mono text-slate-500">
-              {t("patientChart.docPreview.storedAt")} {doc.source}
-            </span>
-          </p>
+          {doc.storagePath ? (
+            <>
+              <p className="text-sm font-medium text-slate-600">
+                {t("patientChart.docPreview.storedTitle")}
+              </p>
+              <p className="max-w-xs text-xs leading-relaxed text-slate-400">
+                {t("patientChart.docPreview.storedBody")}
+              </p>
+              {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-slate-500">
+                {t("patientChart.docPreview.title")}
+              </p>
+              <p className="max-w-xs text-xs leading-relaxed text-slate-400">
+                {t("patientChart.docPreview.body")}{" "}
+                <span className="font-mono text-slate-500">
+                  {t("patientChart.docPreview.storedAt")} {doc.source}
+                </span>
+              </p>
+            </>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
@@ -102,9 +143,11 @@ export function DocumentPreviewModal({ doc, onClose }: Props) {
           </button>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+            disabled={!doc.storagePath || busy}
+            onClick={open}
+            className="rounded-lg border border-slate-200 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {t("common.download")}
+            {busy ? t("patientChart.docPreview.opening") : t("patientChart.docPreview.open")}
           </button>
         </div>
       </div>

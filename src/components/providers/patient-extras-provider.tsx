@@ -19,6 +19,15 @@ type PatientExtrasContextValue = {
   addPatient: (patient: PatientSummary) => void
   /** Patients read from the database, or null while unknown / unavailable. */
   live: PatientSummary[] | null
+  /**
+   * True until the first read has resolved.
+   *
+   * Distinct from `live === null`, which cannot tell "still asking" from "no
+   * database". A page that decides a patient does not exist needs the
+   * difference: without it, `/patients/<uuid>` renders 404 in the moment before
+   * the real list arrives, and a real record looks deleted.
+   */
+  loading: boolean
   refreshLive: () => void
 }
 
@@ -41,18 +50,21 @@ const PatientExtrasContext = createContext<PatientExtrasContextValue | null>(nul
 export function PatientExtrasProvider({ children }: { children: ReactNode }) {
   const [extras, setExtras] = useState<PatientSummary[]>([])
   const [live, setLive] = useState<PatientSummary[] | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const refreshLive = useCallback(() => {
-    void fetchPatients().then((result) => {
-      if (result.source === "live") {
-        setLive(result.patients)
-        return
-      }
-      setLive(null)
-      if (process.env.NODE_ENV === "development") {
-        console.warn(`[patients] falling back to mock data: ${result.reason}`)
-      }
-    })
+    void fetchPatients()
+      .then((result) => {
+        if (result.source === "live") {
+          setLive(result.patients)
+          return
+        }
+        setLive(null)
+        if (process.env.NODE_ENV === "development") {
+          console.warn(`[patients] falling back to mock data: ${result.reason}`)
+        }
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   // After mount only: this reads a session, which does not exist during the
@@ -64,8 +76,8 @@ export function PatientExtrasProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ extras, addPatient, live, refreshLive }),
-    [extras, addPatient, live, refreshLive],
+    () => ({ extras, addPatient, live, loading, refreshLive }),
+    [extras, addPatient, live, loading, refreshLive],
   )
   return <PatientExtrasContext.Provider value={value}>{children}</PatientExtrasContext.Provider>
 }

@@ -5,7 +5,10 @@ import { useState, useCallback, useMemo } from "react"
 import { Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { useMergedPatients } from "@/components/providers/patient-extras-provider"
+import {
+  useMergedPatients,
+  usePatientExtras,
+} from "@/components/providers/patient-extras-provider"
 import { localizePatient } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 import { BillingToast } from "@/features/finances/components/billing-toast"
@@ -27,13 +30,26 @@ export function PatientDetailClient() {
     typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
   const merged = useMergedPatients()
+  const { loading: patientsLoading } = usePatientExtras()
   const patient = merged.find((entry) => entry.id === id)
   const displayPatient = useMemo(
     () => (patient ? localizePatient(patient, locale) : patient),
     [patient, locale],
   )
 
-  if (!patient || !displayPatient || !id) notFound()
+  /*
+   * Wait before declaring a patient missing.
+   *
+   * The list arrives after mount, so for a moment `merged` holds only the demo
+   * dataset — and every real patient looked like a 404 in that moment, which
+   * reads as a deleted record rather than a slow one.
+   *
+   * `notFound()` never returns, so the hooks below still run in the same order
+   * on every render that gets past it. A plain early return here would not, and
+   * that is what the rules-of-hooks lint is protecting.
+   */
+  const stillLoadingPatients = patientsLoading && !patient
+  if (!stillLoadingPatients && (!patient || !displayPatient || !id)) notFound()
 
   const {
     hydrated,
@@ -106,6 +122,12 @@ export function PatientDetailClient() {
         {t("patientChart.loading")}
       </div>
     )
+  }
+
+  // `patient` is narrowed here too: past this point `notFound()` has already
+  // run for anything genuinely missing, and everything below needs both.
+  if (stillLoadingPatients || !patient || !displayPatient) {
+    return <div className="py-16 text-center text-sm text-slate-400">{t("public.loading")}</div>
   }
 
   const slug = displayPatient.fullName.replace(/\s+/g, "-").toLowerCase()

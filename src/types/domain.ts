@@ -129,6 +129,13 @@ export interface DocumentRecord {
   type: DocumentType
   uploadedAt: string
   source: string
+  /**
+   * Where the file actually is, for records backed by storage rather than the
+   * demo dataset. Its presence is what makes a document openable — a mock
+   * record has nothing behind it. The path is never turned into a URL in the
+   * browser: the bucket is private and only the server may sign one.
+   */
+  storagePath?: string
 }
 
 export interface FinanceRecord {

@@ -714,6 +714,12 @@ export const EN_MESSAGES: Record<string, string> = {
   "patientChart.docPreview.body":
     "Connect cloud storage (Supabase Storage) to enable inline file previews.",
   "patientChart.docPreview.storedAt": "The document is stored at:",
+  "patientChart.docPreview.storedTitle": "Stored securely",
+  "patientChart.docPreview.storedBody":
+    "Opens in a new tab, with a link that expires after a minute.",
+  "patientChart.docPreview.open": "Open",
+  "patientChart.docPreview.opening": "Opening…",
+  "patientChart.docPreview.failed": "Could not open this file.",
 
   /** Shared chrome */
   "common.closePanel": "Close panel",
