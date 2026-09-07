@@ -6,6 +6,7 @@ import { CheckCircle2, Loader2, ShieldAlert, ShieldCheck, Smartphone } from "luc
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ChangePasswordCard } from "@/features/settings/components/change-password-card"
 import { isSupabaseConfigured } from "@/lib/env"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
@@ -120,6 +121,12 @@ export function SecurityTab() {
 
   return (
     <div className="max-w-2xl space-y-5">
+      {/* Password first: a provisioned account arrives with a password someone
+          else chose, and making it his own is the first thing to do here. */}
+      <ChangePasswordCard />
+
+      <hr className="border-slate-200" />
+
       <div className="flex flex-col gap-1">
         <h2 className="font-heading text-lg font-semibold text-slate-900">{t("security.mfa.title")}</h2>
         <p className="text-sm leading-relaxed text-slate-600">{t("security.mfa.subtitle")}</p>
