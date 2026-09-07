@@ -9,7 +9,7 @@ import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-
 import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
 import { cn } from "@/lib/utils"
 import type { BodyMapView, PatientSummary, TreatmentMark } from "@/types/domain"
-import type { PatientContactOverrides } from "../lib/use-patient-cockpit"
+import type { ClinicalStatus, PatientContactOverrides } from "../lib/use-patient-cockpit"
 import { BodyMapContent } from "./body-map-card"
 
 const STATUS_BADGE: Record<PatientSummary["status"], string> = {
@@ -23,7 +23,7 @@ interface Props {
   overrides: PatientContactOverrides
   totalSessionsDone: number
   planTarget: number
-  clinicalStatus: string
+  clinicalStatus: ClinicalStatus
   onClinicalStatusChange: (v: string) => void
   onSaveOverrides: (o: PatientContactOverrides) => void
   treatmentMarks: TreatmentMark[]
@@ -48,7 +48,7 @@ export function PatientSmartHeader({
   onUpdateTreatmentMarkNote,
   onRemoveTreatmentMark,
 }: Props) {
-  const { t } = useLocale()
+  const { t, localeTag } = useLocale()
   const paymentClaimed = usePaymentClaims().patients.has(patient.id)
   const [mapOpen, setMapOpen] = useState(false)
   const clampedDone = Math.min(totalSessionsDone, planTarget)
@@ -79,12 +79,31 @@ export function PatientSmartHeader({
   }
 
   const [editingStatus, setEditingStatus] = useState(false)
-  const [statusDraft, setStatusDraft] = useState(clinicalStatus)
+  const [statusDraft, setStatusDraft] = useState(clinicalStatus.manualText)
 
+  /**
+   * An empty box clears the status rather than restoring what was there. The
+   * field is a claim about a patient, so a practitioner who deletes it means it
+   * — and with nothing written the chart falls back to the last visit, which is
+   * a truthful line rather than an old one kept alive by the editor.
+   */
   const commitStatus = () => {
-    onClinicalStatusChange(statusDraft.trim() || clinicalStatus)
+    onClinicalStatusChange(statusDraft.trim())
     setEditingStatus(false)
   }
+
+  const openStatusEditor = () => {
+    setStatusDraft(clinicalStatus.manualText)
+    setEditingStatus(true)
+  }
+
+  const statusDate = clinicalStatus.at
+    ? new Date(clinicalStatus.at).toLocaleDateString(localeTag, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_2px_12px_-4px_rgba(15,23,42,0.08)]">
@@ -243,9 +262,13 @@ export function PatientSmartHeader({
 
           <div className="hidden h-8 w-px bg-slate-100 sm:block" aria-hidden />
 
-          {/* Clinical status */}
-          <div className="flex items-center gap-2">
-            <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+          {/* Clinical status.
+              Always shown with where it came from and when. A status line with
+              no date reads as current no matter how old it is, and that is what
+              made the hard-coded demo sentence dangerous: it looked like a
+              finding about this person. */}
+          <div className="flex min-w-0 items-start gap-2">
+            <p className="mt-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
               {t("patientChart.clinicalStatus")}
             </p>
             {editingStatus ? (
@@ -256,7 +279,7 @@ export function PatientSmartHeader({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") commitStatus()
                   if (e.key === "Escape") {
-                    setStatusDraft(clinicalStatus)
+                    setStatusDraft(clinicalStatus.manualText)
                     setEditingStatus(false)
                   }
                 }}
@@ -267,14 +290,26 @@ export function PatientSmartHeader({
             ) : (
               <button
                 type="button"
-                onClick={() => {
-                  setStatusDraft(clinicalStatus)
-                  setEditingStatus(true)
-                }}
+                onClick={openStatusEditor}
                 title={t("patientChart.editStatusTitle")}
-                className="text-start text-sm text-slate-600 underline-offset-2 hover:text-sky-700 hover:underline"
+                className="min-w-0 text-start underline-offset-2 hover:underline"
               >
-                {clinicalStatus}
+                {clinicalStatus.source === "none" ? (
+                  <span className="text-sm italic text-slate-400">
+                    {t("patientChart.clinicalStatusEmpty")}
+                  </span>
+                ) : (
+                  <span dir="auto" className="block text-sm text-slate-600">
+                    {clinicalStatus.text}
+                  </span>
+                )}
+                {statusDate && (
+                  <span className="mt-0.5 block text-[11px] text-slate-400">
+                    {clinicalStatus.source === "treatment"
+                      ? t("patientChart.clinicalStatusFromVisit", { date: statusDate })
+                      : t("patientChart.clinicalStatusWritten", { date: statusDate })}
+                  </span>
+                )}
               </button>
             )}
           </div>

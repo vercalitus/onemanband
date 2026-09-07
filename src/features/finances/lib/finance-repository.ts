@@ -159,6 +159,30 @@ export async function fetchUninvoicedVisits(
     })
 }
 
+/**
+ * What one patient still owes, in shekels.
+ *
+ * Asked by the chart, which needs a number and not a ledger. Null when there is
+ * no database to ask — a chart that cannot reach the ledger must not claim the
+ * patient owes nothing.
+ */
+export async function fetchPatientOutstanding(patientId: string): Promise<number | null> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return null
+
+  const { data, error } = await db
+    .from("finances")
+    .select("amount_cents, payment_status, invoice_status")
+    .eq("patient_id", patientId)
+    .neq("payment_status", "paid")
+    .neq("payment_status", "refunded")
+    .neq("invoice_status", "void")
+
+  if (error) return null
+  const rows = data as { amount_cents: number }[]
+  return toShekels(rows.reduce((sum, row) => sum + row.amount_cents, 0))
+}
+
 async function currentClinicId(): Promise<string | null> {
   const db = createSupabaseBrowserClient()
   if (!db) return null

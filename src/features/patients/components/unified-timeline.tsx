@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, FileText, Mic, Pencil, Receipt, Trash2 } from "
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { localizeCompletedSessionTitle } from "@/lib/i18n/localized-seed"
+import { signAttachment } from "@/features/patients/lib/treatment-repository"
 import { getAudio } from "@/lib/audio-store"
 import { cn } from "@/lib/utils"
 import type { DocumentRecord, FinanceRecord, TreatmentRecord } from "@/types/domain"
@@ -13,9 +14,26 @@ import type { CompletedSession } from "../lib/use-patient-cockpit"
 
 /** Collapsed-by-default toggle that reveals the handwriting snapshot on demand,
  *  keeping the timeline light instead of rendering a full-width PNG per session. */
-function PenNoteCollapsible({ src }: { src: string }) {
+function PenNoteCollapsible({ src, path }: { src?: string | null; path?: string }) {
   const { t } = useLocale()
   const [open, setOpen] = useState(false)
+  const [signed, setSigned] = useState<string | null>(null)
+
+  // Signed only when the snapshot is actually asked for. A chart with twenty
+  // sessions would otherwise mint twenty links into a patient's record to
+  // render nothing.
+  useEffect(() => {
+    if (!open || !path || signed) return
+    let cancelled = false
+    void signAttachment(path).then((url) => {
+      if (!cancelled) setSigned(url)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open, path, signed])
+
+  const imageSrc = src ?? signed
   return (
     <div className="rounded-lg border border-slate-100 bg-slate-50/60">
       <button
@@ -31,11 +49,11 @@ function PenNoteCollapsible({ src }: { src: string }) {
           {open ? <ChevronUp className="size-3.5" aria-hidden /> : <ChevronDown className="size-3.5" aria-hidden />}
         </span>
       </button>
-      {open && (
+      {open && imageSrc && (
         <div className="border-t border-slate-100 p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={src}
+            src={imageSrc}
             alt={t("patientChart.timeline.snapshotAlt")}
             className="w-full rounded-md border border-slate-100 object-contain"
           />
@@ -45,24 +63,39 @@ function PenNoteCollapsible({ src }: { src: string }) {
   )
 }
 
-/** Loads a session's voice memo from IndexedDB and renders a native player. */
-function TimelineAudio({ audioKey }: { audioKey: string }) {
+/**
+ * A session's voice memo.
+ *
+ * Two places it can be. A saved session keeps it in the patient's private
+ * folder and this signs a short-lived link for it; a session recorded before
+ * this page reached the database is still in IndexedDB on that machine, and is
+ * played from there so nothing that was recorded stops being audible.
+ */
+function TimelineAudio({ audioKey, audioPath }: { audioKey?: string | null; audioPath?: string }) {
   const { t } = useLocale()
   const [url, setUrl] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     let objectUrl: string | null = null
-    getAudio(audioKey).then((blob) => {
-      if (cancelled || !blob) return
-      objectUrl = URL.createObjectURL(blob)
-      setUrl(objectUrl)
-    })
+
+    if (audioPath) {
+      void signAttachment(audioPath).then((signed) => {
+        if (!cancelled) setUrl(signed)
+      })
+    } else if (audioKey) {
+      void getAudio(audioKey).then((blob) => {
+        if (cancelled || !blob) return
+        objectUrl = URL.createObjectURL(blob)
+        setUrl(objectUrl)
+      })
+    }
+
     return () => {
       cancelled = true
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [audioKey])
+  }, [audioKey, audioPath])
 
   if (!url) return null
   return (
@@ -114,6 +147,9 @@ interface SessionEntry {
   note: string
   canvasDataUrl?: string | null
   audioKey?: string | null
+  /** Private-bucket paths, for a session that was saved to the database. */
+  canvasPath?: string
+  audioPath?: string
   relatedDocs: DocumentRecord[]
   relatedFinances: FinanceRecord[]
 }
@@ -164,6 +200,13 @@ interface Props {
   financeRecords: FinanceRecord[]
   completedSessions: CompletedSession[]
   planTarget: number
+  /**
+   * True once treatment records come from Postgres, where the schema refuses to
+   * change or remove one. The delete control is hidden for them rather than
+   * shown and then failing: a treatment record that can be quietly unwritten is
+   * not a record, and a correction belongs in a new entry that says so.
+   */
+  treatmentsAreLive: boolean
   onDeleteTreatment: (id: string) => void
   onDeleteCompletedSession: (id: string) => void
 }
@@ -174,6 +217,7 @@ export function UnifiedTimeline({
   financeRecords,
   completedSessions,
   planTarget,
+  treatmentsAreLive,
   onDeleteTreatment,
   onDeleteCompletedSession,
 }: Props) {
@@ -203,6 +247,8 @@ export function UnifiedTimeline({
       note: t.note,
       canvasDataUrl: null,
       audioKey: null,
+      canvasPath: t.canvasPath,
+      audioPath: t.audioPath,
       relatedDocs: [] as DocumentRecord[],
       relatedFinances: [] as FinanceRecord[],
     })),
@@ -275,8 +321,10 @@ export function UnifiedTimeline({
             entry.note.search(/\.\s/) !== -1 ||
             entry.relatedDocs.length > 0 ||
             entry.relatedFinances.length > 0 ||
-            !!entry.audioKey
+            !!entry.audioKey ||
+            !!entry.audioPath
           const confirming = confirmDeleteId === entry.id
+          const deletable = !(entry.kind === "treatment" && treatmentsAreLive)
 
           return (
             <li key={entry.id} className="group relative flex gap-4 pb-5">
@@ -318,6 +366,7 @@ export function UnifiedTimeline({
                   {/* Delete — pushed to the far right, separated from the expand chevron */}
                   <button
                     type="button"
+                    hidden={!deletable}
                     onClick={() => handleDelete(entry)}
                     className={cn(
                       "ms-auto flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
@@ -377,12 +426,12 @@ export function UnifiedTimeline({
 
                   {/* Pen note — always at the entry level, one press to open the
                       drawing (it's the primary artifact from the session). */}
-                  {entry.canvasDataUrl && (
+                  {(entry.canvasDataUrl || entry.canvasPath) && (
                     <div
                       className="border-t border-slate-50 px-4 py-2"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <PenNoteCollapsible src={entry.canvasDataUrl} />
+                      <PenNoteCollapsible src={entry.canvasDataUrl} path={entry.canvasPath} />
                     </div>
                   )}
 
@@ -393,7 +442,9 @@ export function UnifiedTimeline({
                       onClick={(e) => e.stopPropagation()}
                     >
                       {/* Voice memo */}
-                      {entry.audioKey && <TimelineAudio audioKey={entry.audioKey} />}
+                      {(entry.audioKey || entry.audioPath) && (
+                        <TimelineAudio audioKey={entry.audioKey} audioPath={entry.audioPath} />
+                      )}
 
                       {/* Related docs + invoices */}
                       {(entry.relatedDocs.length > 0 || entry.relatedFinances.length > 0) && (

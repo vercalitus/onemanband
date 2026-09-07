@@ -67,6 +67,29 @@ export function renderStrokesToDataUrl(
   width = CANVAS_WIDTH,
   height = CANVAS_HEIGHT,
 ): string | null {
+  return renderStrokes(strokes, width, height)?.toDataURL("image/png") ?? null
+}
+
+/**
+ * The same snapshot as a PNG file, for uploading to the patient's private
+ * folder. A data-URL is fine to hold in a browser and wasteful to send: base64
+ * costs a third more bytes, and storage wants a file either way.
+ */
+export function renderStrokesToBlob(
+  strokes: Stroke[],
+  width = CANVAS_WIDTH,
+  height = CANVAS_HEIGHT,
+): Promise<Blob | null> {
+  const canvas = renderStrokes(strokes, width, height)
+  if (!canvas) return Promise.resolve(null)
+  return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/png"))
+}
+
+function renderStrokes(
+  strokes: Stroke[],
+  width: number,
+  height: number,
+): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null
   if (!strokes.some((s) => s.length >= 2)) return null
 
@@ -79,5 +102,5 @@ export function renderStrokesToDataUrl(
   ctx.fillStyle = "#ffffff"
   ctx.fillRect(0, 0, width, height)
   drawStrokes(ctx, strokes)
-  return canvas.toDataURL("image/png")
+  return canvas
 }

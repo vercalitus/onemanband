@@ -1,14 +1,12 @@
 "use client"
 
 import { Calendar, CheckCircle2, Receipt } from "lucide-react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { cn } from "@/lib/utils"
-import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
-import { todaySchedule } from "@/lib/mock-data"
-import type { AppointmentType, DocumentRecord, ScheduleItem } from "@/types/domain"
+import { toISODate } from "@/lib/date-helpers"
+import type { AppointmentType, DocumentRecord } from "@/types/domain"
 import { PatientLibrary } from "./patient-library"
 
 interface Props {
@@ -17,9 +15,8 @@ interface Props {
   onIssueInvoice: () => void
   patientId: string
   patientName: string
-  defaultDurationMinutes?: number
   documentRecords?: DocumentRecord[]
-  onDeleteDocument?: (id: string) => void
+  onDeleteDocument?: (id: string) => void | Promise<boolean>
   lastAppointmentType?: AppointmentType
   nextSessionNumber?: number
 }
@@ -33,50 +30,37 @@ export function PatientActionBar({
   onIssueInvoice,
   patientId,
   patientName,
-  defaultDurationMinutes = 35,
   documentRecords = [],
   onDeleteDocument,
   lastAppointmentType = "adjustments",
   nextSessionNumber,
 }: Props) {
-  const [scheduleOpen, setScheduleOpen] = useState(false)
-  const router = useRouter()
   const { t, localeTag } = useLocale()
+  const { openCreateAppointment } = useScheduleDay()
 
-  /** Build a prefilled "next appointment" stub for the dialog. */
-  function buildNextAppointmentStub(): ScheduleItem {
-    const nextDate = new Date()
-    nextDate.setDate(nextDate.getDate() + 7)
-    const iso = nextDate.toISOString().slice(0, 10)
-    const startMinutes = 9 * 60
-    const endMinutes = startMinutes + defaultDurationMinutes
-    const hhmm = (m: number) =>
-      `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`
-    const sessionNote = nextSessionNumber
-      ? t("patientChart.sessionStub", { n: nextSessionNumber, name: patientName })
-      : patientName
-    return {
-      id: "",
-      patientId,
-      patientName,
-      date: iso,
-      dayLabel: "",
-      provider: "",
-      start: hhmm(startMinutes),
-      end: hhmm(endMinutes),
-      status: "scheduled",
-      treatment: sessionNote,
-      appointmentType: lastAppointmentType,
-    }
-  }
-
-  const [allAppointments] = useState<ScheduleItem[]>(todaySchedule)
-
-  const handleScheduleSaved = (item: ScheduleItem, meta: { isNew: boolean }) => {
-    setScheduleOpen(false)
-    if (meta.isNew) {
-      router.push("/calendar")
-    }
+  /**
+   * Booking goes through the shared scheduler, not a dialog of this page's own.
+   *
+   * This card used to render its own copy, whose save handler closed it and
+   * navigated to the calendar — so the appointment was never written anywhere
+   * and simply was not there when the practitioner arrived. The dialog the
+   * provider owns is the one that writes the booking through to Postgres and
+   * takes it back off the board if the slot is already taken. Its overlap check
+   * also sees the real diary; this one was comparing against the demo day.
+   */
+  const openScheduleNext = () => {
+    const nextWeek = new Date()
+    nextWeek.setDate(nextWeek.getDate() + 7)
+    openCreateAppointment(
+      toISODate(nextWeek),
+      { id: patientId, name: patientName },
+      {
+        appointmentType: lastAppointmentType,
+        treatment: nextSessionNumber
+          ? t("patientChart.sessionStub", { n: nextSessionNumber, name: patientName })
+          : "",
+      },
+    )
   }
 
   const hasDebt = outstandingDebt > 0
@@ -136,7 +120,7 @@ export function PatientActionBar({
         {/* Schedule Next */}
         <button
           type="button"
-          onClick={() => setScheduleOpen(true)}
+          onClick={openScheduleNext}
           className={cn(BTN_BASE, "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-none")}
           aria-label={t("patientChart.scheduleNextAria")}
         >
@@ -185,7 +169,7 @@ export function PatientActionBar({
 
             <button
               type="button"
-              onClick={() => setScheduleOpen(true)}
+              onClick={openScheduleNext}
               className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 active:scale-[0.98]"
             >
               <Calendar className="size-4 shrink-0" aria-hidden />
@@ -202,17 +186,6 @@ export function PatientActionBar({
           />
         )}
       </aside>
-
-      {/* Appointment dialog */}
-      <AppointmentEditDialog
-        open={scheduleOpen}
-        onOpenChange={setScheduleOpen}
-        mode="create"
-        appointment={buildNextAppointmentStub()}
-        defaultDate={buildNextAppointmentStub().date}
-        allAppointments={allAppointments}
-        onSave={handleScheduleSaved}
-      />
     </>
   )
 }

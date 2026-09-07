@@ -29,6 +29,14 @@ type PatientExtrasContextValue = {
    */
   loading: boolean
   refreshLive: () => void
+  /**
+   * Swap one patient in the cached list for a freshly-saved version of itself.
+   *
+   * The alternative after every edit is `refreshLive`, which re-reads all 1,178
+   * rows to learn one new phone number. The row that comes back from an update
+   * is the row the database now holds, so there is nothing to go and ask.
+   */
+  replaceLivePatient: (patient: PatientSummary) => void
 }
 
 const PatientExtrasContext = createContext<PatientExtrasContextValue | null>(null)
@@ -75,9 +83,15 @@ export function PatientExtrasProvider({ children }: { children: ReactNode }) {
     setExtras((prev) => [patient, ...prev])
   }, [])
 
+  const replaceLivePatient = useCallback((patient: PatientSummary) => {
+    setLive((prev) =>
+      prev ? prev.map((entry) => (entry.id === patient.id ? patient : entry)) : prev,
+    )
+  }, [])
+
   const value = useMemo(
-    () => ({ extras, addPatient, live, loading, refreshLive }),
-    [extras, addPatient, live, loading, refreshLive],
+    () => ({ extras, addPatient, live, loading, refreshLive, replaceLivePatient }),
+    [extras, addPatient, live, loading, refreshLive, replaceLivePatient],
   )
   return <PatientExtrasContext.Provider value={value}>{children}</PatientExtrasContext.Provider>
 }

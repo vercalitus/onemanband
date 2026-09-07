@@ -34,7 +34,7 @@ import {
 } from "@/lib/appointment-time"
 import { toISODate } from "@/lib/date-helpers"
 import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
-import type { ScheduleItem } from "@/types/domain"
+import type { AppointmentType, ScheduleItem } from "@/types/domain"
 
 function sortByStart(list: ScheduleItem[]) {
   return [...list].sort((a, b) => minutesFromHHMM(a.start) - minutesFromHHMM(b.start))
@@ -50,6 +50,7 @@ type ScheduleDayContextValue = {
   openCreateAppointment: (
     defaultDate?: string,
     patient?: { id: string; name: string },
+    defaults?: { appointmentType?: AppointmentType; treatment?: string },
   ) => void
   /**
    * Why the last booking did not stick, when the database refused it — an
@@ -140,7 +141,11 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const openCreateAppointment = useCallback(
-    (defaultDate?: string, patient?: { id: string; name: string }) => {
+    (
+      defaultDate?: string,
+      patient?: { id: string; name: string },
+      defaults?: { appointmentType?: AppointmentType; treatment?: string },
+    ) => {
       const now = new Date()
       const currentMinutes = now.getHours() * 60 + now.getMinutes()
       const dayStartMin = CALENDAR_HOUR_START * 60
@@ -168,8 +173,8 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
               start: hhmm(clamped),
               end: hhmm(clamped + defaultDuration),
               status: "scheduled",
-              treatment: "",
-              appointmentType: "adjustments",
+              treatment: defaults?.treatment ?? "",
+              appointmentType: defaults?.appointmentType ?? "adjustments",
             }
           : null,
       )

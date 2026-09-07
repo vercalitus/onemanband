@@ -1,7 +1,7 @@
 "use client"
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
-import type { PatientStatus, PatientSummary } from "@/types/domain"
+import type { PatientStatus, PatientSummary, TreatmentMark } from "@/types/domain"
 
 /**
  * Patients, read from Postgres instead of the mock file.
@@ -39,10 +39,13 @@ interface PatientRow {
   medical_history_summary: string | null
   general_notes: string | null
   last_seen_at: string | null
+  clinical_status: string | null
+  clinical_status_updated_at: string | null
+  body_map_marks: TreatmentMark[] | null
 }
 
 const COLUMNS =
-  "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes, last_seen_at"
+  "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes, last_seen_at, clinical_status, clinical_status_updated_at, body_map_marks"
 
 function toSummary(row: PatientRow): PatientSummary {
   return {
@@ -67,6 +70,9 @@ function toSummary(row: PatientRow): PatientSummary {
     tags: row.tags ?? [],
     medicalHistorySummary: row.medical_history_summary ?? "",
     generalNotes: row.general_notes ?? "",
+    clinicalStatus: row.clinical_status ?? "",
+    clinicalStatusUpdatedAt: row.clinical_status_updated_at ?? undefined,
+    bodyMapMarks: row.body_map_marks ?? [],
   }
 }
 
@@ -187,6 +193,66 @@ export async function createPatient(draft: PatientDraft): Promise<PatientWrite> 
     .select(
       COLUMNS,
     )
+    .single()
+
+  if (error) return { ok: false, reason: error.message }
+  return { ok: true, patient: toSummary(data as PatientRow) }
+}
+
+/**
+ * Everything the chart can change about a patient.
+ *
+ * Every one of these fields already had a column and an editor in the UI; what
+ * was missing was the line between them. The chart wrote to localStorage, so a
+ * corrected phone number lived in one browser: the reminder engine, which reads
+ * this table, never saw it, and the same patient read differently on the clinic
+ * machine and on a phone.
+ *
+ * Only the keys present are sent, so saving a contact card cannot blank a note
+ * the caller never loaded.
+ */
+export interface PatientPatch {
+  phone?: string
+  email?: string
+  address?: string
+  medicalHistorySummary?: string
+  generalNotes?: string
+  status?: PatientStatus
+  clinicalStatus?: string
+  bodyMapMarks?: TreatmentMark[]
+}
+
+export async function updatePatient(id: string, patch: PatientPatch): Promise<PatientWrite> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return { ok: false, reason: "supabase not configured" }
+
+  const fields: Record<string, unknown> = {}
+  if (patch.phone !== undefined) fields.phone = patch.phone || null
+  if (patch.email !== undefined) fields.email = patch.email || null
+  if (patch.address !== undefined) fields.address = patch.address || null
+  if (patch.medicalHistorySummary !== undefined) {
+    fields.medical_history_summary = patch.medicalHistorySummary
+  }
+  if (patch.generalNotes !== undefined) fields.general_notes = patch.generalNotes
+  if (patch.status !== undefined) fields.status = patch.status
+  if (patch.bodyMapMarks !== undefined) fields.body_map_marks = patch.bodyMapMarks
+  if (patch.clinicalStatus !== undefined) {
+    fields.clinical_status = patch.clinicalStatus
+    // Stamped here rather than by a trigger: the date is part of what the line
+    // means, and it should move only when someone rewrites the status — not
+    // when an unrelated field on the same row is saved.
+    fields.clinical_status_updated_at = patch.clinicalStatus.trim()
+      ? new Date().toISOString()
+      : null
+  }
+
+  if (!Object.keys(fields).length) return { ok: false, reason: "nothing to update" }
+
+  const { data, error } = await db
+    .from("patients")
+    .update(fields)
+    .eq("id", id)
+    .select(COLUMNS)
     .single()
 
   if (error) return { ok: false, reason: error.message }

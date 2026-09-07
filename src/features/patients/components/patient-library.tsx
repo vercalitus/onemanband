@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { FileImage, FileScan, FileText, FolderOpen, Trash2 } from "lucide-react"
+import { AlertTriangle, FileImage, FileScan, FileText, FolderOpen, Loader2, Trash2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
@@ -37,26 +37,33 @@ function docTypeLabel(t: (k: string) => string, type: string) {
 
 interface Props {
   documentRecords: DocumentRecord[]
-  onDeleteDocument: (id: string) => void
+  onDeleteDocument: (id: string) => void | Promise<boolean>
 }
 
 /**
  * Compact sidebar card showing all patient documents.
- * One click → document preview modal. Trash icon → confirm delete.
+ * One click → document preview modal. Trash icon → confirm, then delete.
  */
 export function PatientLibrary({ documentRecords, onDeleteDocument }: Props) {
   const { t, localeTag } = useLocale()
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null)
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<DocumentRecord | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  const handleDelete = (id: string) => {
-    if (confirmId === id) {
-      onDeleteDocument(id)
-      setConfirmId(null)
-    } else {
-      setConfirmId(id)
-      setTimeout(() => setConfirmId((c) => (c === id ? null : c)), 3000)
-    }
+  /**
+   * A dialog rather than the two-tap trash icon this used to be.
+   *
+   * That was the right weight when "delete" meant hiding a row in one browser.
+   * It now removes a scan of a patient's treatment from the clinic's records
+   * for good, which is worth naming the file and saying so before it happens —
+   * and worth being impossible to do by brushing past a button twice.
+   */
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    setDeleting(true)
+    await onDeleteDocument(pendingDelete.id)
+    setDeleting(false)
+    setPendingDelete(null)
   }
 
   if (documentRecords.length === 0) return null
@@ -99,21 +106,14 @@ export function PatientLibrary({ documentRecords, onDeleteDocument }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDelete(doc.id)}
+                  onClick={() => setPendingDelete(doc)}
                   className={cn(
                     "me-3 flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium transition-colors",
-                    confirmId === doc.id
-                      ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200"
-                      : "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
+                    "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
                   )}
-                  aria-label={
-                    confirmId === doc.id
-                      ? t("patientChart.library.confirmDeleteDocAria")
-                      : t("patientChart.library.deleteDocAria")
-                  }
+                  aria-label={t("patientChart.library.deleteDocAria")}
                 >
                   <Trash2 className="size-3" aria-hidden />
-                  {confirmId === doc.id && <span>{t("common.remove")}</span>}
                 </button>
               </li>
             )
@@ -122,6 +122,58 @@ export function PatientLibrary({ documentRecords, onDeleteDocument }: Props) {
       </div>
 
       <DocumentPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
+
+      {pendingDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("patientChart.library.deleteTitle")}
+        >
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => !deleting && setPendingDelete(null)}
+            aria-hidden
+          />
+          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-16px_rgba(15,23,42,0.30)]">
+            <div className="flex items-start gap-3 px-5 py-5">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rose-50">
+                <AlertTriangle className="size-4.5 text-rose-600" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">
+                  {t("patientChart.library.deleteTitle")}
+                </p>
+                <p className="mt-1 break-all font-mono text-[12px] text-slate-600">
+                  {pendingDelete.name}
+                </p>
+                <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
+                  {t("patientChart.library.deleteBody")}
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setPendingDelete(null)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={confirmDelete}
+                className="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-60"
+              >
+                {deleting && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                {t("patientChart.library.deleteConfirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

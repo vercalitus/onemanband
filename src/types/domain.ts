@@ -101,6 +101,17 @@ export interface PatientSummary {
   tags: string[]
   medicalHistorySummary: string
   generalNotes: string
+  /**
+   * One-line "where are we with this person", read at a glance before the
+   * patient walks in. Empty when nobody has written one — the chart then shows
+   * the last treatment note instead, labelled with that visit's date, so the
+   * line is never a claim with no origin.
+   */
+  clinicalStatus?: string
+  /** When the status line was written. Shown with it; an undated status reads as current. */
+  clinicalStatusUpdatedAt?: string
+  /** Where on the body this patient has been treated. */
+  bodyMapMarks?: TreatmentMark[]
 }
 
 export interface TreatmentRecord {
@@ -109,6 +120,10 @@ export interface TreatmentRecord {
   practitioner: string
   title: string
   note: string
+  /** Private-bucket path of the handwriting snapshot taken when the session was closed. */
+  canvasPath?: string
+  /** Private-bucket path of the session's voice memo. */
+  audioPath?: string
 }
 
 export type BodyMapView = "front" | "back" | "side"

@@ -1,10 +1,11 @@
 "use client"
 
-import { notFound, useParams } from "next/navigation"
+import { notFound, useParams, useRouter } from "next/navigation"
 import { useState, useCallback, useMemo } from "react"
-import { Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
+import { AlertTriangle, Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import {
   useMergedPatients,
   usePatientExtras,
@@ -21,14 +22,15 @@ import { SessionAudio } from "@/features/patients/components/session-audio"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
 import { PatientActionBar } from "@/features/patients/components/patient-action-bar"
 import { usePatientCockpit } from "@/features/patients/lib/use-patient-cockpit"
-import { todaySchedule } from "@/lib/mock-data"
 
 export function PatientDetailClient() {
   const params = useParams()
+  const router = useRouter()
   const { t, locale } = useLocale()
   const id =
     typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
+  const { appointments } = useScheduleDay()
   const merged = useMergedPatients()
   const { loading: patientsLoading } = usePatientExtras()
   const patient = merged.find((entry) => entry.id === id)
@@ -53,6 +55,8 @@ export function PatientDetailClient() {
 
   const {
     hydrated,
+    saveError,
+    clearSaveError,
     clinicalStatus,
     setClinicalStatus,
     sessionNotes,
@@ -67,8 +71,10 @@ export function PatientDetailClient() {
     deleteTreatmentRecord,
     deleteCompletedSession,
     treatmentRecords,
+    treatmentsAreLive,
     documentRecords,
     financeRecords,
+    outstandingDebt,
     totalSessionsDone,
     planTarget,
     lastAppointmentType,
@@ -92,29 +98,36 @@ export function PatientDetailClient() {
     setToast({ open: true, message })
   }, [])
 
-  /** Find the last appointment type for this patient from today's schedule */
+  /**
+   * What kind of visit this is, taken from the patient's own diary rather than
+   * from the demo day this used to read. The stored value is the fallback for a
+   * patient with nothing booked.
+   */
   const patientLastAppointmentType = (() => {
-    const patientAppts = todaySchedule.filter((a) => a.patientId === id)
-    if (patientAppts.length > 0) return patientAppts[patientAppts.length - 1].appointmentType
+    const mine = appointments.filter((a) => a.patientId === id)
+    if (mine.length > 0) return mine[mine.length - 1].appointmentType
     return lastAppointmentType
   })()
 
-  const handleCompleteSession = () => {
-    void completeSession(patientLastAppointmentType)
-    showToast(t("patientChart.toast.sessionDone", { n: totalSessionsDone + 1 }))
+  const handleCompleteSession = async () => {
+    // Only claim the session was recorded once it was. The old code toasted
+    // unconditionally, which was harmless while the write went to localStorage
+    // and cannot stay that way now that it can fail.
+    const saved = await completeSession(patientLastAppointmentType)
+    if (saved) showToast(t("patientChart.toast.sessionDone", { n: totalSessionsDone + 1 }))
   }
 
+  /**
+   * Billing lives on the Finances page and nowhere else.
+   *
+   * This button used to show a toast and do nothing at all, which is the worst
+   * possible answer: a practitioner would believe an invoice had been issued.
+   * It now hands the work to the one flow that really issues a document —
+   * against the clinic's bookkeeping account, with its own confirmation.
+   */
   const handleIssueInvoice = () => {
-    showToast(t("patientChart.toast.invoice"))
+    router.push("/finances")
   }
-
-  /** Outstanding debt from mock finance records */
-  const outstandingDebt = financeRecords
-    .filter((r) => r.invoiceStatus === "overdue" || r.paymentStatus === "pending")
-    .reduce((sum, r) => {
-      const n = parseInt(r.amount.replace(/[^0-9]/g, ""), 10)
-      return sum + (isNaN(n) ? 0 : n)
-    }, 0)
 
   if (!hydrated) {
     return (
@@ -266,6 +279,7 @@ export function PatientDetailClient() {
                   financeRecords={financeRecords}
                   completedSessions={completedSessions}
                   planTarget={planTarget}
+                  treatmentsAreLive={treatmentsAreLive}
                   onDeleteTreatment={deleteTreatmentRecord}
                   onDeleteCompletedSession={deleteCompletedSession}
                 />
@@ -283,7 +297,7 @@ export function PatientDetailClient() {
 
         <div id="patient-actions" className="scroll-mt-24">
           <PatientActionBar
-            outstandingDebt={outstandingDebt}
+            outstandingDebt={outstandingDebt ?? 0}
             onCompleteSession={handleCompleteSession}
             onIssueInvoice={handleIssueInvoice}
             patientId={id}
@@ -301,6 +315,30 @@ export function PatientDetailClient() {
         message={toast.message}
         onOpenChange={(v) => setToast((st) => ({ ...st, open: v }))}
       />
+
+      {/* A write that did not reach the database has to say so. Everything on
+          this page used to be saved to the browser, where nothing could fail;
+          now that it goes to Postgres, a silent failure would leave a
+          practitioner believing a note was recorded when it was not. */}
+      {saveError && (
+        <div
+          role="alert"
+          className="fixed bottom-6 end-6 z-[100] flex max-w-sm items-start gap-2.5 rounded-xl border border-rose-200/80 bg-white px-4 py-3 shadow-lg ring-1 ring-slate-100"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-600" aria-hidden />
+          <p className="text-sm font-medium leading-snug text-slate-800">
+            {t("patientChart.saveFailed")}
+          </p>
+          <button
+            type="button"
+            onClick={clearSaveError}
+            className="ms-1 text-xs font-semibold text-slate-400 hover:text-slate-600"
+            aria-label={t("common.cancel")}
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </>
   )
 }
