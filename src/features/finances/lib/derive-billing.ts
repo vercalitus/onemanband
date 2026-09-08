@@ -1,17 +1,11 @@
-import { patients } from "@/lib/mock-data"
 import { PREVIOUS_MONTH_REVENUE } from "@/lib/mock-finances"
 import type {
   BillingInvoice,
   BillingPatientSnapshot,
   BillingTreatmentType,
+  PatientSummary,
   ProjectedCalendarVisit,
 } from "@/types/domain"
-
-const PATIENT_INDEX = (() => {
-  const m = new Map<string, (typeof patients)[number]>()
-  for (const p of patients) m.set(p.id, p)
-  return m
-})()
 
 /**
  * Outstanding balance = sum of every invoice that's been issued but isn't
@@ -130,7 +124,15 @@ export function computeRevenueByTreatment(
 export function computePatientSnapshots(
   invoices: BillingInvoice[],
   formatMoney: (value: number) => string,
+  /**
+   * The patients these invoices belong to, for the last-visit date and status
+   * shown beside a debt. This module used to hold its own index built from the
+   * demo file, so a real debtor's row said "active" with no last visit no
+   * matter what the record actually said.
+   */
+  patients: PatientSummary[] = [],
 ): BillingPatientSnapshot[] {
+  const byId = new Map(patients.map((p) => [p.id, p]))
   const map = new Map<string, BillingPatientSnapshot>()
   for (const inv of invoices) {
     const open =
@@ -142,8 +144,8 @@ export function computePatientSnapshots(
         patientName: inv.patientName,
         balance: 0,
         displayBalance: formatMoney(0),
-        lastVisit: PATIENT_INDEX.get(inv.patientId)?.lastVisit ?? null,
-        status: PATIENT_INDEX.get(inv.patientId)?.status ?? "active",
+        lastVisit: byId.get(inv.patientId)?.lastVisit || null,
+        status: byId.get(inv.patientId)?.status ?? "active",
       })
       continue
     }
@@ -154,8 +156,8 @@ export function computePatientSnapshots(
       patientName: inv.patientName,
       balance,
       displayBalance: formatMoney(balance),
-      lastVisit: PATIENT_INDEX.get(inv.patientId)?.lastVisit ?? null,
-      status: PATIENT_INDEX.get(inv.patientId)?.status ?? "active",
+      lastVisit: byId.get(inv.patientId)?.lastVisit || null,
+      status: byId.get(inv.patientId)?.status ?? "active",
     })
   }
   return [...map.values()].sort((a, b) => b.balance - a.balance)

@@ -16,6 +16,7 @@ import { BillingToast } from "@/features/finances/components/billing-toast"
 import { PatientSmartHeader } from "@/features/patients/components/patient-smart-header"
 import { ExportButton, ExportDialog } from "@/features/exports/components/export-dialog"
 import { buildPatientBundle, patientColumns } from "@/features/exports/lib/build-exports"
+import { loadPatientExportSource } from "@/features/exports/lib/export-source"
 import { datedFilename, downloadCsv, downloadJson } from "@/lib/file-export"
 import { SessionCanvas } from "@/features/patients/components/session-canvas"
 import { SessionAudio } from "@/features/patients/components/session-audio"
@@ -26,7 +27,7 @@ import { usePatientCockpit } from "@/features/patients/lib/use-patient-cockpit"
 export function PatientDetailClient() {
   const params = useParams()
   const router = useRouter()
-  const { t, locale } = useLocale()
+  const { t, locale, formatMoney } = useLocale()
   const id =
     typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
@@ -77,6 +78,8 @@ export function PatientDetailClient() {
     outstandingDebt,
     totalSessionsDone,
     planTarget,
+    planIsPersonal,
+    setPlanTarget,
     lastAppointmentType,
     contactOverrides,
     saveContactOverrides,
@@ -154,14 +157,23 @@ export function PatientDetailClient() {
         subtitle={t("export.patientRecordSubtitle", { name: displayPatient.fullName })}
         csvLabel={t("export.csvDetails")}
         jsonLabel={t("export.jsonFullRecord")}
-        onExportCsv={(options) => {
+        onExportCsv={async (options) => {
           // CSV holds the contact row only — a chart is nested data and a
           // single flat row cannot carry its timeline.
-          downloadCsv(patientColumns(options), [patient], datedFilename(`patient-${slug}`, "csv"))
+          const source = await loadPatientExportSource(patient, formatMoney)
+          downloadCsv(
+            patientColumns(options, source),
+            [patient],
+            datedFilename(`patient-${slug}`, "csv"),
+          )
           setExportOpen(false)
         }}
-        onExportJson={(options) => {
-          const bundle = buildPatientBundle(id, options)
+        onExportJson={async (options) => {
+          // Built from this patient's own records. It used to look the patient
+          // up in the demo file, so for a real one the bundle came back null
+          // and the button quietly produced nothing at all.
+          const source = await loadPatientExportSource(patient, formatMoney)
+          const bundle = buildPatientBundle(id, options, source)
           if (bundle) downloadJson(bundle, datedFilename(`patient-${slug}`, "json"))
           setExportOpen(false)
         }}
@@ -175,6 +187,8 @@ export function PatientDetailClient() {
             overrides={contactOverrides}
             totalSessionsDone={totalSessionsDone}
             planTarget={planTarget}
+            planIsPersonal={planIsPersonal}
+            onPlanTargetChange={setPlanTarget}
             clinicalStatus={clinicalStatus}
             onClinicalStatusChange={setClinicalStatus}
             onSaveOverrides={saveContactOverrides}

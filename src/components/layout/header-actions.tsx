@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ArrowLeft,
   Bell,
@@ -26,12 +26,12 @@ import { useGlobalAddPatient } from "@/components/providers/global-add-patient-p
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { issueInvoiceForVisit } from "@/features/automations/lib/billing-bridge"
 import { onInvoiceIssued, planContextFromSettings } from "@/features/automations/lib/events"
+import { fetchPatientsWithOpenInvoices } from "@/features/finances/lib/finance-repository"
 import { mintToken, tokenLink } from "@/features/automations/lib/tokens"
 import { readField, readOptOut, writeOptOut } from "@/features/patients/lib/patient-extras-store"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import { localizePatient } from "@/lib/i18n/localized-seed"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
-import { financesByPatient } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
 import type { AppointmentType, ScheduleItem } from "@/types/domain"
 
@@ -55,17 +55,28 @@ function hasSessionToComplete(patientId: string, appointments: ScheduleItem[]): 
   )
 }
 
-/** An invoice is worth surfacing when something is unsent or still owed. */
-function hasInvoiceAwaiting(patientId: string): boolean {
-  const recs = financesByPatient[patientId] ?? []
-  return recs.some(
-    (r) =>
-      r.invoiceStatus === "draft" ||
-      r.invoiceStatus === "overdue" ||
-      r.paymentStatus === "pending" ||
-      r.paymentStatus === "partially_paid" ||
-      r.paymentStatus === "failed",
-  )
+/**
+ * Who has money outstanding, from the ledger.
+ *
+ * Read once per mount and shared by every row, because the answer is the same
+ * question asked of one table. It used to come from the demo file, so the badge
+ * appeared for invented patients and never for real ones.
+ *
+ * Null until the answer arrives — and null is not "nothing owed", so nothing is
+ * claimed before then.
+ */
+function useOpenInvoicePatients(): Set<string> | null {
+  const [ids, setIds] = useState<Set<string> | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void fetchPatientsWithOpenInvoices().then((set) => {
+      if (!cancelled) setIds(set)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  return ids
 }
 
 function initials(name: string): string {
@@ -302,8 +313,9 @@ function ResultRow({
 }) {
   const { t } = useLocale()
   const { appointments } = useScheduleDay()
+  const owing = useOpenInvoicePatients()
   const pending =
-    hasSessionToComplete(patient.id, appointments) || hasInvoiceAwaiting(patient.id)
+    hasSessionToComplete(patient.id, appointments) || !!owing?.has(patient.id)
   const waDigits = whatsappDigits(patient.phone)
 
   return (
@@ -406,7 +418,7 @@ function PatientActionSheet({ patient, onBack, onNavigate, onSchedule }: ActionS
   const { t, localeTag } = useLocale()
   const { appointments } = useScheduleDay()
   const canComplete = hasSessionToComplete(patient.id, appointments)
-  const canInvoice = hasInvoiceAwaiting(patient.id)
+  const canInvoice = !!useOpenInvoicePatients()?.has(patient.id)
   const waDigits = whatsappDigits(patient.phone)
 
   // Short-lived confirmations so an action that changes data says so; the sheet

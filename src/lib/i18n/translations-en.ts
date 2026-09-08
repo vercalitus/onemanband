@@ -665,6 +665,8 @@ export const EN_MESSAGES: Record<string, string> = {
   "patientChart.editContactAria": "Edit contact info",
   "patientChart.medicalSummaryPh": "Medical history summary…",
   "patientChart.carePlan": "Care Plan",
+  "patientChart.carePlanEdit": "Set the number of sessions for this plan",
+  "patientChart.carePlanDefault": "practice default",
   "patientChart.sessionsWord": "sessions",
   "patientChart.carePlanProgressAria": "{pct}% of care plan complete",
   "patientChart.clinicalStatus": "Status",

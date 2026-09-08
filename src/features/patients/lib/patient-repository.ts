@@ -42,10 +42,11 @@ interface PatientRow {
   clinical_status: string | null
   clinical_status_updated_at: string | null
   body_map_marks: TreatmentMark[] | null
+  care_plan_sessions: number | null
 }
 
 const COLUMNS =
-  "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes, last_seen_at, clinical_status, clinical_status_updated_at, body_map_marks"
+  "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes, last_seen_at, clinical_status, clinical_status_updated_at, body_map_marks, care_plan_sessions"
 
 function toSummary(row: PatientRow): PatientSummary {
   return {
@@ -73,6 +74,7 @@ function toSummary(row: PatientRow): PatientSummary {
     clinicalStatus: row.clinical_status ?? "",
     clinicalStatusUpdatedAt: row.clinical_status_updated_at ?? undefined,
     bodyMapMarks: row.body_map_marks ?? [],
+    carePlanSessions: row.care_plan_sessions ?? undefined,
   }
 }
 
@@ -220,6 +222,8 @@ export interface PatientPatch {
   status?: PatientStatus
   clinicalStatus?: string
   bodyMapMarks?: TreatmentMark[]
+  /** Null clears the plan and returns the chart to the practice default. */
+  carePlanSessions?: number | null
 }
 
 export async function updatePatient(id: string, patch: PatientPatch): Promise<PatientWrite> {
@@ -236,6 +240,7 @@ export async function updatePatient(id: string, patch: PatientPatch): Promise<Pa
   if (patch.generalNotes !== undefined) fields.general_notes = patch.generalNotes
   if (patch.status !== undefined) fields.status = patch.status
   if (patch.bodyMapMarks !== undefined) fields.body_map_marks = patch.bodyMapMarks
+  if (patch.carePlanSessions !== undefined) fields.care_plan_sessions = patch.carePlanSessions
   if (patch.clinicalStatus !== undefined) {
     fields.clinical_status = patch.clinicalStatus
     // Stamped here rather than by a trigger: the date is part of what the line

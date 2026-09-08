@@ -34,7 +34,10 @@ import {
   createTreatment,
   fetchPatientTreatments,
 } from "@/features/patients/lib/treatment-repository"
-import { fetchPatientOutstanding } from "@/features/finances/lib/finance-repository"
+import {
+  fetchInvoices,
+  fetchPatientOutstanding,
+} from "@/features/finances/lib/finance-repository"
 import {
   PATIENT_EXTRAS_EVENT,
   readAddedFinances,
@@ -132,7 +135,7 @@ const cleanStoredStatus = (raw: string | null | undefined): string => {
 }
 
 export function usePatientCockpit(patientId: string) {
-  const { t, locale } = useLocale()
+  const { t, locale, formatMoney } = useLocale()
   const { live, replaceLivePatient } = usePatientExtras()
 
   /**
@@ -448,11 +451,43 @@ export function usePatientCockpit(patientId: string) {
       .map((r) => localizeDocumentRecord(r, locale))
   }, [patientId, deletedDocumentIds, locale, liveDocuments])
 
+  /**
+   * This patient's invoices, from the ledger.
+   *
+   * The chart used to read the demo file here, so a real invoice — issued from
+   * this very app, against this very patient — never appeared anywhere on their
+   * record. Null while unknown, which keeps the demo rows on screen for a
+   * deploy with no database.
+   */
+  const [liveInvoices, setLiveInvoices] = useState<FinanceRecord[] | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void fetchInvoices(formatMoney).then((result) => {
+      if (cancelled || result.source !== "live") return
+      setLiveInvoices(
+        result.invoices
+          .filter((invoice) => invoice.patientId === patientId)
+          .map((invoice) => ({
+            id: invoice.id,
+            issuedAt: invoice.issuedAt ?? invoice.dueAt ?? "",
+            description: t(`billing.treatment.${invoice.treatmentType}`),
+            amount: invoice.displayAmount,
+            invoiceStatus: invoice.status,
+            paymentStatus: invoice.paymentStatus,
+          })),
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [patientId, formatMoney, t])
+
   const financeRecords: FinanceRecord[] = useMemo(() => {
+    if (liveInvoices) return liveInvoices
     // Auto-issued invoices first — they are the most recent by construction.
     const all = [...addedFinances, ...(financesByPatient[patientId] ?? [])]
     return all.map((r) => localizeFinanceRecord(r, locale))
-  }, [patientId, addedFinances, locale])
+  }, [patientId, addedFinances, locale, liveInvoices])
 
   /**
    * What this patient still owes, from the ledger rather than from the demo
@@ -470,13 +505,32 @@ export function usePatientCockpit(patientId: string) {
     }
   }, [patientId])
 
-  const planTarget = useMemo(() => {
+  /**
+   * How many sessions this patient's course runs to.
+   *
+   * Their own plan when one has been agreed; the practice default otherwise.
+   * The chart used to show the default for everybody, so the progress bar
+   * measured real visits against a target nobody had prescribed for the person
+   * whose chart it was.
+   */
+  const clinicDefaultPlan = useMemo(() => {
     try {
       return readClinicSettings().defaultPlanSessions ?? 10
     } catch {
       return 10
     }
   }, [])
+  const planTarget = livePatient?.carePlanSessions ?? clinicDefaultPlan
+  /** True when the number on screen is this patient's, not the practice-wide one. */
+  const planIsPersonal = livePatient?.carePlanSessions !== undefined
+
+  const setPlanTarget = useCallback(
+    (sessions: number | null) => {
+      if (!isLive) return
+      void savePatientFields({ carePlanSessions: sessions })
+    },
+    [isLive, savePatientFields],
+  )
 
   const totalSessionsDone = treatmentRecords.length + completedSessions.length
 
@@ -644,6 +698,8 @@ export function usePatientCockpit(patientId: string) {
     outstandingDebt,
     totalSessionsDone,
     planTarget,
+    planIsPersonal,
+    setPlanTarget,
     lastAppointmentType,
     setLastAppointmentType,
     contactOverrides,

@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { useAppointmentAutomations } from "@/features/automations/lib/use-appointment-automations"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
-import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
+import { useOutstandingBalances } from "@/features/calendar/lib/payment-status"
 import { minutesFromHHMM } from "@/lib/appointment-time"
 import { toISODate } from "@/lib/date-helpers"
 import { localizeScheduleRow } from "@/lib/i18n/localized-seed"
@@ -55,6 +55,7 @@ export function WeekView({
   showCanceled: boolean
 }) {
   const { locale, t } = useLocale()
+  const owing = useOutstandingBalances()
   const syncAutomations = useAppointmentAutomations()
   const typeVisualBase = useAppointmentTypeVisual()
   const typeVisual = useMemo(() => {
@@ -149,7 +150,7 @@ export function WeekView({
                 ) : (
                   list.map((apt) => {
                     const tone = typeVisual[apt.appointmentType]
-                    const debt = hasOutstandingBalance(apt.patientId)
+                    const debt = owing.has(apt.patientId)
                     const isCancelled = apt.status === "cancelled"
                     const canonical = appointments.find((a) => a.id === apt.id) ?? apt
                     return (

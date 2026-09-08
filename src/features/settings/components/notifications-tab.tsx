@@ -32,8 +32,8 @@ import {
   writeOptOut,
   type NotificationOptOut,
 } from "@/features/patients/lib/patient-extras-store"
+import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
-import { patients } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
 import type { AutomationSequence, AvailabilityWindow, MessageChannel } from "@/types/automation"
 import type { ClinicSettings } from "@/types/clinic-settings"
@@ -358,11 +358,15 @@ function NumberField({
  */
 function OptOutCard() {
   const { t } = useLocale()
+  // The clinic's own patients. This read the demo file, so a practitioner could
+  // not record "stop messaging me" against anybody real — the one person whose
+  // wishes this card exists to honour was the one person not in the list.
+  const patients = useMergedPatients()
   const [rows, setRows] = useState<{ id: string; name: string; optOut: NotificationOptOut }[]>([])
 
   const refresh = useCallback(() => {
     setRows(patients.map((p) => ({ id: p.id, name: p.fullName, optOut: readOptOut(p.id) })))
-  }, [])
+  }, [patients])
 
   // After mount only — the store is localStorage and would not match SSR.
   useEffect(() => {

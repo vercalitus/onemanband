@@ -16,6 +16,7 @@ import {
   treatmentColumns,
   type ExportOptions,
 } from "@/features/exports/lib/build-exports"
+import { loadExportSource } from "@/features/exports/lib/export-source"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { datedFilename, downloadCsv, downloadJson } from "@/lib/file-export"
 import { cn } from "@/lib/utils"
@@ -28,22 +29,32 @@ import { cn } from "@/lib/utils"
  * reach, not sit one stray click from the patient list.
  */
 export function DataExportTab() {
-  const { t } = useLocale()
+  const { t, formatMoney } = useLocale()
   const [open, setOpen] = useState(false)
 
-  const exportDataset = (key: keyof typeof exportDatasets, options: ExportOptions) => {
+  /**
+   * The clinic's own data, fetched when the button is pressed rather than held
+   * in the page. These files are taken rarely and have to be right at the
+   * moment they are taken, not right at the moment the tab was opened.
+   */
+  const exportDataset = async (key: keyof typeof exportDatasets, options: ExportOptions) => {
+    const source = await loadExportSource(formatMoney)
     switch (key) {
       case "patients":
-        downloadCsv(patientColumns(options), exportDatasets.patients(), datedFilename("patients", "csv"))
+        downloadCsv(
+          patientColumns(options, source),
+          exportDatasets.patients(source),
+          datedFilename("patients", "csv"),
+        )
         break
       case "appointments":
-        downloadCsv(appointmentColumns, exportDatasets.appointments(), datedFilename("appointments", "csv"))
+        downloadCsv(appointmentColumns, exportDatasets.appointments(source), datedFilename("appointments", "csv"))
         break
       case "invoices":
-        downloadCsv(invoiceColumns, exportDatasets.invoices(), datedFilename("invoices", "csv"))
+        downloadCsv(invoiceColumns, exportDatasets.invoices(source), datedFilename("invoices", "csv"))
         break
       case "treatments":
-        downloadCsv(treatmentColumns, exportDatasets.treatments(), datedFilename("treatment-records", "csv"))
+        downloadCsv(treatmentColumns, exportDatasets.treatments(source), datedFilename("treatment-records", "csv"))
         break
     }
   }
@@ -88,7 +99,7 @@ export function DataExportTab() {
                   <Button
                     key={key}
                     variant="outline"
-                    onClick={() => exportDataset(key, options)}
+                    onClick={() => void exportDataset(key, options)}
                     className="h-10 justify-start gap-2 border-slate-200 text-slate-800"
                   >
                     <Sheet className="size-4 text-sky-600" aria-hidden />
@@ -103,7 +114,7 @@ export function DataExportTab() {
                 {options.includeClinical && (
                   <Button
                     variant="outline"
-                    onClick={() => exportDataset("treatments", options)}
+                    onClick={() => void exportDataset("treatments", options)}
                     className="h-10 justify-start gap-2 border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(140,92,68)]"
                   >
                     <Sheet className="size-4" aria-hidden />
@@ -119,8 +130,9 @@ export function DataExportTab() {
               </p>
               <Button
                 variant="outline"
-                onClick={() => {
-                  downloadJson(buildFullBackup(options), datedFilename("clinic-backup", "json"))
+                onClick={async () => {
+                  const source = await loadExportSource(formatMoney)
+                  downloadJson(buildFullBackup(options, source), datedFilename("clinic-backup", "json"))
                   setOpen(false)
                 }}
                 className="h-10 w-full justify-start gap-2 border-slate-200 text-slate-800"

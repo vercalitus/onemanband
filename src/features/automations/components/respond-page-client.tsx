@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button"
 import { PublicNotice, PublicShell } from "@/features/automations/components/public-shell"
 import { SlotPicker } from "@/features/automations/components/slot-picker"
 import { findFreeSlots, type FreeSlot } from "@/features/automations/lib/availability"
+import { useBusySlots } from "@/features/automations/lib/use-busy-slots"
 import { recordPatientResponse } from "@/features/automations/lib/events"
 import { markTokenUsed } from "@/features/automations/lib/automation-store"
 import { resolveToken } from "@/features/automations/lib/tokens"
 import { minutesFromHHMM } from "@/lib/appointment-time"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
-import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
 import type { AccessTokenContext } from "@/types/automation"
 import type { ClinicSettings } from "@/types/clinic-settings"
 
@@ -39,6 +39,7 @@ export function RespondPageClient({ token }: { token: string }) {
   const [patientId, setPatientId] = useState<string>("")
   const [invoiceId, setInvoiceId] = useState<string>("")
   const [busy, setBusy] = useState(false)
+  const busySlots = useBusySlots(token)
 
   /**
    * Resolve the link after mount, locally first and then from the server.
@@ -107,7 +108,9 @@ export function RespondPageClient({ token }: { token: string }) {
   }, [token])
 
   const slots = useMemo<FreeSlot[]>(() => {
-    if (!settings || view !== "reschedule") return []
+    // Nothing offered until the clinic's real diary has been read: a time drawn
+    // as free and then withdrawn is a time somebody has already tapped.
+    if (!settings || view !== "reschedule" || busySlots === null) return []
     // Duration falls back to the appointment's own length when the token
     // recorded it, so a 45-minute first visit isn't offered a 30-minute slot.
     const recorded =
@@ -117,11 +120,11 @@ export function RespondPageClient({ token }: { token: string }) {
     return findFreeSlots({
       automations: settings.automations,
       weekdays: settings.weekdays,
-      appointments: [...todaySchedule, ...weeklySchedule],
+      appointments: busySlots ?? [],
       durationMinutes: recorded && recorded > 0 ? recorded : 30,
       limit: 90,
     })
-  }, [settings, view, context])
+  }, [settings, view, context, busySlots])
 
   const patientName = context?.patientName ?? ""
 

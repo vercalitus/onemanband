@@ -3,13 +3,13 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { ensureNoShowWatermark } from "@/features/automations/lib/automation-store"
 import { issueInvoiceForVisit } from "@/features/automations/lib/billing-bridge"
 import { clinicDateTimeToUtc } from "@/features/automations/lib/clinic-time"
 import { onInvoiceIssued, onNoShow, planContextFromSettings } from "@/features/automations/lib/events"
 import { findMissedAppointments } from "@/features/automations/lib/no-show-watch"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
-import { patients } from "@/lib/mock-data"
 import type { ScheduleItem } from "@/types/domain"
 
 /** How often to sweep. A minute is well inside any sane grace period. */
@@ -32,7 +32,12 @@ export function useNoShowWatcher(
   setAppointments: Dispatch<SetStateAction<ScheduleItem[]>>,
 ) {
   const { localeTag } = useLocale()
+  const patients = useMergedPatients()
   const handled = useRef<Set<string>>(new Set())
+  // Through a ref for the same reason the schedule is: the sweep runs on an
+  // interval and must not restart every time the patient list re-renders.
+  const patientsRef = useRef(patients)
+  patientsRef.current = patients
   // Read through a ref so the interval never restarts on a schedule edit.
   const latest = useRef(appointments)
   latest.current = appointments
@@ -66,7 +71,10 @@ export function useNoShowWatcher(
         for (const appointment of missed) {
           handled.current.add(appointment.id)
 
-          const patient = patients.find((p) => p.id === appointment.patientId)
+          // The clinic's own patients. This looked the person up in the demo
+          // file, so a real no-show carried no phone and no email and the
+          // message it triggers could never be delivered to anybody.
+          const patient = patientsRef.current.find((p) => p.id === appointment.patientId)
           const price = settings.treatmentTypes.find(
             (t) => t.type === appointment.appointmentType,
           )?.priceIls

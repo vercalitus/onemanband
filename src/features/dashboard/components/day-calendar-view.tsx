@@ -11,7 +11,7 @@ import type { AppointmentStatus, AppointmentType, ScheduleItem } from "@/types/d
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { useAppointmentAutomations } from "@/features/automations/lib/use-appointment-automations"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
-import { hasOutstandingBalance } from "@/features/calendar/lib/payment-status"
+import { useOutstandingBalances } from "@/features/calendar/lib/payment-status"
 import {
   CALENDAR_HOUR_END,
   CALENDAR_HOUR_START,
@@ -72,6 +72,7 @@ export function DayCalendarView({
   heightClassName?: string
 }) {
   const { locale, t } = useLocale()
+  const owing = useOutstandingBalances()
   const typeVisualBase = useAppointmentTypeVisual()
 
   const typeVisual = useMemo(() => {
@@ -182,7 +183,7 @@ export function DayCalendarView({
       const status = statusTone[apt.status]
       const typeStyle = typeVisual[apt.appointmentType]
       const isCancelled = apt.status === "cancelled"
-      const debt = hasOutstandingBalance(apt.patientId)
+      const debt = owing.has(apt.patientId)
 
       nodes.push(
         <div

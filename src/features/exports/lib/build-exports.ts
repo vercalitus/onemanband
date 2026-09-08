@@ -3,26 +3,12 @@ import {
   listQuestionnaires,
   listResponses,
 } from "@/features/automations/lib/automation-store"
-import {
-  readAddedFinances,
-  readAddedTreatments,
-  readOptOut,
-} from "@/features/patients/lib/patient-extras-store"
+import { readOptOut } from "@/features/patients/lib/patient-extras-store"
+import type { ExportSource } from "@/features/exports/lib/export-source"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import type { CsvColumn } from "@/lib/file-export"
-import {
-  documentsByPatient,
-  financesByPatient,
-  patients,
-  todaySchedule,
-  treatmentsByPatient,
-  weeklySchedule,
-} from "@/lib/mock-data"
-import { seedInvoices } from "@/lib/mock-finances"
 import type {
   BillingInvoice,
-  DocumentRecord,
-  FinanceRecord,
   PatientSummary,
   ScheduleItem,
   TreatmentRecord,
@@ -37,9 +23,12 @@ import type {
  * sitting in someone's Downloads folder. So every builder takes
  * `includeClinical` and the caller has to ask for it.
  *
- * Reads the mock dataset plus the localStorage overlays that the app actually
- * writes to. When Supabase goes live these become queries and nothing above
- * this layer changes.
+ * Nothing here reads a data source. Every builder is handed an `ExportSource`,
+ * which is what makes a backup a backup: these functions used to import the
+ * demo file directly, so the whole-clinic export produced eight invented
+ * patients while the clinic held 1,178 real ones — and the file said nothing
+ * about it. Resolving the data outside this layer means there is exactly one
+ * place that decides where an export comes from.
  */
 
 export interface ExportOptions {
@@ -47,39 +36,14 @@ export interface ExportOptions {
   includeClinical: boolean
 }
 
-const allAppointments = (): ScheduleItem[] => [...todaySchedule, ...weeklySchedule]
-
-/** Mock seed plus anything the app has written since. */
-function invoicesForExport(): BillingInvoice[] {
-  if (typeof window === "undefined") return seedInvoices
-  try {
-    const raw = window.localStorage.getItem("billing.invoices.v1")
-    const stored = raw ? (JSON.parse(raw) as BillingInvoice[]) : []
-    const byId = new Map(seedInvoices.map((i) => [i.id, i]))
-    for (const invoice of stored) byId.set(invoice.id, invoice)
-    return [...byId.values()]
-  } catch {
-    return seedInvoices
-  }
-}
-
-const treatmentsFor = (patientId: string): TreatmentRecord[] => [
-  ...readAddedTreatments(patientId),
-  ...(treatmentsByPatient[patientId] ?? []),
-]
-
-const financesFor = (patientId: string): FinanceRecord[] => [
-  ...readAddedFinances(patientId),
-  ...(financesByPatient[patientId] ?? []),
-]
-
-const documentsFor = (patientId: string): DocumentRecord[] => documentsByPatient[patientId] ?? []
-
 /* -------------------------------------------------------------------------- */
 /* Patients                                                                    */
 /* -------------------------------------------------------------------------- */
 
-export function patientColumns(options: ExportOptions): CsvColumn<PatientSummary>[] {
+export function patientColumns(
+  options: ExportOptions,
+  source?: ExportSource,
+): CsvColumn<PatientSummary>[] {
   const base: CsvColumn<PatientSummary>[] = [
     { header: "Patient ID", value: (p) => p.id },
     { header: "Full name", value: (p) => p.fullName },
@@ -101,7 +65,7 @@ export function patientColumns(options: ExportOptions): CsvColumn<PatientSummary
     ...base,
     { header: "Medical history", value: (p) => p.medicalHistorySummary },
     { header: "General notes", value: (p) => p.generalNotes },
-    { header: "Treatment records", value: (p) => treatmentsFor(p.id).length },
+    { header: "Treatment records", value: (p) => source?.treatmentsFor(p.id).length ?? 0 },
   ]
 }
 
@@ -147,15 +111,19 @@ export const treatmentColumns: CsvColumn<TreatmentRecord & { patientId: string }
   { header: "Note", value: (r) => r.note },
 ]
 
-export function allTreatmentRows(): (TreatmentRecord & { patientId: string })[] {
-  return patients.flatMap((p) => treatmentsFor(p.id).map((r) => ({ ...r, patientId: p.id })))
+export function allTreatmentRows(
+  source: ExportSource,
+): (TreatmentRecord & { patientId: string })[] {
+  return source.patients.flatMap((p) =>
+    source.treatmentsFor(p.id).map((r) => ({ ...r, patientId: p.id })),
+  )
 }
 
 export const exportDatasets = {
-  patients: () => patients,
-  appointments: allAppointments,
-  invoices: invoicesForExport,
-  treatments: allTreatmentRows,
+  patients: (source: ExportSource) => source.patients,
+  appointments: (source: ExportSource) => source.appointments,
+  invoices: (source: ExportSource) => source.invoices,
+  treatments: (source: ExportSource) => allTreatmentRows(source),
 }
 
 /* -------------------------------------------------------------------------- */
@@ -163,8 +131,12 @@ export const exportDatasets = {
 /* -------------------------------------------------------------------------- */
 
 /** Everything held about one patient. */
-export function buildPatientBundle(patientId: string, options: ExportOptions) {
-  const patient = patients.find((p) => p.id === patientId)
+export function buildPatientBundle(
+  patientId: string,
+  options: ExportOptions,
+  source: ExportSource,
+) {
+  const patient = source.patients.find((p) => p.id === patientId)
   if (!patient) return null
 
   const { medicalHistorySummary, generalNotes, ...contact } = patient
@@ -176,13 +148,13 @@ export function buildPatientBundle(patientId: string, options: ExportOptions) {
       ? { ...contact, medicalHistorySummary, generalNotes }
       : contact,
     notificationPreferences: readOptOut(patientId),
-    appointments: allAppointments().filter((a) => a.patientId === patientId),
-    invoices: invoicesForExport().filter((i) => i.patientId === patientId),
-    finances: financesFor(patientId),
-    documents: documentsFor(patientId),
+    appointments: source.appointments.filter((a) => a.patientId === patientId),
+    invoices: source.invoices.filter((i) => i.patientId === patientId),
+    finances: source.financesFor(patientId),
+    documents: source.documentsFor(patientId),
     ...(options.includeClinical
       ? {
-          treatments: treatmentsFor(patientId),
+          treatments: source.treatmentsFor(patientId),
           questionnaires: listQuestionnaires().filter((q) => q.patientId === patientId),
         }
       : {}),
@@ -196,23 +168,26 @@ export function buildPatientBundle(patientId: string, options: ExportOptions) {
  * a true copy — it has to be exact and complete, and a folder of flat files
  * loses the relationships between them.
  */
-export function buildFullBackup(options: ExportOptions) {
+export function buildFullBackup(options: ExportOptions, source: ExportSource) {
   return {
     exportedAt: new Date().toISOString(),
+    // Stated in the file itself. A backup taken from the demo dataset is not a
+    // backup, and the one thing worse than not having one is believing you do.
+    source: source.live ? "clinic database" : "demonstration data",
     includesClinical: options.includeClinical,
     clinicSettings: readClinicSettings(),
-    patients: patients.map((p) => {
+    patients: source.patients.map((p) => {
       const { medicalHistorySummary, generalNotes, ...contact } = p
       return {
         ...(options.includeClinical ? { ...contact, medicalHistorySummary, generalNotes } : contact),
         notificationPreferences: readOptOut(p.id),
-        finances: financesFor(p.id),
-        documents: documentsFor(p.id),
-        ...(options.includeClinical ? { treatments: treatmentsFor(p.id) } : {}),
+        finances: source.financesFor(p.id),
+        documents: source.documentsFor(p.id),
+        ...(options.includeClinical ? { treatments: source.treatmentsFor(p.id) } : {}),
       }
     }),
-    appointments: allAppointments(),
-    invoices: invoicesForExport(),
+    appointments: source.appointments,
+    invoices: source.invoices,
     automations: {
       outbox: listOutbox(),
       patientResponses: listResponses(),

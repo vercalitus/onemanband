@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import { Braces, Download, ShieldAlert, Sheet } from "lucide-react"
+import { Braces, Download, Loader2, ShieldAlert, Sheet } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
@@ -35,8 +35,8 @@ export function ExportDialog({
   onOpenChange: (open: boolean) => void
   title: string
   subtitle?: string
-  onExportCsv?: (options: ExportOptions) => void
-  onExportJson?: (options: ExportOptions) => void
+  onExportCsv?: (options: ExportOptions) => void | Promise<void>
+  onExportJson?: (options: ExportOptions) => void | Promise<void>
   csvLabel?: string
   jsonLabel?: string
   /** Extra per-dataset controls, rendered above the format buttons. */
@@ -44,7 +44,20 @@ export function ExportDialog({
 }) {
   const { t } = useLocale()
   const [includeClinical, setIncludeClinical] = useState(false)
+  // An export now reads the clinic's real data, which takes a moment for a
+  // whole-clinic backup. Without this the button looks ignored and gets
+  // pressed again.
+  const [busy, setBusy] = useState(false)
   const options: ExportOptions = { includeClinical }
+
+  const run = async (handler: (o: ExportOptions) => void | Promise<void>) => {
+    setBusy(true)
+    try {
+      await handler(options)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -85,18 +98,27 @@ export function ExportDialog({
           {(onExportCsv || onExportJson) && (
             <div className="grid gap-2 sm:grid-cols-2">
               {onExportCsv && (
-                <Button onClick={() => onExportCsv(options)} className="h-11 gap-2">
-                  <Sheet className="size-4" aria-hidden />
+                <Button disabled={busy} onClick={() => void run(onExportCsv)} className="h-11 gap-2">
+                  {busy ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Sheet className="size-4" aria-hidden />
+                  )}
                   {csvLabel ?? t("export.csv")}
                 </Button>
               )}
               {onExportJson && (
                 <Button
                   variant="outline"
-                  onClick={() => onExportJson(options)}
+                  disabled={busy}
+                  onClick={() => void run(onExportJson)}
                   className="h-11 gap-2 border-slate-200"
                 >
-                  <Braces className="size-4" aria-hidden />
+                  {busy ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Braces className="size-4" aria-hidden />
+                  )}
                   {jsonLabel ?? t("export.json")}
                 </Button>
               )}

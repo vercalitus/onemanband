@@ -2,17 +2,44 @@
 
 import Link from "next/link"
 import { GripVertical } from "lucide-react"
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
 import { localizeWaitlistEntry } from "@/lib/i18n/localized-seed"
 import { waitlistEntries } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
 
-/** Waitlist sidebar — overlays Hebrew copy on seeded rows when locale is `he`. */
+/**
+ * Waitlist sidebar.
+ *
+ * The seeded rows are invented people, and beside a real diary they read as
+ * patients genuinely waiting for a slot — each one linking to a record that
+ * does not exist. So they go the moment the clinic has patients of its own.
+ *
+ * Nothing replaces them yet: there is no waitlist table, and an empty list is
+ * the truth until there is one. Adding people to it is the feature this is
+ * waiting for, and inventing the data in the meantime is what caused the
+ * problem.
+ */
 export function Waitlist() {
   const { locale, t } = useLocale()
-  const rows = useMemo(() => waitlistEntries.map((e) => localizeWaitlistEntry(e, locale)), [locale])
+  const [clinicIsReal, setClinicIsReal] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void clinicHasPatients().then((has) => {
+      if (!cancelled) setClinicIsReal(has)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const rows = useMemo(
+    () => (clinicIsReal ? [] : waitlistEntries.map((e) => localizeWaitlistEntry(e, locale))),
+    [locale, clinicIsReal],
+  )
 
   return (
     <div className="space-y-1">

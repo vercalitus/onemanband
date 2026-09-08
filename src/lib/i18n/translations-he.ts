@@ -657,6 +657,8 @@ export const HE_MESSAGES: Record<string, string> = {
   "patientChart.editContactAria": "עריכת פרטי התקשרות",
   "patientChart.medicalSummaryPh": "סיכום היסטוריה רפואית…",
   "patientChart.carePlan": "תוכנית טיפול",
+  "patientChart.carePlanEdit": "קביעת מספר הטיפולים בתוכנית",
+  "patientChart.carePlanDefault": "ברירת המחדל של המרפאה",
   "patientChart.sessionsWord": "טיפולים",
   "patientChart.carePlanProgressAria": "{pct}% מתוכנית הטיפול הושלמו",
   "patientChart.clinicalStatus": "מצב",

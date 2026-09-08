@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { SidePanel } from "@/components/ui/side-panel"
@@ -47,6 +48,7 @@ import { cn } from "@/lib/utils"
 
 export default function BillingPage() {
   const { t, formatMoney, isRtl } = useLocale()
+  const allPatients = useMergedPatients()
   const {
     invoices,
     pendingInvoices,
@@ -100,7 +102,10 @@ export default function BillingPage() {
     [monthlyRevenue, liveLedger],
   )
   const collectionRate = useMemo(() => computeCollectionRate(invoices), [invoices])
-  const snapshots = useMemo(() => computePatientSnapshots(invoices, formatMoney), [invoices, formatMoney])
+  const snapshots = useMemo(
+    () => computePatientSnapshots(invoices, formatMoney, allPatients),
+    [invoices, formatMoney, allPatients],
+  )
 
   const balanceByPatient = useMemo(() => {
     const m = new Map<string, number>()

@@ -31,8 +31,8 @@ import {
 } from "@/features/dashboard/lib/dismissed-signals"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
-import { localizedPulseMetrics, localizeTodoTitle } from "@/lib/i18n/localized-seed"
-import { dashboardMetrics } from "@/lib/mock-data"
+import { usePulseMetrics } from "@/features/dashboard/lib/use-pulse-metrics"
+import { localizeTodoTitle } from "@/lib/i18n/localized-seed"
 import type { TodoItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
@@ -252,17 +252,22 @@ export function DashboardOverview() {
     [todos, locale, t],
   )
 
-  const pulseMetrics = useMemo(
-    () => localizedPulseMetrics(dashboardMetrics, locale, (k) => t(k)),
-    [locale, t],
-  )
+  const { metrics: pulseMetrics, live: pulseIsLive } = usePulseMetrics()
 
+  /**
+   * Three paragraphs of clinic analysis, written once and true of nobody —
+   * "two patients with open plans have gone 21+ days without a visit". They
+   * read as findings about this practice, so they are shown only while the app
+   * is a demonstration. Real observations would have to be derived from real
+   * records, and until they are, saying nothing is the honest option.
+   */
   const clinicPulseItems = useMemo(() => {
+    if (pulseIsLive) return []
     return ([1, 2, 3] as const).map((i) => ({
       title: t(`pulse.obs.${i}.title`),
       body: t(`pulse.obs.${i}.body`),
     }))
-  }, [t])
+  }, [t, pulseIsLive])
 
   /**
    * Dismissals live outside the todo list so they survive a refresh, and are
@@ -416,6 +421,7 @@ export function DashboardOverview() {
           })}
         </section>
 
+        {clinicPulseItems.length > 0 && (
         <section className="mt-8 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] transition-all duration-200 md:p-6">
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex size-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
@@ -435,6 +441,7 @@ export function DashboardOverview() {
             ))}
           </div>
         </section>
+        )}
       </div>
     </div>
   )

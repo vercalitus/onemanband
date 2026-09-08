@@ -160,6 +160,28 @@ export async function fetchUninvoicedVisits(
 }
 
 /**
+ * Which patients have something outstanding.
+ *
+ * Ids only. The header's search results need to know whether a name has money
+ * against it, and pulling the whole ledger on every page to answer a yes-or-no
+ * question per row would be a page-load's worth of work for a badge.
+ */
+export async function fetchPatientsWithOpenInvoices(): Promise<Set<string> | null> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return null
+
+  const { data, error } = await db
+    .from("finances")
+    .select("patient_id")
+    .neq("payment_status", "paid")
+    .neq("payment_status", "refunded")
+    .neq("invoice_status", "void")
+
+  if (error) return null
+  return new Set((data as { patient_id: string }[]).map((row) => row.patient_id))
+}
+
+/**
  * What one patient still owes, in shekels.
  *
  * Asked by the chart, which needs a number and not a ledger. Null when there is

@@ -70,6 +70,39 @@ export async function fetchPatientTreatments(
   return (data as unknown as TreatmentRow[]).map(toRecord)
 }
 
+/**
+ * Every treatment record in the clinic, grouped by patient.
+ *
+ * For the backup, which needs all of them at once. Asking per patient would be
+ * 1,178 round trips to build one file; PostgREST also caps a response at 1,000
+ * rows and says nothing about it, so the rows are paged explicitly — a backup
+ * that silently stops at a thousand records is worse than one that fails.
+ */
+export async function fetchAllTreatments(): Promise<Map<string, TreatmentRecord[]> | null> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return null
+
+  const byPatient = new Map<string, TreatmentRecord[]>()
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db
+      .from("treatments")
+      .select(`patient_id, ${SELECT}`)
+      .order("recorded_at", { ascending: false })
+      .range(from, from + PAGE - 1)
+
+    if (error) return null
+    const rows = data as unknown as (TreatmentRow & { patient_id: string })[]
+    for (const row of rows) {
+      const list = byPatient.get(row.patient_id) ?? []
+      list.push(toRecord(row))
+      byPatient.set(row.patient_id, list)
+    }
+    if (rows.length < PAGE) break
+  }
+  return byPatient
+}
+
 async function currentClinicAndUser(): Promise<{ clinicId: string; userId: string } | null> {
   const db = createSupabaseBrowserClient()
   if (!db) return null

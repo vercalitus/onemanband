@@ -10,10 +10,10 @@ import { PublicNotice, PublicShell } from "@/features/automations/components/pub
 import { SlotPicker } from "@/features/automations/components/slot-picker"
 import { randomId, upsertIntake } from "@/features/automations/lib/automation-store"
 import { findFreeSlots, type FreeSlot } from "@/features/automations/lib/availability"
+import { useBusySlots } from "@/features/automations/lib/use-busy-slots"
 import { markTokenUsed } from "@/features/automations/lib/automation-store"
 import { resolveToken } from "@/features/automations/lib/tokens"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
-import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
 import type { AppointmentType } from "@/types/domain"
 import type { ClinicSettings } from "@/types/clinic-settings"
@@ -35,6 +35,7 @@ const CONTROL =
  */
 export function BookPageClient({ token }: { token: string }) {
   const { t } = useLocale()
+  const busySlots = useBusySlots(token)
   const [stage, setStage] = useState<Stage>("loading")
   const [reason, setReason] = useState("")
   const [settings, setSettings] = useState<ClinicSettings | null>(null)
@@ -71,17 +72,20 @@ export function BookPageClient({ token }: { token: string }) {
   }, [settings])
 
   const slots = useMemo<FreeSlot[]>(() => {
-    if (!settings || stage !== "slot") return []
+    // Nothing offered until the clinic's real diary has been read. Drawing the
+    // week as free and then removing slots would hand out a time somebody has
+    // already tapped.
+    if (!settings || stage !== "slot" || busySlots === null) return []
     const duration =
       settings.treatmentTypes.find((x) => x.type === type)?.defaultMinutes ?? 30
     return findFreeSlots({
       automations: settings.automations,
       weekdays: settings.weekdays,
-      appointments: [...todaySchedule, ...weeklySchedule],
+      appointments: busySlots ?? [],
       durationMinutes: duration,
       limit: 120,
     })
-  }, [settings, stage, type])
+  }, [settings, stage, type, busySlots])
 
   const clinicName = settings?.profile.clinicName ?? ""
 

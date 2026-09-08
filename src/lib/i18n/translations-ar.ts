@@ -658,6 +658,8 @@ export const AR_MESSAGES: Record<string, string> = {
   "patientChart.editContactAria": "تعديل بيانات الاتصال",
   "patientChart.medicalSummaryPh": "ملخص التاريخ الطبي…",
   "patientChart.carePlan": "خطة العلاج",
+  "patientChart.carePlanEdit": "تحديد عدد جلسات الخطة",
+  "patientChart.carePlanDefault": "الإعداد الافتراضي للعيادة",
   "patientChart.sessionsWord": "جلسات",
   "patientChart.carePlanProgressAria": "اكتُمل {pct}% من خطة العلاج",
   "patientChart.clinicalStatus": "الحالة",

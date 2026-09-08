@@ -112,6 +112,12 @@ export interface PatientSummary {
   clinicalStatusUpdatedAt?: string
   /** Where on the body this patient has been treated. */
   bodyMapMarks?: TreatmentMark[]
+  /**
+   * Sessions this patient's course of treatment runs to. Undefined means none
+   * has been agreed, and the chart shows the practice default instead of
+   * inventing a target for this person.
+   */
+  carePlanSessions?: number
 }
 
 export interface TreatmentRecord {

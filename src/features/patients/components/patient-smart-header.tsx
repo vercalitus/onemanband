@@ -23,6 +23,9 @@ interface Props {
   overrides: PatientContactOverrides
   totalSessionsDone: number
   planTarget: number
+  /** False when the target is the practice default rather than this patient's plan. */
+  planIsPersonal: boolean
+  onPlanTargetChange: (sessions: number | null) => void
   clinicalStatus: ClinicalStatus
   onClinicalStatusChange: (v: string) => void
   onSaveOverrides: (o: PatientContactOverrides) => void
@@ -40,6 +43,8 @@ export function PatientSmartHeader({
   overrides,
   totalSessionsDone,
   planTarget,
+  planIsPersonal,
+  onPlanTargetChange,
   clinicalStatus,
   onClinicalStatusChange,
   onSaveOverrides,
@@ -95,6 +100,17 @@ export function PatientSmartHeader({
   const openStatusEditor = () => {
     setStatusDraft(clinicalStatus.manualText)
     setEditingStatus(true)
+  }
+
+  const [editingPlan, setEditingPlan] = useState(false)
+  const [planDraft, setPlanDraft] = useState(String(planTarget))
+
+  const commitPlan = () => {
+    const parsed = Number.parseInt(planDraft, 10)
+    // An empty or impossible number clears the plan rather than inventing one,
+    // and the chart falls back to the practice default.
+    onPlanTargetChange(Number.isFinite(parsed) && parsed >= 1 && parsed <= 200 ? parsed : null)
+    setEditingPlan(false)
   }
 
   const statusDate = clinicalStatus.at
@@ -245,11 +261,42 @@ export function PatientSmartHeader({
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                 {t("patientChart.carePlan")}
               </p>
-              <p className="font-mono text-sm font-semibold tabular-nums text-slate-800">
-                {clampedDone}
-                <span className="font-normal text-slate-400">/{planTarget}</span>
-              </p>
+              {editingPlan ? (
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  autoFocus
+                  value={planDraft}
+                  onChange={(e) => setPlanDraft(e.target.value)}
+                  onBlur={commitPlan}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitPlan()
+                    if (e.key === "Escape") setEditingPlan(false)
+                  }}
+                  dir="ltr"
+                  className="w-20 rounded-lg border border-sky-200 bg-white px-2 py-0.5 font-mono text-sm tabular-nums text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-sky-100"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlanDraft(String(planTarget))
+                    setEditingPlan(true)
+                  }}
+                  title={t("patientChart.carePlanEdit")}
+                  className="font-mono text-sm font-semibold tabular-nums text-slate-800 underline-offset-2 hover:text-sky-700 hover:underline"
+                >
+                  {clampedDone}
+                  <span className="font-normal text-slate-400">/{planTarget}</span>
+                </button>
+              )}
               <p className="text-[11px] text-slate-400">{t("patientChart.sessionsWord")}</p>
+              {/* Said plainly rather than shown as a number that looks agreed.
+                  A target nobody set for this patient is not their plan. */}
+              {!planIsPersonal && !editingPlan && (
+                <p className="text-[11px] text-slate-400">{t("patientChart.carePlanDefault")}</p>
+              )}
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
               <div

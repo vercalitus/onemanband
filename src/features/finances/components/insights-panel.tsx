@@ -3,15 +3,20 @@
 import { useMemo } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { useScheduleDay } from "@/components/providers/schedule-day-provider"
+import { useClinicSettings } from "@/features/settings/lib/use-clinic-settings"
 import {
   computeMonthlyRevenue,
   computeRevenueByTreatment,
   sumProjectedRevenue,
 } from "@/features/finances/lib/derive-billing"
 import { localeToBcp47 } from "@/lib/format-locale"
-import { projectedCalendarWeek } from "@/lib/mock-finances"
 import { cn } from "@/lib/utils"
-import type { BillingInvoice, BillingTreatmentType } from "@/types/domain"
+import type {
+  BillingInvoice,
+  BillingTreatmentType,
+  ProjectedCalendarVisit,
+} from "@/types/domain"
 
 const TYPE_TONE: Record<BillingTreatmentType, string> = {
   first: "bg-violet-500",
@@ -22,6 +27,8 @@ const TYPE_TONE: Record<BillingTreatmentType, string> = {
 /** Insights drawer — currency + copy follow locale; progress bars align in RTL. */
 export function InsightsPanel({ invoices }: { invoices: BillingInvoice[] }) {
   const { locale, isRtl, formatMoney, t } = useLocale()
+  const { appointments } = useScheduleDay()
+  const { settings } = useClinicSettings()
 
   const treatmentLabels = useMemo(
     () =>
@@ -36,8 +43,38 @@ export function InsightsPanel({ invoices }: { invoices: BillingInvoice[] }) {
   const rows = computeRevenueByTreatment(invoices, treatmentLabels)
   const monthly = computeMonthlyRevenue(invoices)
   const maxRevenue = Math.max(...rows.map((r) => r.revenue), 1)
-  const projectedTotal = sumProjectedRevenue(projectedCalendarWeek)
-  const projectedCount = projectedCalendarWeek.length
+
+  /**
+   * What the week ahead is worth, from the diary and the clinic's own prices.
+   *
+   * This was a fixed list of invented visits, so the figure was the same every
+   * week and belonged to nobody — a forecast of a fictional clinic shown beside
+   * real takings. A clinic with an empty week ahead now sees zero, which is
+   * both true and useful.
+   */
+  const projected = useMemo(() => {
+    const priceOf = new Map(settings.treatmentTypes.map((tt) => [tt.type, tt.priceIls]))
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 7)
+    return appointments.filter((a) => {
+      if (a.status === "cancelled" || a.status === "no_show") return false
+      const day = new Date(`${a.date}T00:00:00`)
+      return day >= start && day < end
+    })
+    .map<ProjectedCalendarVisit>((a) => ({
+      id: a.id,
+      date: a.date,
+      patientId: a.patientId,
+      patientName: a.patientName,
+      treatmentType: a.appointmentType,
+      estimatedAmount: priceOf.get(a.appointmentType) ?? 0,
+    }))
+  }, [appointments, settings])
+
+  const projectedTotal = sumProjectedRevenue(projected)
+  const projectedCount = projected.length
 
   const rangeLabel = useMemo(() => {
     const start = new Date()

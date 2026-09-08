@@ -48,6 +48,44 @@ export async function fetchPatientDocuments(patientId: string): Promise<Document
 }
 
 /**
+ * Every document in the clinic, grouped by patient — for the backup, which
+ * needs all of them at once rather than one patient at a time. Paged, because
+ * PostgREST stops at 1,000 rows without saying so and a backup that quietly
+ * omits the rest is worse than one that fails.
+ */
+export async function fetchAllDocuments(): Promise<Map<string, DocumentRecord[]> | null> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return null
+
+  const byPatient = new Map<string, DocumentRecord[]>()
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db
+      .from("documents")
+      .select("patient_id, id, file_name, document_type, created_at, source_label, storage_path")
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE - 1)
+
+    if (error) return null
+    const rows = data as unknown as (DocumentRow & { patient_id: string })[]
+    for (const row of rows) {
+      const list = byPatient.get(row.patient_id) ?? []
+      list.push({
+        id: row.id,
+        name: row.file_name,
+        type: row.document_type,
+        uploadedAt: row.created_at,
+        source: row.source_label ?? "",
+        storagePath: row.storage_path,
+      })
+      byPatient.set(row.patient_id, list)
+    }
+    if (rows.length < PAGE) break
+  }
+  return byPatient
+}
+
+/**
  * Remove a document for good: the file leaves the bucket, the row leaves the
  * table.
  *

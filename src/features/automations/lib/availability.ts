@@ -31,11 +31,27 @@ export interface FreeSlot {
   end: string
 }
 
+/**
+ * The only thing free-slot maths needs to know about a booking: when it is and
+ * whether it still stands.
+ *
+ * Narrower than a `ScheduleItem` on purpose. The patient-facing booking page
+ * has no session and must be told what is taken without being told who is in
+ * it — a time with nothing attached is exactly enough to avoid a clash, and
+ * everything else would be a patient's business leaking to a stranger.
+ */
+export interface BusySlot {
+  date: string
+  start: string
+  end: string
+  status: ScheduleItem["status"]
+}
+
 export interface SlotQuery {
   automations: ClinicAutomations
   weekdays: WeekdayScheduleSlot[]
   /** Everything already booked — cancelled visits are ignored as free time. */
-  appointments: ScheduleItem[]
+  appointments: BusySlot[]
   durationMinutes: number
   now?: Date
   /** Cap the returned list; the picker paginates by day, not by slot. */
@@ -66,7 +82,7 @@ function effectiveWindows(
 }
 
 /** Busy ranges for a day, in minutes from midnight. */
-function busyRanges(appointments: ScheduleItem[], isoDate: string): [number, number][] {
+function busyRanges(appointments: BusySlot[], isoDate: string): [number, number][] {
   return appointments
     .filter((a) => a.date === isoDate && a.status !== "cancelled")
     .map((a) => [minutesFromHHMM(a.start), minutesFromHHMM(a.end)] as [number, number])

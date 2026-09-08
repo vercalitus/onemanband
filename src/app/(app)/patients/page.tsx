@@ -22,20 +22,16 @@ import {
 import { AddPatientDialog } from "@/features/patients/components/add-patient-dialog"
 import { ExportButton, ExportDialog } from "@/features/exports/components/export-dialog"
 import { patientColumns } from "@/features/exports/lib/build-exports"
+import { loadExportSource } from "@/features/exports/lib/export-source"
 import { datedFilename, downloadCsv } from "@/lib/file-export"
 import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { localeToBcp47 } from "@/lib/format-locale"
 import { localizePatient } from "@/lib/i18n/localized-seed"
-import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
+import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import type { PatientSummary } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
 type FilterKey = "frozen" | "past" | "active" | "relevant"
-
-const patientsWithFutureVisit = new Set<string>([
-  ...todaySchedule.map((a) => a.patientId),
-  ...weeklySchedule.map((a) => a.patientId),
-])
 
 const TODAY = new Date()
 
@@ -86,7 +82,8 @@ function relativeVisitLabel(
 }
 
 export default function PatientsPage() {
-  const { locale, t, formatBalanceDisplay } = useLocale()
+  const { locale, t, formatBalanceDisplay, formatMoney } = useLocale()
+  const { appointments } = useScheduleDay()
   const paymentClaims = usePaymentClaims()
   const merged = useMergedPatients()
   const addPatient = useAddPatient()
@@ -121,6 +118,24 @@ export default function PatientsPage() {
     ],
     [t],
   )
+
+  /**
+   * Who has something in the diary ahead of them, from the clinic's real
+   * appointments. This was a fixed set built from the demo week, so the
+   * "Active (future visit)" filter could not match a real patient at all.
+   */
+  const patientsWithFutureVisit = useMemo(() => {
+    const now = Date.now()
+    return new Set(
+      appointments
+        .filter(
+          (a) =>
+            a.status !== "cancelled" &&
+            new Date(`${a.date}T${a.end || a.start || "00:00"}`).getTime() >= now,
+        )
+        .map((a) => a.patientId),
+    )
+  }, [appointments])
 
   const rows = useMemo(() => {
     const decorated = localizedPatients.map((p) => {
@@ -164,7 +179,7 @@ export default function PatientsPage() {
         const dayB = b.days ?? Number.POSITIVE_INFINITY
         return dayB < dayA ? 1 : -1
       })
-  }, [query, activeFilters, localizedPatients])
+  }, [query, activeFilters, localizedPatients, patientsWithFutureVisit])
 
   const toggleFilter = (id: FilterKey) => {
     setActiveFilters((prev) => {
@@ -393,9 +408,10 @@ export default function PatientsPage() {
         onOpenChange={setExportOpen}
         title={t("export.patients")}
         subtitle={t("export.patientsSubtitle", { count: rows.length })}
-        onExportCsv={(options) => {
+        onExportCsv={async (options) => {
+          const source = await loadExportSource(formatMoney)
           downloadCsv(
-            patientColumns(options),
+            patientColumns(options, source),
             rows.map((r) => r.patient),
             datedFilename("patients", "csv"),
           )
