@@ -21,9 +21,13 @@ import type {
  *     practitioner might want to do.
  *  2. **Somebody has to act.** If the system can handle it, the system should
  *     handle it — a reminder that sends itself does not belong on this board.
- *  3. **It ends.** A permanent state is not a signal. "Patient is frozen" was
- *     on this board and never resolved, because being frozen is not an event
- *     and there was nothing to do about it.
+ *  3. **It ends.** A permanent state is not a signal. Two rows failed this and
+ *     were removed: "patient is frozen", because being frozen is not an event,
+ *     and "follow up — 12w since last visit", which was 174 people at once, had
+ *     no completion other than the patient happening to return, and rested on a
+ *     last-visit date that for imported patients is really the date of their
+ *     last bookkeeping document. A retention list is a filter on the patient
+ *     page, not a task on a board.
  *
  * Titles are i18n keys plus params; `title`/`due` are English fallbacks. Ids
  * are keyed off the source record so dismissal survives re-derivation.
@@ -38,20 +42,17 @@ const MS_PER_DAY = 86_400_000
  * a week later is not a slow payer, it is a visit somebody forgot to settle.
  */
 const UNPAID_CHASE_DAYS = 7
-/** An issued invoice this close to its due date is flagged. */
-const DUE_SOON_DAYS = 3
 /** A patient part-way through an agreed plan who has not been in for this long. */
 const PLAN_STALLED_DAYS = 21
-/** How stale an active patient's last visit must be to nudge a follow-up. */
-const FOLLOW_UP_DAYS = 60
 /**
- * And how stale is too stale.
+ * Past this, a lapsed patient is not a task.
  *
- * Past a year this is not a follow-up, it is a lead nobody is going to call —
- * and with 1,178 imported patients an unbounded rule would bury the board under
- * people last seen in 2023.
+ * A year without a visit is not somebody to chase, it is somebody who has
+ * moved on — and `last_seen_at` for the imported patients is the date of their
+ * last bookkeeping document rather than a real visit, so an old one is weak
+ * evidence about anything.
  */
-const FOLLOW_UP_LIMIT_DAYS = 365
+const STALE_LIMIT_DAYS = 365
 /** A visit this soon that the clinic has no way to send a reminder for. */
 const UNREACHABLE_WINDOW_DAYS = 7
 
@@ -134,7 +135,7 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
   }
 
   /*
-   * 2 & 3 — Unpaid invoices.
+   * 2 — Unpaid invoices.
    *
    * A due date is used when the invoice has one. When it does not — and most
    * will not, because the clinic charges at the session and only writes a row
@@ -180,25 +181,8 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
     })
   }
 
-  for (const inv of unpaid) {
-    if (!inv.dueAt) continue
-    const inDays = -daysBetween(inv.dueAt, now)
-    if (inDays < 0 || inDays > DUE_SOON_DAYS) continue
-    items.push({
-      id: `rx-duesoon-${inv.id}`,
-      kind: "reactive",
-      priority: "medium",
-      titleKey: "signal.invoiceDueSoon",
-      dueKey: "signal.due.inDays",
-      params: { patient: inv.patientName, amount: inv.displayAmount, days: inDays },
-      title: `Invoice due soon — ${inv.patientName} · ${inv.displayAmount}`,
-      due: `In ${inDays}d`,
-      completed: false,
-    })
-  }
-
   /*
-   * 4 — Paid, but no tax document was filed.
+   * 3 — Paid, but no tax document was filed.
    *
    * A fault rather than a job: money has changed hands and the receipt that
    * legally has to exist does not. Nothing else in the product would ever
@@ -266,12 +250,17 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
   }
 
   /*
-   * 5 — A visit the clinic cannot send a reminder for.
+   * 4 — A visit the clinic cannot send a reminder for.
    *
-   * Narrow on purpose. Most of this clinic's imported patients have no phone
+   * Narrow on purpose. 980 of this clinic's imported patients have no phone
    * number and listing them all would be a report, not a task. Someone who is
    * coming in this week is different: there is a person to ask, a reason to
    * ask, and a date by which asking stops being useful.
+   *
+   * Worth watching once the clinic books from here. If most of the diary is
+   * patients with no number, this stops being a prompt and becomes the board's
+   * permanent background — at which point the right answer is collecting
+   * numbers at reception, not a quieter signal.
    */
   const contactable = new Map(patients.map((p) => [p.id, !!(p.phone || p.email)]))
   const reachableBy = isoDay(new Date(now.getTime() + UNREACHABLE_WINDOW_DAYS * MS_PER_DAY))
@@ -299,29 +288,17 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
     if (!target) continue
     const done = treatmentCounts.get(patient.id) ?? 0
 
-    // 6 — The agreed course is finished. A decision is owed: another block, or
-    // discharge. Left alone, a completed plan quietly becomes an open-ended one.
-    if (done >= target) {
-      items.push({
-        id: `rx-plandone-${patient.id}`,
-        kind: "reactive",
-        priority: "medium",
-        titleKey: "signal.carePlanComplete",
-        dueKey: "signal.due.sessionsDone",
-        params: { patient: patient.fullName, done, total: target },
-        title: `Care plan complete — ${patient.fullName} (${done}/${target})`,
-        due: `${done}/${target} sessions`,
-        completed: false,
-      })
-      continue
-    }
+    // A finished course is not a task. Reaching the last session is something
+    // the practitioner is present for and decides in the room; a row on a board
+    // the next morning tells him nothing he did not already know.
+    if (done >= target) continue
 
-    // 7 — Part-way through a plan and not seen for weeks. Stronger than a
+    // 5 — Part-way through a plan and not seen for weeks. Stronger than a
     // general follow-up: this patient agreed to a course of treatment and has
     // stopped mid-way, which is the point at which people quietly drop out.
     if (!patient.lastVisit || booked.has(patient.id)) continue
     const days = daysBetween(patient.lastVisit, now)
-    if (days < PLAN_STALLED_DAYS || days > FOLLOW_UP_LIMIT_DAYS) continue
+    if (days < PLAN_STALLED_DAYS || days > STALE_LIMIT_DAYS) continue
     items.push({
       id: `rx-planstalled-${patient.id}`,
       kind: "reactive",
@@ -335,35 +312,9 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
     })
   }
 
-  /* ── The long tail ─────────────────────────────────────────────────────── */
-
-  // 8 — An active patient who has not been in for a while and has nothing
-  // booked. Bounded at both ends, and skipped entirely for anyone already in
-  // the diary: a patient coming on Thursday does not need chasing.
-  const followUps = patients
-    .filter((p) => p.status === "active" && p.lastVisit && !booked.has(p.id))
-    .map((p) => ({ p, days: daysBetween(p.lastVisit, now) }))
-    .filter(({ days }) => days >= FOLLOW_UP_DAYS && days <= FOLLOW_UP_LIMIT_DAYS)
-    // Most recently lapsed first — they are the ones still worth a call.
-    .sort((a, b) => a.days - b.days)
-
-  for (const { p, days } of followUps) {
-    items.push({
-      id: `rx-followup-${p.id}`,
-      kind: "reactive",
-      priority: "low",
-      titleKey: "signal.followUp",
-      dueKey: "signal.due.sinceVisit",
-      params: { patient: p.fullName, weeks: Math.floor(days / 7) },
-      title: `Follow up — ${p.fullName} (${Math.floor(days / 7)}w since last visit)`,
-      due: `Last visit ${p.lastVisit}`,
-      completed: false,
-    })
-  }
-
   /* ── The system itself ─────────────────────────────────────────────────── */
 
-  // 9 — Billing cannot file a document. Worth saying out loud before somebody
+  // 6 — Billing cannot file a document. Worth saying out loud before somebody
   // takes payment and finds out afterwards that no receipt exists.
   if (input.billing && !input.billing.ok) {
     items.push({

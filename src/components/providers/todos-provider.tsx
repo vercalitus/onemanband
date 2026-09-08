@@ -15,6 +15,12 @@ import {
 import { AUTOMATION_STORE_EVENT } from "@/features/automations/lib/automation-store"
 import { useRemoteResponses } from "@/features/automations/lib/remote-responses"
 import { deriveAutomationTodos } from "@/features/dashboard/lib/automation-signals"
+import {
+  createTask,
+  fetchTasks,
+  isTaskRow,
+  setTaskCompleted,
+} from "@/features/dashboard/lib/task-repository"
 import { fetchAppointments } from "@/features/calendar/lib/appointment-repository"
 import { deriveReactiveTodos } from "@/features/dashboard/lib/reactive-signals"
 import {
@@ -196,17 +202,39 @@ export function TodosProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(AUTOMATION_STORE_EVENT, sync)
   }, [remoteResponses])
 
+  /**
+   * The practitioner's own tasks, loaded from the clinic rather than invented
+   * at mount. Anything already on the board that is a saved task is replaced,
+   * so a reload does not double them up.
+   */
+  useEffect(() => {
+    let cancelled = false
+    void fetchTasks().then((tasks) => {
+      if (cancelled || !tasks) return
+      setTodos((prev) => [...prev.filter((t) => !isTaskRow(t.id)), ...tasks])
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  /**
+   * Written down, then saved.
+   *
+   * Shown immediately under a temporary id and swapped for the saved row when
+   * it comes back — typing a task and watching it appear a beat later is worse
+   * than the round trip is worth. A task that fails to save keeps its temporary
+   * id and stays on the board for this session rather than vanishing, which is
+   * the lesser of the two ways to lose it.
+   */
   const addActiveTask = useCallback(({ title, due }: { title: string; due: string }) => {
     const trimmed = title.trim()
     if (!trimmed) return
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? `todo-${crypto.randomUUID().slice(0, 10)}`
-        : `todo-${Date.now()}`
+    const pendingId = `task-pending-${Date.now()}`
     setTodos((prev) => [
       ...prev,
       {
-        id,
+        id: pendingId,
         title: trimmed,
         due: due.trim(),
         priority: "medium",
@@ -214,10 +242,29 @@ export function TodosProvider({ children }: { children: ReactNode }) {
         completed: false,
       },
     ])
+    void createTask({ title: trimmed, due: due.trim() }).then((saved) => {
+      if (!saved) return
+      setTodos((prev) => prev.map((t) => (t.id === pendingId ? saved : t)))
+    })
   }, [])
 
+  /**
+   * Ticking a saved task writes the change through. A derived signal has no
+   * checkbox — the board dismisses those instead, because ticking "invoice
+   * overdue" does not pay the invoice.
+   */
   const toggleComplete = useCallback((id: string) => {
-    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)))
+    let nowCompleted = false
+    setTodos((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t
+        nowCompleted = !t.completed
+        return { ...t, completed: nowCompleted }
+      }),
+    )
+    if (isTaskRow(id) && !id.startsWith("task-pending-")) {
+      void setTaskCompleted(id, nowCompleted)
+    }
   }, [])
 
   const value = useMemo<TodosContextValue>(
