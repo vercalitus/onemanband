@@ -17,9 +17,22 @@ import { useRemoteResponses } from "@/features/automations/lib/remote-responses"
 import { deriveAutomationTodos } from "@/features/dashboard/lib/automation-signals"
 import { fetchAppointments } from "@/features/calendar/lib/appointment-repository"
 import { deriveReactiveTodos } from "@/features/dashboard/lib/reactive-signals"
-import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
-import { dashboardTodos } from "@/lib/mock-data"
-import type { ScheduleItem, TodoItem } from "@/types/domain"
+import {
+  fetchInvoices,
+  fetchUninvoicedVisits,
+} from "@/features/finances/lib/finance-repository"
+import { clinicHasPatients, fetchPatients } from "@/features/patients/lib/patient-repository"
+import { fetchTreatmentCounts } from "@/features/patients/lib/treatment-repository"
+import { useLocale } from "@/components/providers/locale-provider"
+import { readClinicSettings } from "@/lib/clinic-settings-storage"
+import {
+  dashboardTodos,
+  patients as mockPatients,
+  todaySchedule,
+  weeklySchedule,
+} from "@/lib/mock-data"
+import { seedInvoices, seedUninvoicedVisits } from "@/lib/mock-finances"
+import type { TodoItem } from "@/types/domain"
 
 function normalize(seed: TodoItem[]): TodoItem[] {
   return seed.map((t) => ({
@@ -42,9 +55,19 @@ const isAutomationRow = (id: string) =>
   id.startsWith("rx-questionnaire-") ||
   id.startsWith("rx-newpatient-")
 
+/** The demo board, for a deploy with no clinic behind it. */
 function seedTodos(): TodoItem[] {
   const authored = dashboardTodos.filter((t) => t.kind && t.kind !== "reactive")
-  return normalize([...deriveReactiveTodos(), ...authored])
+  return normalize([
+    ...deriveReactiveTodos({
+      appointments: [...todaySchedule, ...weeklySchedule],
+      invoices: seedInvoices,
+      uninvoicedVisits: seedUninvoicedVisits,
+      patients: mockPatients,
+      treatmentCounts: new Map(),
+    }),
+    ...authored,
+  ])
 }
 
 type TodosContextValue = {
@@ -71,6 +94,7 @@ export function useTodos(): TodosContextValue {
  * and any global Add-task entry point (header bar).
  */
 export function TodosProvider({ children }: { children: ReactNode }) {
+  const { formatMoney } = useLocale()
   const [todos, setTodos] = useState<TodoItem[]>(seedTodos)
 
   /**
@@ -85,60 +109,75 @@ export function TodosProvider({ children }: { children: ReactNode }) {
   const remoteResponses = useRemoteResponses()
 
   /**
-   * The clinic's real diary, for the signals derived from it ("confirm
-   * tomorrow's appointment").
+   * Re-derive the whole board from the clinic's own records.
    *
-   * Fetched here rather than taken from ScheduleDayProvider because this
-   * provider sits above it in the tree. One extra query on the dashboard is a
-   * better trade than reordering the provider stack, and it disappears when
-   * the schedule finds a single owner.
+   * Everything at once, rather than the three schedule signals this used to
+   * replace. The money ones stayed on the demo seed and were then wiped along
+   * with it, so a real invoice past its due date produced nothing at all — the
+   * board simply had no opinion about money. Since the engine reads one input
+   * object, feeding it the real thing is what makes every signal live together.
+   *
+   * Fetched here rather than taken from the schedule provider because this one
+   * sits above it in the tree.
    */
-  const [liveSchedule, setLiveSchedule] = useState<ScheduleItem[] | undefined>(undefined)
   useEffect(() => {
-    void Promise.all([fetchAppointments(), clinicHasPatients()]).then(
-      ([result, hasPatients]) => {
-        if (result.source !== "live") return
-        // An empty array is an answer once the clinic is real: no bookings, so
-        // no signals. Leaving the seed would put fictional patients on the
-        // board beside genuine work.
-        if (result.appointments.length || hasPatients) {
-          setLiveSchedule(result.appointments)
-        }
-      },
-    )
-  }, [])
+    let cancelled = false
+    const settings = readClinicSettings()
+    const priceOf = (type: "first" | "adjustments" | "kupa") =>
+      settings.treatmentTypes.find((tt) => tt.type === type)?.priceIls ?? 0
 
-  /**
-   * Clear the demo board once the clinic has real patients.
-   *
-   * The seeded to-dos name invented people and link to records that do not
-   * exist — "chase overdue payment" for someone who was never a patient here.
-   * They were useful while the whole app was a demonstration; beside real work
-   * they are noise at best and a wrong instruction at worst.
-   */
-  useEffect(() => {
-    void clinicHasPatients().then((hasPatients) => {
-      if (!hasPatients) return
+    void (async () => {
+      const hasPatients = await clinicHasPatients()
+      if (cancelled || !hasPatients) return
+
+      const [schedule, invoiceFetch, uninvoiced, patientFetch, counts, billing] = await Promise.all([
+        fetchAppointments(),
+        fetchInvoices(formatMoney),
+        fetchUninvoicedVisits(formatMoney, priceOf),
+        fetchPatients(),
+        fetchTreatmentCounts(),
+        // A provider that cannot file a document is worth saying out loud
+        // before somebody takes payment and finds out afterwards. A failure to
+        // ask is not a failure to connect, so it stays silent.
+        fetch("/api/billing/ping")
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+      ])
+      if (cancelled) return
+
+      const derived = deriveReactiveTodos({
+        appointments: schedule.source === "live" ? schedule.appointments : [],
+        invoices: invoiceFetch.source === "live" ? invoiceFetch.invoices : [],
+        uninvoicedVisits: uninvoiced,
+        patients: patientFetch.source === "live" ? patientFetch.patients : [],
+        treatmentCounts: counts ?? new Map(),
+        billing: billing
+          ? { ok: !!billing.ok, provider: billing.provider, message: billing.message }
+          : null,
+      })
+
+      /*
+       * The demo board goes in the same breath as the real one arrives.
+       *
+       * Two steps used to do this — clear, then re-derive — and between them
+       * the board was empty. Doing both in one update means it is never
+       * momentarily wrong, and never shows an invented debtor beside a real
+       * one. Rows owned by the automation store are left alone: they come from
+       * a different source and are reconciled separately.
+       */
       const seeded = new Set(dashboardTodos.map((t) => t.id))
-      setTodos((prev) =>
-        prev.filter((t) => !seeded.has(t.id) && !t.id.startsWith("rx-")),
-      )
-    })
-  }, [])
+      setTodos((prev) => [
+        ...prev.filter(
+          (t) => !seeded.has(t.id) && (!t.id.startsWith("rx-") || isAutomationRow(t.id)),
+        ),
+        ...normalize(derived),
+      ])
+    })()
 
-  useEffect(() => {
-    // Re-derive the schedule-driven signals once the real diary arrives.
-    if (!liveSchedule) return
-    // The three signals that read the diary. The rest of `deriveReactiveTodos`
-    // is about invoices and patients and is not this stage's business.
-    const fromSchedule = (id: string) =>
-      id.startsWith("rx-confirm-") || id.startsWith("rx-intake-") || id.startsWith("rx-noshow-")
-    const derived = deriveReactiveTodos(new Date(), liveSchedule)
-    setTodos((prev) => [
-      ...prev.filter((t) => !fromSchedule(t.id)),
-      ...derived.filter((t) => fromSchedule(t.id)),
-    ])
-  }, [liveSchedule])
+    return () => {
+      cancelled = true
+    }
+  }, [formatMoney])
 
   useEffect(() => {
     const sync = () => {

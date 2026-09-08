@@ -103,6 +103,34 @@ export async function fetchAllTreatments(): Promise<Map<string, TreatmentRecord[
   return byPatient
 }
 
+/**
+ * How many sessions each patient has had.
+ *
+ * One column, every row, so the dashboard can tell who has reached the end of
+ * their care plan and who has stalled halfway through it. Cheaper than it
+ * looks: a patient id is a few bytes and a solo clinic accumulates a few
+ * thousand of these a year.
+ */
+export async function fetchTreatmentCounts(): Promise<Map<string, number> | null> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return null
+
+  const counts = new Map<string, number>()
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db
+      .from("treatments")
+      .select("patient_id")
+      .range(from, from + PAGE - 1)
+
+    if (error) return null
+    const rows = data as { patient_id: string }[]
+    for (const row of rows) counts.set(row.patient_id, (counts.get(row.patient_id) ?? 0) + 1)
+    if (rows.length < PAGE) break
+  }
+  return counts
+}
+
 async function currentClinicAndUser(): Promise<{ clinicId: string; userId: string } | null> {
   const db = createSupabaseBrowserClient()
   if (!db) return null
