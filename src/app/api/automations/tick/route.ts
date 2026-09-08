@@ -11,15 +11,16 @@ import { isSupabaseConfigured } from "@/lib/env"
 /**
  * Cron entry point: deliver every automation message that has come due.
  *
- * Wire it up in `vercel.json` once a provider exists:
- *   { "crons": [{ "path": "/api/automations/tick", "schedule": "*​/5 * * * *" }] }
+ * Scheduled in `vercel.json` every five minutes. That file is the only thing
+ * that makes any of this run on its own, so it is not optional configuration:
+ * the queue is read from Postgres precisely because the 18:00-the-evening-
+ * before message is due when nobody has the app open.
  *
- * Mock-mode caveat, stated plainly: the queue lives in the browser's
- * localStorage, and this route runs on the server where that does not exist.
- * So today it processes the server's own in-memory queue (usually empty) and
- * the browser drives ticking itself. The route is here because it is the shape
- * the real system needs, and it starts working the moment the store is backed
- * by Supabase instead.
+ * Being scheduled is not the same as being able to deliver. With no messaging
+ * provider in the environment the tick still runs, still drains the queue, and
+ * marks everything `simulated` — a real terminal state, not a fake success. So
+ * a deploy can be perfectly cronned and still send nothing, which is why the
+ * response says which of the two happened.
  */
 
 /** Never cached — a cron hitting a cached tick would deliver nothing. */

@@ -384,7 +384,8 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 - ✅ Dashboard signals and KPIs derived from clinic records
 - ✅ Exports and whole-clinic backup read the real clinic and state their source
 - ✅ Per-clinic ICS calendar subscription (one-way; no Google OAuth)
-- ⬜ **Vercel Cron hitting `/api/automations/tick`** — there is still no `vercel.json`, so nothing delivers due messages on a schedule
+- ✅ Vercel Cron hits `/api/automations/tick` every five minutes (`vercel.json`), gated by `CRON_SECRET`
+- ⬜ **No messaging provider in production.** The cron runs and the queue drains, but Vercel holds no Twilio or Resend credentials, so every message ends `simulated`. Scheduled is not the same as delivered
 - ⬜ Live WhatsApp / SMS — the number is in regulatory approval
 - ⬜ Email to patients — Resend can only reach the account owner until a domain is verified
 - ⬜ An intake review screen — self-registration lands as `PatientIntake` and has to be retyped
