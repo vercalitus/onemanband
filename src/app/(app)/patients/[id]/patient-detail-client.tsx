@@ -33,7 +33,11 @@ export function PatientDetailClient() {
 
   const { appointments } = useScheduleDay()
   const merged = useMergedPatients()
-  const { loading: patientsLoading } = usePatientExtras()
+  const {
+    loading: patientsLoading,
+    error: patientsError,
+    refreshLive,
+  } = usePatientExtras()
   const patient = merged.find((entry) => entry.id === id)
   const displayPatient = useMemo(
     () => (patient ? localizePatient(patient, locale) : patient),
@@ -41,18 +45,28 @@ export function PatientDetailClient() {
   )
 
   /*
-   * Wait before declaring a patient missing.
+   * Say "not found" only when the record really is not there.
    *
-   * The list arrives after mount, so for a moment `merged` holds only the demo
-   * dataset — and every real patient looked like a 404 in that moment, which
-   * reads as a deleted record rather than a slow one.
+   * Two things have to be ruled out first, and both were being reported to the
+   * practitioner as a missing patient:
+   *
+   *  - **Still loading.** The list arrives after mount, so for a moment
+   *    `merged` holds only the demo dataset and every real patient looks like a
+   *    404 — a deleted record rather than a slow one.
+   *  - **The list could not be read at all.** One dropped request and the chart
+   *    said the patient did not exist. On a phone, reading a thousand rows
+   *    fails often enough that a practitioner met "404 — this page could not be
+   *    found" on a patient who was sitting in front of him.
    *
    * `notFound()` never returns, so the hooks below still run in the same order
    * on every render that gets past it. A plain early return here would not, and
    * that is what the rules-of-hooks lint is protecting.
    */
   const stillLoadingPatients = patientsLoading && !patient
-  if (!stillLoadingPatients && (!patient || !displayPatient || !id)) notFound()
+  const listUnavailable = !!patientsError && !patient
+  if (!stillLoadingPatients && !listUnavailable && (!patient || !displayPatient || !id)) {
+    notFound()
+  }
 
   const {
     hydrated,
@@ -136,6 +150,25 @@ export function PatientDetailClient() {
     return (
       <div className="flex items-center justify-center py-20 text-sm text-slate-400">
         {t("patientChart.loading")}
+      </div>
+    )
+  }
+
+  // A failure says so, and offers the one thing that fixes it. Rendered after
+  // the hooks for the same reason `notFound()` is called before them.
+  if (listUnavailable) {
+    return (
+      <div className="mx-auto max-w-md py-20 text-center">
+        <AlertTriangle className="mx-auto mb-3 size-7 text-amber-500" aria-hidden />
+        <p className="text-sm font-semibold text-slate-800">{t("patientChart.loadFailed")}</p>
+        <p className="mt-1 text-sm text-slate-500">{t("patientChart.loadFailedHint")}</p>
+        <button
+          type="button"
+          onClick={refreshLive}
+          className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+        >
+          {t("patientChart.retry")}
+        </button>
       </div>
     )
   }

@@ -11,6 +11,7 @@ import {
 } from "react"
 
 import { createPatient, fetchPatients } from "@/features/patients/lib/patient-repository"
+import { isSupabaseConfigured } from "@/lib/env"
 import { patients as mockPatients } from "@/lib/mock-data"
 import type { PatientSummary } from "@/types/domain"
 
@@ -28,6 +29,11 @@ type PatientExtrasContextValue = {
    * the real list arrives, and a real record looks deleted.
    */
   loading: boolean
+  /**
+   * Why the list could not be read, when the clinic has a database and it did
+   * not answer. Null in the demo, and null when all is well.
+   */
+  error: string | null
   refreshLive: () => void
   /**
    * Swap one patient in the cached list for a freshly-saved version of itself.
@@ -51,23 +57,38 @@ const PatientExtrasContext = createContext<PatientExtrasContextValue | null>(nul
  * appearing. Nobody has to remember to flip anything, and there is no state
  * where real and fictional patients sit in the same list.
  *
- * A database that cannot be read is treated as no database. That is the same
- * choice made everywhere else here — an unconfigured or unreachable deploy
- * stays usable rather than showing an empty screen — and the reason is logged.
+ * A deploy with no database configured falls back to the demo dataset, which is
+ * what keeps it demonstrable.
+ *
+ * A configured database that *fails to answer* is a different thing entirely
+ * and is reported rather than hidden. It used to be treated as "no database",
+ * so one dropped request silently swapped the clinic for eight invented people
+ * — and every real patient's chart then answered "this page could not be
+ * found", which reads as a deleted record rather than a failed request. That is
+ * what a practitioner actually saw.
  */
 export function PatientExtrasProvider({ children }: { children: ReactNode }) {
   const [extras, setExtras] = useState<PatientSummary[]>([])
   const [live, setLive] = useState<PatientSummary[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const refreshLive = useCallback(() => {
+    setError(null)
+    setLoading(true)
     void fetchPatients()
       .then((result) => {
         if (result.source === "live") {
           setLive(result.patients)
+          setError(null)
           return
         }
         setLive(null)
+        // Configured and unreachable is a fault; unconfigured is the demo.
+        // Reading a thousand rows over a phone connection does fail sometimes,
+        // and the difference decides whether the app says "not found" or
+        // "couldn't load".
+        if (isSupabaseConfigured()) setError(result.reason)
         if (process.env.NODE_ENV === "development") {
           console.warn(`[patients] falling back to mock data: ${result.reason}`)
         }
@@ -90,8 +111,8 @@ export function PatientExtrasProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ extras, addPatient, live, loading, refreshLive, replaceLivePatient }),
-    [extras, addPatient, live, loading, refreshLive, replaceLivePatient],
+    () => ({ extras, addPatient, live, loading, error, refreshLive, replaceLivePatient }),
+    [extras, addPatient, live, loading, error, refreshLive, replaceLivePatient],
   )
   return <PatientExtrasContext.Provider value={value}>{children}</PatientExtrasContext.Provider>
 }

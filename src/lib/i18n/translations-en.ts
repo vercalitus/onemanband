@@ -653,6 +653,9 @@ export const EN_MESSAGES: Record<string, string> = {
   "addSource.footer.cancel": "Cancel",
   "addSource.footer.save": "Add source",
 
+  "patientChart.loadFailed": "Couldn’t load the patient list",
+  "patientChart.loadFailedHint": "The record is still there — the connection dropped. Try again.",
+  "patientChart.retry": "Try again",
   "patientChart.loading": "Loading…",
   "patientChart.toast.sessionDone": "Session {n} completed — timeline updated.",
   "patientChart.toast.invoice": "Invoice generated and sent to billing.",

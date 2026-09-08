@@ -645,6 +645,9 @@ export const HE_MESSAGES: Record<string, string> = {
   "addSource.footer.cancel": "ביטול",
   "addSource.footer.save": "שמירת מקור",
 
+  "patientChart.loadFailed": "לא הצלחנו לטעון את רשימת המטופלים",
+  "patientChart.loadFailedHint": "הרשומה במקומה — החיבור נפל. נסו שוב.",
+  "patientChart.retry": "נסו שוב",
   "patientChart.loading": "טוען…",
   "patientChart.toast.sessionDone": "טיפול {n} הסתיים — ציר הזמן עודכן.",
   "patientChart.toast.invoice": "חשבונית הופקה ונשלחה לגבייה.",

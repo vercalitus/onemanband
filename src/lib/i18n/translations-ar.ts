@@ -646,6 +646,9 @@ export const AR_MESSAGES: Record<string, string> = {
   "addSource.footer.cancel": "إلغاء",
   "addSource.footer.save": "إضافة المصدر",
 
+  "patientChart.loadFailed": "تعذّر تحميل قائمة المرضى",
+  "patientChart.loadFailedHint": "السجل موجود — انقطع الاتصال. حاول مجددًا.",
+  "patientChart.retry": "حاول مجددًا",
   "patientChart.loading": "جاري التحميل…",
   "patientChart.toast.sessionDone": "اكتملت الجلسة {n} — تم تحديث الخط الزمني.",
   "patientChart.toast.invoice": "أُنشئت الفاتورة وأُرسِلت إلى الفوترة.",
