@@ -2,7 +2,7 @@
 
 import { Suspense, useState, type FormEvent } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Loader2, Lock, ShieldCheck } from "lucide-react"
+import { Eye, EyeOff, Loader2, Lock, ShieldCheck } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,7 @@ function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [revealed, setRevealed] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
@@ -29,7 +30,13 @@ function LoginForm() {
     setBusy(true)
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
-      password,
+      // Trimmed for the same reason the address is. A password arrives here by
+      // being copied out of somewhere — and selecting a line in a text editor
+      // takes the line ending with it, which is an invisible character that
+      // turns a correct password into "invalid login credentials". No password
+      // this system issues or accepts has meaningful whitespace at either end;
+      // the change-password form trims the same way, so the two agree.
+      password: password.trim(),
     })
     if (signInError) {
       setBusy(false)
@@ -73,6 +80,12 @@ function LoginForm() {
             required
             autoFocus
             dir="ltr"
+            // A phone keyboard capitalises the first letter of a field and
+            // corrects what it thinks is a typo. Neither is welcome in an
+            // address that has to match exactly.
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="h-11 rounded-xl border-slate-200"
@@ -85,16 +98,30 @@ function LoginForm() {
           >
             {t("login.password")}
           </label>
-          <Input
-            id="login-password"
-            type="password"
-            autoComplete="current-password"
-            required
-            dir="ltr"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="h-11 rounded-xl border-slate-200"
-          />
+          {/* A provisioned account arrives with a long random password that has
+              to be typed or pasted once. Without a way to look at it, a single
+              wrong character is indistinguishable from a wrong password. */}
+          <div className="relative">
+            <Input
+              id="login-password"
+              type={revealed ? "text" : "password"}
+              autoComplete="current-password"
+              required
+              dir="ltr"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-11 rounded-xl border-slate-200 pe-11"
+            />
+            <button
+              type="button"
+              onClick={() => setRevealed((v) => !v)}
+              aria-label={revealed ? t("login.hidePassword") : t("login.showPassword")}
+              aria-pressed={revealed}
+              className="absolute inset-y-0 end-0 flex w-11 items-center justify-center text-slate-400 transition-colors hover:text-slate-600"
+            >
+              {revealed ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+            </button>
+          </div>
         </div>
       </div>
 

@@ -54,15 +54,22 @@ export function ChangePasswordCard() {
     setError(null)
     setDone(false)
 
-    if (values.next.length < MIN_LENGTH) {
+    // Trimmed the same way the sign-in form trims, so a password set here is a
+    // password that can be typed back in. Letting one end in a space that the
+    // login screen then strips would lock the account out of itself.
+    const current = values.current.trim()
+    const next = values.next.trim()
+    const confirm = values.confirm.trim()
+
+    if (next.length < MIN_LENGTH) {
       setError(t("security.password.error.short", { min: MIN_LENGTH }))
       return
     }
-    if (values.next !== values.confirm) {
+    if (next !== confirm) {
       setError(t("security.password.error.mismatch"))
       return
     }
-    if (values.next === values.current) {
+    if (next === current) {
       setError(t("security.password.error.same"))
       return
     }
@@ -78,7 +85,7 @@ export function ChangePasswordCard() {
     const check = await fetch("/api/account/verify-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: values.current }),
+      body: JSON.stringify({ password: current }),
     })
     if (!check.ok) {
       setBusy(false)
@@ -90,7 +97,7 @@ export function ChangePasswordCard() {
       return
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({ password: values.next })
+    const { error: updateError } = await supabase.auth.updateUser({ password: next })
     setBusy(false)
     if (updateError) {
       setError(t("security.password.error.generic"))

@@ -378,6 +378,8 @@ export const AR_MESSAGES: Record<string, string> = {
   "login.subtitle": "مساحة عمل آمنة للعيادة",
   "login.email": "البريد الإلكتروني",
   "login.password": "كلمة المرور",
+  "login.showPassword": "إظهار كلمة المرور",
+  "login.hidePassword": "إخفاء كلمة المرور",
   "login.submit": "تسجيل الدخول",
   "login.error.invalid": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
   "login.error.notConfigured": "تسجيل الدخول غير متاح في هذه البيئة.",

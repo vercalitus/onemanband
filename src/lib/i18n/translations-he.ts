@@ -369,6 +369,8 @@ export const HE_MESSAGES: Record<string, string> = {
   "login.subtitle": "סביבת עבודה מאובטחת למרפאה",
   "login.email": "אימייל",
   "login.password": "סיסמה",
+  "login.showPassword": "הצגת הסיסמה",
+  "login.hidePassword": "הסתרת הסיסמה",
   "login.submit": "כניסה",
   "login.error.invalid": "אימייל או סיסמה שגויים.",
   "login.error.notConfigured": "כניסה אינה זמינה בסביבה זו.",

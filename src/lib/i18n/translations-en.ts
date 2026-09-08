@@ -387,6 +387,8 @@ export const EN_MESSAGES: Record<string, string> = {
   "login.subtitle": "Secure clinic workspace",
   "login.email": "Email",
   "login.password": "Password",
+  "login.showPassword": "Show password",
+  "login.hidePassword": "Hide password",
   "login.submit": "Sign in",
   "login.error.invalid": "Incorrect email or password.",
   "login.error.notConfigured": "Sign-in is not available in this environment.",
