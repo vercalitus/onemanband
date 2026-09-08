@@ -148,6 +148,8 @@ export const HE_MESSAGES: Record<string, string> = {
   "patients.col.note": "הערה",
   "patients.count.one": "חולה",
   "patients.count.many": "חולים",
+  "patients.showing": "מוצגים {shown} מתוך {total}",
+  "patients.showMore": "להציג עוד {n}",
   "patients.empty.filters": "אין חולים שמתאימים למסננים הנוכחיים.",
   "patients.debtBadge": "חוב: {amount}",
   "patients.claimBadge": "מדווח/ת ששילם/ה",

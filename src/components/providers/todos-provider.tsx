@@ -79,6 +79,14 @@ function seedTodos(): TodoItem[] {
 type TodosContextValue = {
   todos: TodoItem[]
   setTodos: Dispatch<SetStateAction<TodoItem[]>>
+  /**
+   * True once the attention signals are the clinic's own rather than the seed.
+   *
+   * The board needs this before it prunes dismissals: the live derivation is
+   * asynchronous, and pruning against an empty or still-demo list would delete
+   * every real dismissal and bring all the alerts back on the next load.
+   */
+  signalsAreLive: boolean
   /** Add a clinician-created task. Used by both dashboard board and the global Add menu. */
   addActiveTask: (input: { title: string; due: string }) => void
   /** Toggle completion for a given task id. */
@@ -102,6 +110,7 @@ export function useTodos(): TodosContextValue {
 export function TodosProvider({ children }: { children: ReactNode }) {
   const { formatMoney } = useLocale()
   const [todos, setTodos] = useState<TodoItem[]>(seedTodos)
+  const [signalsAreLive, setSignalsAreLive] = useState(false)
 
   /**
    * Fold in signals from patient self-service (cancellations, reschedules,
@@ -132,7 +141,7 @@ export function TodosProvider({ children }: { children: ReactNode }) {
     const priceOf = (type: "first" | "adjustments" | "kupa") =>
       settings.treatmentTypes.find((tt) => tt.type === type)?.priceIls ?? 0
 
-    void (async () => {
+    const derive = async () => {
       const hasPatients = await clinicHasPatients()
       if (cancelled || !hasPatients) return
 
@@ -178,7 +187,13 @@ export function TodosProvider({ children }: { children: ReactNode }) {
         ),
         ...normalize(derived),
       ])
-    })()
+      setSignalsAreLive(true)
+    }
+
+    // A board that cannot be derived is a quiet board, not a broken app. This
+    // provider sits above every page, so an unhandled rejection here would take
+    // the whole shell down over a to-do list.
+    void derive().catch(() => {})
 
     return () => {
       cancelled = true
@@ -268,8 +283,8 @@ export function TodosProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<TodosContextValue>(
-    () => ({ todos, setTodos, addActiveTask, toggleComplete }),
-    [todos, addActiveTask, toggleComplete],
+    () => ({ todos, setTodos, signalsAreLive, addActiveTask, toggleComplete }),
+    [todos, signalsAreLive, addActiveTask, toggleComplete],
   )
 
   return <TodosContext.Provider value={value}>{children}</TodosContext.Provider>

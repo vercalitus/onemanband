@@ -162,6 +162,8 @@ export const EN_MESSAGES: Record<string, string> = {
   "patients.col.note": "Note",
   "patients.count.one": "patient",
   "patients.count.many": "patients",
+  "patients.showing": "Showing {shown} of {total}",
+  "patients.showMore": "Show {n} more",
   "patients.empty.filters": "No patients match the current filters.",
   "patients.debtBadge": "Debt: {amount}",
   "patients.claimBadge": "Says they paid",

@@ -125,7 +125,27 @@ export type PatientFetch =
  */
 const PAGE = 1000
 
-export async function fetchPatients(): Promise<PatientFetch> {
+/**
+ * Two providers ask for the whole list on the same page load — the one that
+ * feeds every screen, and the one that derives the dashboard's signals. That is
+ * 1,178 rows and about 400 KB fetched and parsed twice for the same answer.
+ *
+ * Callers that arrive while a read is already running share it. Deliberately
+ * only that: once the read settles the next call goes to the database, so
+ * nothing here can serve a patient record that has since been edited.
+ */
+let inFlight: Promise<PatientFetch> | null = null
+
+export function fetchPatients(): Promise<PatientFetch> {
+  if (!inFlight) {
+    inFlight = readPatients().finally(() => {
+      inFlight = null
+    })
+  }
+  return inFlight
+}
+
+async function readPatients(): Promise<PatientFetch> {
   const db = createSupabaseBrowserClient()
   if (!db) return { source: "unavailable", reason: "supabase not configured" }
 

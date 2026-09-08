@@ -162,6 +162,8 @@ export const AR_MESSAGES: Record<string, string> = {
   "patients.col.note": "ملاحظة",
   "patients.count.one": "مريض",
   "patients.count.many": "مرضى",
+  "patients.showing": "عرض {shown} من {total}",
+  "patients.showMore": "عرض {n} إضافيًا",
   "patients.empty.filters": "لا يوجد مرضى يطابقون عوامل التصفية الحالية.",
   "patients.debtBadge": "دين: {amount}",
   "patients.claimBadge": "يقول إنه دفع",

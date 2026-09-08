@@ -58,18 +58,21 @@ function hasSessionToComplete(patientId: string, appointments: ScheduleItem[]): 
 /**
  * Who has money outstanding, from the ledger.
  *
- * Read once per mount and shared by every row, because the answer is the same
- * question asked of one table. It used to come from the demo file, so the badge
- * appeared for invented patients and never for real ones.
+ * Asked once and shared. This hook is called inside a search result row, and a
+ * search shows many of them — without the cache below each row issued its own
+ * identical query, so opening the search ran twenty copies of the same request.
  *
  * Null until the answer arrives — and null is not "nothing owed", so nothing is
  * claimed before then.
  */
+let owingPatients: Promise<Set<string> | null> | null = null
+
 function useOpenInvoicePatients(): Set<string> | null {
   const [ids, setIds] = useState<Set<string> | null>(null)
   useEffect(() => {
     let cancelled = false
-    void fetchPatientsWithOpenInvoices().then((set) => {
+    if (!owingPatients) owingPatients = fetchPatientsWithOpenInvoices()
+    void owingPatients.then((set) => {
       if (!cancelled) setIds(set)
     })
     return () => {

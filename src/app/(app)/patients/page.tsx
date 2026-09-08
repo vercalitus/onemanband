@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Activity, Search, UserPlus } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useAddPatient, useMergedPatients } from "@/components/providers/patient-extras-provider"
@@ -32,6 +32,9 @@ import type { PatientSummary } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
 type FilterKey = "frozen" | "past" | "active" | "relevant"
+
+/** Rows rendered at a time. Enough to fill a tall screen and scroll a little. */
+const PAGE_SIZE = 60
 
 const TODAY = new Date()
 
@@ -91,10 +94,40 @@ export default function PatientsPage() {
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  /**
+   * How many rows are in the DOM.
+   *
+   * The page rendered every patient, and rendered them twice — a card list for
+   * narrow screens and a table for wide ones, both mounted, one hidden by CSS.
+   * At 1,178 patients that is over two thousand row components built before
+   * anything appears, which is why opening this page from the dashboard looked
+   * like the app had stopped rather than like it was working.
+   *
+   * A window plus a button is the whole fix and needs no new dependency. Search
+   * and the filters narrow the list first, which is how anybody actually finds
+   * a patient in a list this long.
+   */
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const localizedPatients = useMemo(
     () => merged.map((p) => localizePatient(p, locale)),
     [merged, locale],
+  )
+
+  /**
+   * One formatter, not one per row. `toLocaleDateString` builds a fresh
+   * Intl.DateTimeFormat on every call, and this runs once per patient in each
+   * of the two lists — the most expensive thing on the page after the rows
+   * themselves.
+   */
+  const visitDateFmt = useMemo(
+    () =>
+      new Intl.DateTimeFormat(localeToBcp47(locale), {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    [locale],
   )
 
   /** An em dash where there is no visit on record — never "Invalid Date". */
@@ -102,11 +135,7 @@ export default function PatientsPage() {
     if (!iso) return "—"
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return "—"
-    return d.toLocaleDateString(localeToBcp47(locale), {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    })
+    return visitDateFmt.format(d)
   }
 
   const filterButtons = useMemo(
@@ -180,6 +209,14 @@ export default function PatientsPage() {
         return dayB < dayA ? 1 : -1
       })
   }, [query, activeFilters, localizedPatients, patientsWithFutureVisit])
+
+  /** A new search is a new list; showing row 900 of the last one would be odd. */
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [query, activeFilters])
+
+  const shown = useMemo(() => rows.slice(0, visibleCount), [rows, visibleCount])
+  const remaining = rows.length - shown.length
 
   const toggleFilter = (id: FilterKey) => {
     setActiveFilters((prev) => {
@@ -298,7 +335,7 @@ export default function PatientsPage() {
                 {t("patients.empty.filters")}
               </p>
             ) : (
-              rows.map(({ patient, days, balance }) => (
+              shown.map(({ patient, days, balance }) => (
                 <PatientMobileCardInline key={patient.id} patient={patient} days={days} balance={balance} />
               ))
             )}
@@ -323,7 +360,7 @@ export default function PatientsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map(({ patient, days, balance }) => {
+                  shown.map(({ patient, days, balance }) => {
                     const isSettled = balance === 0
                     const claimed = paymentClaims.patients.has(patient.id)
                     return (
@@ -381,6 +418,23 @@ export default function PatientsPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Stated, never silent. A list that stops at sixty without saying so
+              is a list that has lost people. */}
+          {remaining > 0 && (
+            <div className="flex flex-col items-center gap-2 border-t border-slate-100 pt-5">
+              <p className="text-xs text-slate-400">
+                {t("patients.showing", { shown: shown.length, total: rows.length })}
+              </p>
+              <button
+                type="button"
+                onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                {t("patients.showMore", { n: Math.min(PAGE_SIZE, remaining) })}
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-100 pt-5 pb-1">
             <ExportButton onClick={() => setExportOpen(true)} label={t("export.patients")} />

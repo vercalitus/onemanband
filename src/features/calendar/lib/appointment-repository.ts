@@ -69,7 +69,26 @@ export type AppointmentFetch =
  * clinic's entire history to render either would get slower every year for no
  * benefit anyone can see.
  */
-export async function fetchAppointments(
+/**
+ * Shared between callers asking for the same window at the same moment — the
+ * schedule provider and the dashboard's signal engine both want the diary on
+ * load. Keyed by the window, and dropped as soon as the read settles, so a
+ * booking made a second later is never served from here.
+ */
+const inFlight = new Map<string, Promise<AppointmentFetch>>()
+
+export function fetchAppointments(
+  options: { fromDaysBack?: number; toDaysAhead?: number } = {},
+): Promise<AppointmentFetch> {
+  const key = `${options.fromDaysBack ?? ""}:${options.toDaysAhead ?? ""}`
+  const running = inFlight.get(key)
+  if (running) return running
+  const pending = readAppointments(options).finally(() => inFlight.delete(key))
+  inFlight.set(key, pending)
+  return pending
+}
+
+async function readAppointments(
   options: { fromDaysBack?: number; toDaysAhead?: number } = {},
 ): Promise<AppointmentFetch> {
   const db = createSupabaseBrowserClient()

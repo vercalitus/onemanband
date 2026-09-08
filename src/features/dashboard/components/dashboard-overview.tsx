@@ -28,6 +28,7 @@ import { DayCalendarView } from "@/features/dashboard/components/day-calendar-vi
 import {
   DISMISSED_SIGNALS_EVENT,
   dismissSignal,
+  fetchDismissals,
   pruneDismissals,
 } from "@/features/dashboard/lib/dismissed-signals"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
@@ -275,7 +276,7 @@ function BoardSection({
 export function DashboardOverview() {
   const { locale, t } = useLocale()
   const { appointments: dayAppointments, setAppointments: setDayAppointments } = useScheduleDay()
-  const { todos, toggleComplete } = useTodos()
+  const { todos, toggleComplete, signalsAreLive } = useTodos()
   const { openAddTask } = useAddTask()
 
   useEffect(() => {
@@ -319,12 +320,29 @@ export function DashboardOverview() {
     [localizedTodos],
   )
 
+  /**
+   * Load what has been waved away, and clear out what no longer applies.
+   *
+   * Pruning waits for the clinic's own signals. Before they arrive the derived
+   * list is the demo's, and pruning against it would delete every real
+   * dismissal — the alerts would all come back on every page load, which is the
+   * exact failure the record exists to prevent.
+   */
   useEffect(() => {
-    const sync = () => setDismissed(pruneDismissals(attentionIds))
+    let cancelled = false
+    const sync = () => {
+      const load = signalsAreLive ? pruneDismissals(attentionIds) : fetchDismissals()
+      void load.then((ids) => {
+        if (!cancelled && ids) setDismissed(ids)
+      })
+    }
     sync()
     window.addEventListener(DISMISSED_SIGNALS_EVENT, sync)
-    return () => window.removeEventListener(DISMISSED_SIGNALS_EVENT, sync)
-  }, [attentionIds])
+    return () => {
+      cancelled = true
+      window.removeEventListener(DISMISSED_SIGNALS_EVENT, sync)
+    }
+  }, [attentionIds, signalsAreLive])
 
   const { attention, active, completed } = useMemo(
     () => ({
@@ -371,7 +389,7 @@ export function DashboardOverview() {
               emptyLabel={t("dashboard.todo.noReactive")}
               items={attention}
               onToggleComplete={toggleComplete}
-              onDismiss={dismissSignal}
+              onDismiss={(id) => void dismissSignal(id)}
             />
 
             <div className="border-t border-slate-100 pt-5">
