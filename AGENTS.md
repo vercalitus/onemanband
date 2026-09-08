@@ -17,8 +17,8 @@ This document orients AI coding agents (Cursor, Claude Code, Codex, etc.) to the
 |-------|--------|
 | Framework | Next.js 15 (App Router), React 19, TypeScript |
 | Styling | Tailwind CSS 4, shadcn/ui (`base-nova` style), `@base-ui/react` |
-| Data (current) | In-memory mock data + `localStorage` for clinic settings |
-| Data (planned) | Supabase (schema + client helpers exist; app not wired yet) |
+| Data | Supabase (Postgres + RLS + private storage). The mock dataset is a fallback, not the source |
+| Clinic settings | `localStorage` under `clinic.settings.v1` — still the one thing that is browser-only |
 | Forms / validation | react-hook-form, Zod 4 |
 | Client state | React Context providers, TanStack Query (light usage) |
 | i18n | Custom dictionary in `src/lib/i18n/` — English is authoritative |
@@ -82,7 +82,15 @@ scripts/
 | `/r/[token]` | `features/automations` | **Public** — confirm / cancel / reschedule from a reminder |
 | `/q/[token]` | `features/automations` | **Public** — progress questionnaire |
 | `/api/automations/tick` | — | Cron entry point: deliver due messages |
-| `/api/automations/webhook/whatsapp` | — | Inbound WhatsApp button taps (provider stub) |
+| `/api/automations/webhook/whatsapp` | — | Inbound WhatsApp taps. Refuses unsigned requests in production |
+| `/api/automations/public/token/[token]` | — | **Public** — resolve a capability link |
+| `/api/automations/public/respond` | — | **Public** — write a patient's tap |
+| `/api/automations/public/busy` | — | **Public** — busy times for the booking pages. Times only: no patient, no id |
+| `/api/documents/signed-url` | — | A short-lived link to one document. Takes a document **id**, never a path |
+| `/api/billing/issue`, `/ping` | — | Issue a tax document; check the provider |
+| `/api/calendar-feed/[token]` | — | **Public** — the clinic's ICS feed. Its own prefix on purpose |
+| `/api/calendar/subscription` | — | Session-gated: hands out and rotates that token |
+| `/api/account/verify-password` | — | Confirms the current password before a change |
 
 Navigation labels and descriptions live in `src/lib/navigation.ts`.
 
@@ -90,19 +98,55 @@ Navigation labels and descriptions live in `src/lib/navigation.ts`.
 
 ## Data layer — critical
 
-### Current state: mock-first
+### The app runs on Postgres. The mock file is a fallback.
 
-Most of the app reads from **`src/lib/mock-data.ts`** (patients, schedule, todos, documents, finances, news). Clinic configuration persists in **`localStorage`** under key `clinic.settings.v1` via `src/lib/clinic-settings-storage.ts`.
-
-There is **no auth UI**, **no API routes**, and **no live Supabase queries** in application code yet.
-
-### Supabase (prepared, not primary)
+Production holds a real clinic: patients, their documents, their treatment
+records, the diary, the ledger, tasks. Everything a practitioner writes is a
+row. Reads and writes go through the **browser** client on the practitioner's
+own session, so row-level security decides what comes back — the service-role
+client exists only for the patient-facing routes, which have no session at all.
 
 - Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- Clients: `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts` — return `null` when env is missing (graceful no-op)
-- Schema: `supabase/migrations/` (ordered chain, `*_init_schema.sql` first) — clinics, profiles, patients, appointments, treatments, documents, finances, news_feed, audit_log, patient_consents; plus RLS helpers `current_user_clinic_id()` / `is_admin()` / `is_clinician()`, private `patient-media` storage, and audit triggers. `supabase db reset` builds it all.
+- Clients: `src/lib/supabase/client.ts` (browser), `server.ts` (cookies), `admin.ts` (service role — read its header before using it). All return `null` when env is missing.
+- Schema: `supabase/migrations/`, an ordered chain starting at `*_init_schema.sql`. Apply with `supabase db push`; never edit an applied migration.
 
-When wiring Supabase, match existing TypeScript types in `src/types/domain.ts` and respect DB constraints (see below).
+**Repositories are the seam.** One per area, each a thin translation between a
+Postgres row and the types in `src/types/domain.ts`:
+
+| Area | File |
+|---|---|
+| Patients | `features/patients/lib/patient-repository.ts` |
+| Treatment records | `features/patients/lib/treatment-repository.ts` |
+| Documents | `features/patients/lib/document-repository.ts` |
+| Appointments | `features/calendar/lib/appointment-repository.ts` |
+| Invoices | `features/finances/lib/finance-repository.ts` |
+| Tasks | `features/dashboard/lib/task-repository.ts` |
+
+### The demo dataset, and the one rule that governs it
+
+`src/lib/mock-data.ts` still exists so an unconfigured deploy is demonstrable.
+It is reached only when the clinic has **no patients** — `clinicHasPatients()`
+in the patient repository, cached for the page's lifetime.
+
+**Patients are the anchor for every area, deliberately.** Each area used to
+decide on its own table — schedule empty means show the demo day, ledger empty
+means show the demo figures — which was right until the day patients arrived
+and the others had not. The dashboard then offered visits by people who do not
+exist, linking to records that were never there. Do not reintroduce per-area
+checks.
+
+Two rules follow, and both were learned by getting them wrong:
+
+- **A failed read is not an empty clinic.** Repositories return `null` or an
+  `unavailable` result for "could not ask" and a real empty list for "has
+  none". Conflating them blanks a chart because a request timed out.
+- **Never derive a number from the demo file while showing real data.** The
+  dashboard displayed "₪74.2k monthly revenue" as a constant, in the place a
+  business reads its revenue. Everything on screen is now computed from records
+  or is visibly absent.
+
+The clinical news feed is the one screen still on seed content: it has no
+backend, and there is nothing to be live against.
 
 ---
 
@@ -146,6 +190,47 @@ So:
 
 What a settled row holds, in full: who, how much, when, whether it was paid, and the SUMIT document id.
 
+### The patient chart
+
+Everything a practitioner writes on `/patients/[id]` is a row: the status line,
+the contact card, the notes, the marks on the body diagram, and the session
+itself. Two things are deliberately not:
+
+- **The session in progress** — strokes still on the canvas, a memo still
+  recording, a note being typed — stays in that browser. It is a draft, and a
+  draft belongs to the machine it is being written on until the session closes.
+- **A saved session is a `treatments` row and cannot be changed or deleted.** A
+  database trigger refuses both. That is why the chart offers no delete on one:
+  a record that can be quietly rewritten is not a record, and a correction is a
+  new entry saying so. It also means a patient with clinical history cannot be
+  deleted — the cascade hits the same trigger.
+
+**The status line carries its origin and its date.** It shipped as a hard-coded
+sentence, so all 1,178 patients displayed the same "clinical finding" about
+themselves. It is a column now; left empty the chart falls back to the last
+treatment note, labelled with that visit's date. Never show a claim about a
+patient without saying where it came from and when.
+
+### Dashboard signals
+
+`features/dashboard/lib/reactive-signals.ts` derives the "needs attention"
+column from clinic records; `automation-signals.ts` does the same for things a
+patient did. Nothing is stored — a saved copy is how a board starts telling you
+to chase an invoice that was paid last week.
+
+A signal earns its place by passing three tests, and rows have been removed for
+failing each:
+
+1. **It is true** — derived from a record, never a guess.
+2. **Somebody has to act** — if the system can handle it, the system should.
+3. **It ends** — a permanent state is not a signal. "Patient is frozen" never
+   resolved. "Follow up, 12 weeks since last visit" was 174 people at once with
+   no completion other than the patient happening to return.
+
+Every derived row carries **one** action (`TodoAction` in `types/domain.ts`) and
+lands on the record, not the page containing it. A row with three buttons has
+not decided what it is for; a row with none makes the reader do the finding.
+
 ### Automations
 
 Patient-facing reminders, self-service links and questionnaires live in `src/features/automations/`. The design separates three concerns and you should keep them separate:
@@ -153,8 +238,8 @@ Patient-facing reminders, self-service links and questionnaires live in `src/fea
 | Concern | Module | Note |
 |---------|--------|------|
 | **What** message should exist and **when** | `lib/plan-messages.ts` | Pure function. No I/O, no clock beyond the `now` you pass — testable without any provider. |
-| **Where** it is stored | `lib/automation-store.ts` | localStorage in the browser, module memory on the server. **The only file to rewrite for Supabase.** |
-| **How** it is delivered | `lib/dispatcher.ts` | `MessageDispatcher` interface. Only `SimulatedDispatcher` exists today. **The only file to rewrite for a real provider.** |
+| **Where** it is stored | `lib/automation-store.ts` (browser) and `lib/server-store.ts` (Postgres, server-only) | The server store is what makes a patient's tap on their phone reach the practitioner's dashboard |
+| **How** it is delivered | `lib/dispatcher.ts` → `lib/live-dispatcher.ts` | Twilio and Resend over plain `fetch`. A channel with no provider **fails loudly** rather than reporting success |
 
 Rules that matter:
 
@@ -248,7 +333,7 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 - Introducing new dependencies without strong reason
 - Hardcoding English strings in user-facing components
 - Breaking the 5-minute appointment grid or overlap rules
-- Assuming Supabase is live — check imports; mock data may still be the source
+- Assuming the demo dataset is the source — it is the fallback; check the repository
 - Large refactors unrelated to the task
 - Deleting mock data or settings storage without a migration path to real data
 
@@ -264,7 +349,8 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 | Billing logic | `features/finances/lib/derive-billing.ts`, `use-billing.ts` |
 | Settings field | `types/clinic-settings.ts`, defaults, settings tabs |
 | New translation | `translations-en.ts` first, then he/ar overlays |
-| Wire Supabase read | `lib/supabase/*`, align with `supabase/migrations/*_init_schema.sql`, replace mock imports gradually |
+| A new field on a record | migration → the area's repository → the type in `types/domain.ts` → the UI |
+| A new dashboard signal | `features/dashboard/lib/reactive-signals.ts` — read the three tests first |
 | Appointment validation | `lib/appointment-time.ts`, `appointment-edit-dialog.tsx` |
 
 ---
@@ -273,7 +359,10 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 
 | File | Role |
 |------|------|
-| `src/lib/mock-data.ts` | Primary demo dataset for the whole app |
+| `src/lib/mock-data.ts` | Demo dataset. Reached only when the clinic has no patients |
+| `src/features/patients/lib/patient-repository.ts` | Patients, and `clinicHasPatients()` — the anchor that retires the demo everywhere |
+| `src/features/patients/lib/use-patient-cockpit.ts` | The chart's state: what is a row, what is a draft |
+| `src/features/dashboard/lib/reactive-signals.ts` | What the practitioner is told to do, and why each row exists |
 | `src/lib/mock-finances.ts` | Billing mock records and KPI inputs |
 | `src/lib/clinic-settings-defaults.ts` | Default practice configuration |
 | `src/lib/env.ts` | Zod-validated env (optional Supabase keys) |
@@ -285,18 +374,20 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 
 ---
 
-## Status snapshot (as of repo state)
+## Status snapshot
 
-- ✅ Polished clinic UI with mock data
-- ✅ Trilingual shell + RTL
-- ✅ Clinic settings persisted locally
-- ✅ Supabase schema and client scaffolding
-- ⬜ Auth / login flow
-- ⬜ Live Supabase CRUD in the app
-- ⬜ API routes / server actions for backend operations
-- ✅ Automation engine, patient self-service pages, message queue (delivery simulated)
-- ⬜ Google Calendar / billing integrations (UI placeholders in settings)
-- ⬜ Live WhatsApp / email provider behind `MessageDispatcher`
-- ⬜ Vercel Cron hitting `/api/automations/tick`
+- ✅ Live on real clinic data — patients, documents, treatment records, tasks
+- ✅ Auth wall, MFA (TOTP) and password change under Settings → Security
+- ✅ Patient chart writes to Postgres; treatment records immutable by trigger
+- ✅ Billing against SUMIT — drafts only until `SUMIT_LIVE_DOCUMENTS` is set
+- ✅ Automation engine, patient self-service pages, message queue
+- ✅ Dashboard signals and KPIs derived from clinic records
+- ✅ Exports and whole-clinic backup read the real clinic and state their source
+- ✅ Per-clinic ICS calendar subscription (one-way; no Google OAuth)
+- ⬜ **Vercel Cron hitting `/api/automations/tick`** — there is still no `vercel.json`, so nothing delivers due messages on a schedule
+- ⬜ Live WhatsApp / SMS — the number is in regulatory approval
+- ⬜ Email to patients — Resend can only reach the account owner until a domain is verified
+- ⬜ An intake review screen — self-registration lands as `PatientIntake` and has to be retyped
+- ⬜ Clinic settings still live in `localStorage`, not the database
 
 When in doubt, read the closest `features/*` module and follow its patterns.
