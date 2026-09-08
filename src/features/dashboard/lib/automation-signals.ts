@@ -47,6 +47,13 @@ export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): 
       title: `Message failed to send — ${message.patientName || message.to}`,
       due: message.error ?? "Send failed",
       completed: false,
+      // The queue and the channel settings are both here; a failed send is
+      // almost always one of the two, and neither is on the dashboard.
+      action: {
+        kind: "link",
+        labelKey: "signal.action.openSettings",
+        href: "/settings",
+      },
     })
   }
 
@@ -73,6 +80,12 @@ export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): 
         title: `Patient cancelled — ${response.patientName}`,
         due: "Needs rebooking",
         completed: false,
+        action: {
+          kind: "schedule",
+          labelKey: "signal.action.book",
+          patientId: response.patientId,
+          patientName: response.patientName,
+        },
       })
     }
 
@@ -91,6 +104,13 @@ export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): 
         title: `Patient moved their appointment — ${response.patientName}`,
         due: `${response.newDate ?? ""} ${response.newStart ?? ""}`.trim(),
         completed: false,
+        // The calendar, not the chart: what needs checking is whether the new
+        // slot works against the rest of the day.
+        action: {
+          kind: "link",
+          labelKey: "signal.action.openCalendar",
+          href: "/calendar",
+        },
       })
     }
 
@@ -105,6 +125,11 @@ export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): 
         title: `Progress questionnaire returned — ${response.patientName}`,
         due: "Filed under Progress",
         completed: false,
+        action: {
+          kind: "link",
+          labelKey: "signal.action.openChart",
+          href: `/patients/${response.patientId}`,
+        },
       })
     }
 
@@ -132,6 +157,16 @@ export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): 
         title: `Message from ${response.patientName || response.fromAddress || "a patient"}`,
         due: response.body ?? "Needs reading",
         completed: false,
+        // Only when the sender was matched to a patient. An unmatched number
+        // has no chart to open, and a button that lands nowhere is worse than
+        // no button.
+        action: response.patientId
+          ? {
+              kind: "link" as const,
+              labelKey: "signal.action.openChart",
+              href: `/patients/${response.patientId}`,
+            }
+          : undefined,
       })
     }
 
@@ -149,6 +184,11 @@ export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): 
         title: `Says they've paid — ${response.patientName}`,
         due: "Verify, then issue the receipt",
         completed: false,
+        action: {
+          kind: "link",
+          labelKey: "signal.action.collect",
+          href: response.invoiceId ? `/finances?settle=${response.invoiceId}` : "/finances",
+        },
       })
     }
   }
@@ -173,6 +213,14 @@ export function deriveAutomationTodos(remoteResponses: PatientResponse[] = []): 
       title: `Approve new patient registration — ${intake.fullName}`,
       due: `${intake.requestedDate ?? ""} ${intake.requestedStart ?? ""}`.trim(),
       completed: false,
+      // The patient list, where a person gets added. There is no intake review
+      // screen yet — self-registration lands as unverified data and somebody
+      // has to retype it, which is the next thing this flow needs.
+      action: {
+        kind: "link",
+        labelKey: "signal.action.openPatients",
+        href: "/patients",
+      },
     })
   }
 

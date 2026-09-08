@@ -53,6 +53,14 @@ type ScheduleDayContextValue = {
     defaults?: { appointmentType?: AppointmentType; treatment?: string },
   ) => void
   /**
+   * Mark a booking confirmed, from wherever the practitioner happens to be.
+   *
+   * Exposed because the dashboard's "confirm tomorrow's appointment" signal
+   * should finish the job where it is asked. Sending someone to the calendar to
+   * change one status is most of the work and all of the friction.
+   */
+  confirmAppointment: (id: string) => void
+  /**
    * Why the last booking did not stick, when the database refused it — an
    * overlap, or a duration off the five-minute grid. Null when all is well.
    */
@@ -211,15 +219,27 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
     [live, refresh],
   )
 
+  const confirmAppointment = useCallback(
+    (id: string) => {
+      const current = appointments.find((a) => a.id === id)
+      if (!current || current.status === "confirmed") return
+      const next = { ...current, status: "confirmed" as const }
+      setAppointments((prev) => prev.map((a) => (a.id === id ? next : a)))
+      void persist(next, { isNew: false })
+    },
+    [appointments, persist],
+  )
+
   const value = useMemo(
     () => ({
       appointments,
       setAppointments,
       openCreateAppointment,
+      confirmAppointment,
       saveError,
       clearSaveError: () => setSaveError(null),
     }),
-    [appointments, openCreateAppointment, saveError],
+    [appointments, openCreateAppointment, confirmAppointment, saveError],
   )
 
   return (

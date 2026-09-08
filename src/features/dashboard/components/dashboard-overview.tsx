@@ -15,6 +15,7 @@ import {
   Wallet,
   X,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -103,6 +104,8 @@ function TodoRow({
   onDismiss?: (id: string) => void
 }) {
   const { t } = useLocale()
+  const router = useRouter()
+  const { openCreateAppointment, confirmAppointment } = useScheduleDay()
   const done = Boolean(item.completed)
   // Reactive signals carry i18n keys + params; authored tasks carry plain strings.
   const title = item.titleKey ? t(item.titleKey, item.params) : item.title
@@ -150,6 +153,38 @@ function TodoRow({
             : t("dashboard.todo.noDue")}
         </p>
       </div>
+
+      {/*
+        The one thing to do about it.
+        A derived row used to describe a problem and stop there, which left the
+        practitioner to go and find the screen himself — most of the work and
+        all of the friction. Confirming and booking happen here; everything else
+        lands on the exact record, not on the page that contains it.
+      */}
+      {item.action && !done && (
+        <button
+          type="button"
+          onClick={() => {
+            const action = item.action
+            if (!action) return
+            if (action.kind === "link") router.push(action.href)
+            else if (action.kind === "confirm") confirmAppointment(action.appointmentId)
+            else
+              openCreateAppointment(undefined, {
+                id: action.patientId,
+                name: action.patientName,
+              })
+          }}
+          className={cn(
+            "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors",
+            isFault
+              ? "bg-rose-600 text-white hover:bg-rose-700"
+              : "bg-slate-900 text-white hover:bg-slate-800",
+          )}
+        >
+          {t(item.action.labelKey)}
+        </button>
+      )}
 
       {isFault && (
         <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">

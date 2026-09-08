@@ -131,6 +131,7 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
       title: `Generate invoice for completed visit — ${visit.patientName}`,
       due: `Visit ${visit.visitDate}`,
       completed: false,
+      action: { kind: "link", labelKey: "signal.action.invoice", href: "/finances" },
     })
   }
 
@@ -178,6 +179,13 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
       title: `Chase overdue payment — ${inv.patientName} · ${inv.displayAmount}`,
       due: "Overdue",
       completed: false,
+      // Deep-linked: the billing page opens this invoice's settle dialog from
+      // the query string, so the row lands on the exact thing it is about.
+      action: {
+        kind: "link",
+        labelKey: "signal.action.collect",
+        href: `/finances?settle=${inv.id}`,
+      },
     })
   }
 
@@ -201,6 +209,11 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
       title: `Retry failed billing sync — ${inv.patientName}`,
       due: "Sync failed",
       completed: false,
+      action: {
+        kind: "link",
+        labelKey: "signal.action.fixDocument",
+        href: `/finances?settle=${inv.id}`,
+      },
     })
   }
 
@@ -218,6 +231,11 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
         title: `Confirm tomorrow's appointment — ${appt.patientName} ${appt.start}`,
         due: `Tomorrow ${appt.start}`,
         completed: false,
+        action: {
+          kind: "confirm",
+          labelKey: "signal.action.confirm",
+          appointmentId: appt.id,
+        },
       })
     }
     if (appt.appointmentType === "first") {
@@ -231,6 +249,11 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
         title: `Prep intake for first visit — ${appt.patientName}`,
         due: `Tomorrow ${appt.start}`,
         completed: false,
+        action: {
+          kind: "link",
+          labelKey: "signal.action.openChart",
+          href: `/patients/${appt.patientId}`,
+        },
       })
     }
   }
@@ -246,6 +269,12 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
       title: `Reschedule no-show — ${appt.patientName}`,
       due: `Missed ${appt.date}`,
       completed: false,
+      action: {
+        kind: "schedule",
+        labelKey: "signal.action.book",
+        patientId: appt.patientId,
+        patientName: appt.patientName,
+      },
     })
   }
 
@@ -278,6 +307,11 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
       title: `No way to reach ${appt.patientName} — visit ${appt.date}`,
       due: `Visit ${appt.date}`,
       completed: false,
+      action: {
+        kind: "link",
+        labelKey: "signal.action.addContact",
+        href: `/patients/${appt.patientId}`,
+      },
     })
   }
 
@@ -309,6 +343,12 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
       title: `Care plan stalled — ${patient.fullName} (${done}/${target})`,
       due: `Last visit ${patient.lastVisit}`,
       completed: false,
+      action: {
+        kind: "schedule",
+        labelKey: "signal.action.book",
+        patientId: patient.id,
+        patientName: patient.fullName,
+      },
     })
   }
 
@@ -328,6 +368,11 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
       title: `Reconnect billing provider — ${input.billing.provider}`,
       due: "Disconnected",
       completed: false,
+      action: {
+        kind: "link",
+        labelKey: "signal.action.openSettings",
+        href: "/settings",
+      },
     })
   }
 

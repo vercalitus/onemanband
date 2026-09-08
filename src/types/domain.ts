@@ -79,7 +79,28 @@ export interface TodoItem {
   dueKey?: string
   /** Interpolation values (patient name, amount, count, …) shared by titleKey/dueKey. */
   params?: Record<string, string | number>
+  /** What to do about it. Derived signals carry one; authored tasks do not. */
+  action?: TodoAction
 }
+
+/**
+ * The one thing to do about a signal.
+ *
+ * A derived row that only describes a problem makes the reader go and find the
+ * screen themselves, which is most of the work and all of the friction. Each
+ * signal therefore names its own next step, and there is exactly one — a row
+ * offering three buttons is a row that has not decided what it is for.
+ *
+ *  - `link` moves to where the work happens, deep-linked where the destination
+ *    supports it (an invoice's settle dialog, a patient's chart).
+ *  - `confirm` and `schedule` act without leaving the dashboard, because
+ *    confirming tomorrow's appointment and booking a no-show back in are whole
+ *    jobs in themselves and a page change would be the longest part of them.
+ */
+export type TodoAction =
+  | { kind: "link"; labelKey: string; href: string }
+  | { kind: "confirm"; labelKey: string; appointmentId: string }
+  | { kind: "schedule"; labelKey: string; patientId: string; patientName: string }
 
 export interface PulseMetric {
   id: string

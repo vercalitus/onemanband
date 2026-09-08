@@ -437,6 +437,16 @@ export const EN_MESSAGES: Record<string, string> = {
   "security.mfa.error.verify": "Incorrect code. Try again.",
 
   // Reactive-signal to-do titles (see reactive-signals.ts). {patient}/{amount}/{days}/… are interpolated.
+  "signal.action.collect": "Collect",
+  "signal.action.invoice": "Invoice",
+  "signal.action.fixDocument": "Fix the receipt",
+  "signal.action.confirm": "Confirm",
+  "signal.action.book": "Book",
+  "signal.action.openChart": "Open chart",
+  "signal.action.addContact": "Add details",
+  "signal.action.openCalendar": "Calendar",
+  "signal.action.openPatients": "Patients",
+  "signal.action.openSettings": "Settings",
   "signal.overdueInvoice": "Chase overdue payment — {patient} · {amount}",
   "signal.uninvoicedVisit": "Generate invoice for completed visit — {patient}",
   "signal.confirmTomorrow": "Confirm tomorrow's appointment — {patient} {time}",
