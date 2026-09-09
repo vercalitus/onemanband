@@ -159,7 +159,7 @@ Defined in `src/types/domain.ts` and enforced in Postgres:
 - **Slot grid:** 5-minute steps (`APPOINTMENT_SLOT_MINUTES = 5`)
 - **Duration:** 5–60 minutes, multiples of 5
 - **Types:** `first` | `adjustments` | `kupa`
-- **Statuses:** `scheduled`, `confirmed`, `checked_in`, `completed`, `cancelled`, `no_show`
+- **Statuses:** `scheduled`, `confirmed`, `uncertain`, `completed`, `cancelled`, `no_show` — the Postgres enum and `AppointmentStatus` agree; there is no `checked_in`
 - **No overlap** per clinic (Postgres `EXCLUDE` constraint on `tstzrange`)
 - Helpers: `src/lib/appointment-time.ts`, `src/lib/appointment-types.ts`
 - **Every change to a booking goes through `commitAppointment`** in
