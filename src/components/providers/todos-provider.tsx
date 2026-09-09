@@ -13,7 +13,9 @@ import {
 } from "react"
 
 import { AUTOMATION_STORE_EVENT } from "@/features/automations/lib/automation-store"
+import { BILLING_STORE_EVENT } from "@/features/automations/lib/billing-bridge"
 import { useRemoteResponses } from "@/features/automations/lib/remote-responses"
+import { APPOINTMENTS_CHANGED_EVENT } from "@/features/calendar/lib/appointment-repository"
 import { deriveAutomationTodos } from "@/features/dashboard/lib/automation-signals"
 import {
   createTask,
@@ -60,7 +62,12 @@ const isAutomationRow = (id: string) =>
   id.startsWith("rx-patientcancel-") ||
   id.startsWith("rx-patientmove-") ||
   id.startsWith("rx-questionnaire-") ||
-  id.startsWith("rx-newpatient-")
+  id.startsWith("rx-newpatient-") ||
+  // These two were missing, so a patient's message and a payment claim were
+  // wiped the moment the clinic's own signals arrived, and a claim that had
+  // been answered stayed on the board until the page was reloaded.
+  id.startsWith("rx-message-") ||
+  id.startsWith("rx-paymentclaim-")
 
 /** The demo board, for a deploy with no clinic behind it. */
 function seedTodos(): TodoItem[] {
@@ -128,6 +135,24 @@ export function TodosProvider({ children }: { children: ReactNode }) {
    * already in the board is preserved on refresh.
    */
   const remoteResponses = useRemoteResponses()
+
+  /**
+   * Bumped whenever a record the board is derived from changes — a booking
+   * written, an invoice raised or settled — so the derivation below runs
+   * again. It used to run once, on load: pressing Confirm on "confirm
+   * tomorrow's visit" changed the appointment and left the row standing until
+   * the next reload, which reads as the button not working.
+   */
+  const [recordsVersion, setRecordsVersion] = useState(0)
+  useEffect(() => {
+    const bump = () => setRecordsVersion((v) => v + 1)
+    window.addEventListener(APPOINTMENTS_CHANGED_EVENT, bump)
+    window.addEventListener(BILLING_STORE_EVENT, bump)
+    return () => {
+      window.removeEventListener(APPOINTMENTS_CHANGED_EVENT, bump)
+      window.removeEventListener(BILLING_STORE_EVENT, bump)
+    }
+  }, [])
 
   /**
    * Re-derive the whole board from the clinic's own records.
@@ -204,7 +229,7 @@ export function TodosProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [formatMoney])
+  }, [formatMoney, recordsVersion])
 
   useEffect(() => {
     const sync = () => {

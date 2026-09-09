@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
+import { BILLING_STORE_EVENT } from "@/features/automations/lib/billing-bridge"
 import { computePulseMetrics } from "@/features/dashboard/lib/pulse-metrics"
 import { fetchInvoices } from "@/features/finances/lib/finance-repository"
 import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
@@ -31,6 +32,15 @@ export function usePulseMetrics(): { metrics: PulseMetric[]; live: boolean } {
   const [live, setLive] = useState(false)
   const [invoices, setInvoices] = useState<BillingInvoice[]>([])
 
+  // Re-read the ledger when it changes, so a payment taken on the Finances
+  // page moves the revenue figure without a reload.
+  const [ledgerVersion, setLedgerVersion] = useState(0)
+  useEffect(() => {
+    const bump = () => setLedgerVersion((v) => v + 1)
+    window.addEventListener(BILLING_STORE_EVENT, bump)
+    return () => window.removeEventListener(BILLING_STORE_EVENT, bump)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     void Promise.all([clinicHasPatients(), fetchInvoices(formatMoney)]).then(
@@ -43,7 +53,7 @@ export function usePulseMetrics(): { metrics: PulseMetric[]; live: boolean } {
     return () => {
       cancelled = true
     }
-  }, [formatMoney])
+  }, [formatMoney, ledgerVersion])
 
   return useMemo(() => {
     if (!live) {

@@ -21,6 +21,7 @@ import {
 import { useAppointmentAutomations } from "@/features/automations/lib/use-appointment-automations"
 import { useNoShowWatcher } from "@/features/automations/lib/use-no-show-watcher"
 import {
+  APPOINTMENTS_CHANGED_EVENT,
   fetchAppointments,
   saveAppointment,
 } from "@/features/calendar/lib/appointment-repository"
@@ -239,6 +240,7 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
               : prev.map((a) => (a.id === item.id ? written.appointment : a)),
           ),
         )
+        window.dispatchEvent(new Event(APPOINTMENTS_CHANGED_EVENT))
         return written.appointment
       }
       setSaveError(written.reason)

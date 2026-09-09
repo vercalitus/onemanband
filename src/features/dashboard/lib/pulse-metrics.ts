@@ -36,7 +36,17 @@ function change(current: number, previous: number): Pick<PulseMetric, "delta" | 
   return { delta: `${pct > 0 ? "+" : ""}${pct}%`, trend: pct > 0 ? "up" : "down" }
 }
 
-const VISIT_HAPPENED = new Set(["completed", "checked_in", "confirmed", "scheduled"])
+/**
+ * A visit that took place. A booking for the 28th is not a visit on the 9th:
+ * the diary runs months ahead, and counting it made "Monthly Visits" a count of
+ * bookings that read as a count of people seen.
+ */
+const isoToday = (now: Date) =>
+  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+const visitHappened = (a: ScheduleItem, today: string) =>
+  a.status === "completed" ||
+  a.status === "checked_in" ||
+  ((a.status === "confirmed" || a.status === "scheduled") && a.date < today)
 
 function bookedMinutes(appointments: ScheduleItem[]): number {
   return appointments.reduce((sum, a) => {
@@ -89,8 +99,9 @@ export function computePulseMetrics(
     return !Number.isNaN(d.getTime()) && monthKey(d) === key
   }
 
+  const today = isoToday(now)
   const visitsIn = (key: string) =>
-    appointments.filter((a) => VISIT_HAPPENED.has(a.status) && inMonth(a.date, key))
+    appointments.filter((a) => visitHappened(a, today) && inMonth(a.date, key))
 
   const visits = visitsIn(thisMonth)
   const visitsLast = visitsIn(lastMonth)

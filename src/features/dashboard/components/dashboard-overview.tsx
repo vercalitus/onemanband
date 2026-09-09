@@ -33,6 +33,7 @@ import {
 } from "@/features/dashboard/lib/dismissed-signals"
 import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
+import { toISODate } from "@/lib/date-helpers"
 import { usePulseMetrics } from "@/features/dashboard/lib/use-pulse-metrics"
 import { localizeTodoTitle } from "@/lib/i18n/localized-seed"
 import type { TodoItem } from "@/types/domain"
@@ -279,8 +280,14 @@ export function DashboardOverview() {
   const { todos, toggleComplete, signalsAreLive } = useTodos()
   const { openAddTask } = useAddTask()
 
+  // The header says "N visits today", so N is today's: the provider holds the
+  // diary for months ahead, and counting all of it announced three visits on a
+  // day with none because somebody was booked for next week.
   useEffect(() => {
-    setDashboardVisitCount(dayAppointments.length)
+    const today = toISODate(new Date())
+    setDashboardVisitCount(
+      dayAppointments.filter((a) => a.date === today && a.status !== "cancelled").length,
+    )
   }, [dayAppointments])
 
   const localizedTodos = useMemo(

@@ -63,6 +63,13 @@ export type AppointmentFetch =
   | { source: "unavailable"; reason: string }
 
 /**
+ * Fired after a booking is written. The dashboard's signals are derived from
+ * the diary and were derived once, on load — so "confirm tomorrow's visit"
+ * stayed on the board after the practitioner pressed Confirm, until a reload.
+ */
+export const APPOINTMENTS_CHANGED_EVENT = "appointments-changed"
+
+/**
  * A window of days around today, rather than everything ever booked.
  *
  * The calendar shows a month at most and the dashboard a day; loading a
