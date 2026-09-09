@@ -394,7 +394,8 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 - ⬜ **No messaging provider in production.** The cron runs and the queue drains, but Vercel holds no Twilio or Resend credentials, so every message ends `simulated`. Scheduled is not the same as delivered
 - ⬜ Live WhatsApp / SMS — the number is in regulatory approval
 - ⬜ Email to patients — Resend can only reach the account owner until a domain is verified
-- ⬜ An intake review screen — self-registration lands as `PatientIntake` and has to be retyped
+- ✅ Self-registration reaches the clinic: `/book/[token]` posts to `/api/automations/public/intake`, the row lands in `patient_intakes`, and the dashboard's "Review & add" opens the new-patient form pre-filled and closes the intake once the record exists. A full review screen (documents, requested slot → booking) is still open
+- ✅ Failed sends reach the board from the server queue (`GET /api/automations/outbox`), not the browser's copy
 - ⬜ Clinic settings still live in `localStorage`, not the database
 
 When in doubt, read the closest `features/*` module and follow its patterns.
