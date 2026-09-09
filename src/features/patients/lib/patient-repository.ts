@@ -26,6 +26,8 @@ export interface PatientDraft {
   medicalHistorySummary?: string
   generalNotes?: string
   tags?: string[]
+  /** The course agreed at intake. Absent means the practice default applies. */
+  carePlanSessions?: number
 }
 
 interface PatientRow {
@@ -211,6 +213,7 @@ export async function createPatient(draft: PatientDraft): Promise<PatientWrite> 
       medical_history_summary: draft.medicalHistorySummary ?? "",
       general_notes: draft.generalNotes ?? "",
       tags: draft.tags ?? [],
+      care_plan_sessions: draft.carePlanSessions ?? null,
     })
     .select(
       COLUMNS,

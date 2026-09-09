@@ -118,14 +118,22 @@ export function AddPatientDialog({
     const patient: PatientSummary = {
       id,
       fullName: name,
-      phone: phone.trim() || "—",
-      email: emailTrim || "—",
+      // Empty stays empty. This used to store "—" as the phone number, and a
+      // dash is not "no number" to anything downstream: the reminder engine
+      // saw a phone, the "no way to reach" signal saw a phone, and neither
+      // could reach anyone.
+      phone: phone.trim(),
+      email: emailTrim,
       status: "active",
       lastVisit: visitIso,
       balance: "₪0",
       tags: [],
       medicalHistorySummary: complaint.trim() || t("addPatient.defaultComplaint"),
       generalNotes: generalParts.filter(Boolean).join(" · "),
+      // The plan chosen here is the patient's plan, not a note about one. It
+      // used to survive only as text in the general notes, and the chart then
+      // measured their visits against the practice default.
+      carePlanSessions: sessions,
     }
 
     onSave(patient)

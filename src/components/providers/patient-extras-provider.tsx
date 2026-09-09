@@ -170,6 +170,7 @@ export function useAddPatient(): (draft: PatientSummary) => Promise<boolean> {
         medicalHistorySummary: draft.medicalHistorySummary,
         generalNotes: draft.generalNotes,
         tags: draft.tags,
+        carePlanSessions: draft.carePlanSessions,
       })
       if (written.ok) {
         refreshLive()
