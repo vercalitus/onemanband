@@ -28,6 +28,8 @@ interface Props {
   onPlanTargetChange: (sessions: number | null) => void
   clinicalStatus: ClinicalStatus
   onClinicalStatusChange: (v: string) => void
+  /** Absent on the demo chart, where the badge is only a badge. */
+  onStatusChange?: (status: PatientSummary["status"]) => void
   onSaveOverrides: (o: PatientContactOverrides) => void
   treatmentMarks: TreatmentMark[]
   onAddTreatmentMark: (view: BodyMapView, x: number, y: number) => void
@@ -47,6 +49,7 @@ export function PatientSmartHeader({
   onPlanTargetChange,
   clinicalStatus,
   onClinicalStatusChange,
+  onStatusChange,
   onSaveOverrides,
   treatmentMarks,
   onAddTreatmentMark,
@@ -143,14 +146,35 @@ export function PatientSmartHeader({
               <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900 md:text-3xl">
                 {patient.fullName}
               </h1>
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold capitalize",
-                  STATUS_BADGE[patient.status],
-                )}
-              >
-                {t(`status.patient.${patient.status}`)}
-              </span>
+              {onStatusChange ? (
+                /* The badge is the control. A separate "edit status" affordance
+                   would be one more thing on a crowded header for a change made
+                   a few times a year. */
+                <select
+                  value={patient.status}
+                  onChange={(e) => onStatusChange(e.target.value as PatientSummary["status"])}
+                  aria-label={t("patientChart.statusChangeAria")}
+                  className={cn(
+                    "cursor-pointer appearance-none rounded-md border px-2 py-0.5 text-[11px] font-semibold capitalize outline-none focus-visible:ring-2 focus-visible:ring-sky-100",
+                    STATUS_BADGE[patient.status],
+                  )}
+                >
+                  {(["active", "frozen", "past"] as const).map((status) => (
+                    <option key={status} value={status}>
+                      {t(`status.patient.${status}`)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold capitalize",
+                    STATUS_BADGE[patient.status],
+                  )}
+                >
+                  {t(`status.patient.${patient.status}`)}
+                </span>
+              )}
               {/* Only ever shown for an open claim — an unpaid or settled
                   account says so on the Billing page, but "says they paid"
                   needs answering, so it follows the patient around. */}

@@ -128,6 +128,100 @@ export async function deleteDocument(
   return { ok: true }
 }
 
+/** Above this a scan is a problem for the scanner, not for the chart. */
+export const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
+
+export type DocumentWrite =
+  | { ok: true; document: DocumentRecord }
+  | { ok: false; reason: string }
+
+/**
+ * File a document on a patient's chart: the file into the private bucket, then
+ * the row that points at it.
+ *
+ * Until now nothing in the app could do this. The 801 documents on record were
+ * imported by script, and a practitioner holding a new X-ray or a signed
+ * consent form had nowhere to put it — the only upload path was the patient's
+ * own, through a booking link. The chart is where the record is kept, so it is
+ * where the record is added to.
+ *
+ * File first, row second: a row with no file behind it is an entry that will
+ * not open, which lies to the reader; a file with no row is invisible and
+ * costs storage. If the row is refused, the file is taken back out.
+ *
+ * Same policies as everything else: the clinic id comes from the caller's own
+ * profile, storage refuses a path outside that clinic's folder, and the table
+ * refuses an insert from anyone who is not a clinician there.
+ */
+export async function uploadDocument(
+  patientId: string,
+  file: File,
+  type: DocumentType,
+): Promise<DocumentWrite> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return { ok: false, reason: "supabase not configured" }
+  if (file.size > MAX_DOCUMENT_BYTES) return { ok: false, reason: "file too large" }
+
+  const { data: auth } = await db.auth.getUser()
+  if (!auth.user) return { ok: false, reason: "not signed in" }
+  const { data: profile } = await db
+    .from("profiles")
+    .select("clinic_id")
+    .eq("id", auth.user.id)
+    .maybeSingle()
+  const clinicId = profile?.clinic_id
+  if (!clinicId) return { ok: false, reason: "no clinic for this user" }
+
+  // The original name is kept on the row for display. The object key is
+  // stamped and sanitised: a Hebrew file name is legitimate on a chart and a
+  // poor storage key, and two scans called "xray.jpg" must not overwrite each
+  // other.
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-")
+  const safe = file.name.replace(/[^\w.\-]+/g, "_")
+  const path = `${clinicId}/${patientId}/documents/${stamp}-${safe}`
+
+  const { error: fileError } = await db.storage
+    .from("patient-media")
+    .upload(path, file, { contentType: file.type || undefined })
+  if (fileError) return { ok: false, reason: fileError.message }
+
+  const { data, error: rowError } = await db
+    .from("documents")
+    .insert({
+      clinic_id: clinicId,
+      patient_id: patientId,
+      uploaded_by: auth.user.id,
+      bucket: "patient-media",
+      storage_path: path,
+      file_name: file.name,
+      mime_type: file.type || null,
+      file_size_bytes: file.size,
+      document_type: type,
+      source_label: "chart",
+    })
+    .select("id, file_name, document_type, created_at, source_label, storage_path")
+    .single()
+
+  if (rowError) {
+    // Best effort; an orphaned file is the harmless half of this failure.
+    await db.storage.from("patient-media").remove([path])
+    return { ok: false, reason: rowError.message }
+  }
+
+  const row = data as DocumentRow
+  return {
+    ok: true,
+    document: {
+      id: row.id,
+      name: row.file_name,
+      type: row.document_type,
+      uploadedAt: row.created_at,
+      source: row.source_label ?? "",
+      storagePath: row.storage_path,
+    },
+  }
+}
+
 /**
  * A link that opens one document, valid for about a minute.
  *

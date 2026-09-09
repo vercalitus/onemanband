@@ -22,6 +22,7 @@ import { SessionCanvas } from "@/features/patients/components/session-canvas"
 import { SessionAudio } from "@/features/patients/components/session-audio"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
 import { PatientActionBar } from "@/features/patients/components/patient-action-bar"
+import { PatientLibrary } from "@/features/patients/components/patient-library"
 import { usePatientCockpit } from "@/features/patients/lib/use-patient-cockpit"
 
 export function PatientDetailClient() {
@@ -70,10 +71,13 @@ export function PatientDetailClient() {
 
   const {
     hydrated,
+    live,
     saveError,
     clearSaveError,
     clinicalStatus,
     setClinicalStatus,
+    setPatientStatus,
+    uploadDocumentRecord,
     sessionNotes,
     setSessionNotes,
     canvasStrokes,
@@ -224,6 +228,7 @@ export function PatientDetailClient() {
             onPlanTargetChange={setPlanTarget}
             clinicalStatus={clinicalStatus}
             onClinicalStatusChange={setClinicalStatus}
+            onStatusChange={live ? setPatientStatus : undefined}
             onSaveOverrides={saveContactOverrides}
             treatmentMarks={treatmentMarks}
             onAddTreatmentMark={addTreatmentMark}
@@ -340,6 +345,16 @@ export function PatientDetailClient() {
               saveContactOverrides({ ...contactOverrides, generalNotes: v })
             }
           />
+
+          {/* Below xl the sidebar that holds the library is not rendered, so
+              on a tablet the documents were nowhere on the page. */}
+          <div className="xl:hidden">
+            <PatientLibrary
+              documentRecords={documentRecords}
+              onDeleteDocument={deleteDocumentRecord}
+              onUploadDocument={live ? uploadDocumentRecord : undefined}
+            />
+          </div>
         </div>
 
         <div id="patient-actions" className="scroll-mt-24">
@@ -351,6 +366,7 @@ export function PatientDetailClient() {
             patientName={displayPatient.fullName}
             documentRecords={documentRecords}
             onDeleteDocument={deleteDocumentRecord}
+            onUploadDocument={live ? uploadDocumentRecord : undefined}
             lastAppointmentType={patientLastAppointmentType}
             nextSessionNumber={totalSessionsDone + 1}
           />

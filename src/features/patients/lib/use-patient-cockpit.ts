@@ -16,7 +16,9 @@ import type {
   AppointmentType,
   TreatmentRecord,
   DocumentRecord,
+  DocumentType,
   FinanceRecord,
+  PatientStatus,
   TreatmentMark,
   BodyMapView,
 } from "@/types/domain"
@@ -28,6 +30,7 @@ import {
 import {
   deleteDocument,
   fetchPatientDocuments,
+  uploadDocument,
 } from "@/features/patients/lib/document-repository"
 import { updatePatient } from "@/features/patients/lib/patient-repository"
 import {
@@ -245,6 +248,11 @@ export function usePatientCockpit(patientId: string) {
   const setClinicalStatus = useCallback(
     (value: string) => {
       const text = value.trim()
+      // The editor commits on blur, so opening it and clicking away is a
+      // commit. Writing the same text again would re-stamp the date, and the
+      // chart would then claim the status was written today when nobody wrote
+      // anything — the date is part of what the line means.
+      if (text === manualStatus.text) return
       const at = text ? new Date().toISOString() : null
       setManualStatus({ text, at })
       if (isLive) {
@@ -253,7 +261,21 @@ export function usePatientCockpit(patientId: string) {
       }
       writeField(patientId, "clinicalStatus", text)
     },
-    [patientId, isLive, savePatientFields],
+    [patientId, isLive, savePatientFields, manualStatus.text],
+  )
+
+  /**
+   * Active, frozen or past. The list filters on it and the badge shows it, but
+   * until now nothing on the chart could change it — a patient who moved away
+   * stayed "active" forever, because the only place the status was ever set
+   * was the moment they were created.
+   */
+  const setPatientStatus = useCallback(
+    (status: PatientStatus) => {
+      if (!isLive || !livePatient || livePatient.status === status) return
+      void savePatientFields({ status })
+    },
+    [isLive, livePatient, savePatientFields],
   )
 
   const setSessionNotes = useCallback(
@@ -527,9 +549,12 @@ export function usePatientCockpit(patientId: string) {
   const setPlanTarget = useCallback(
     (sessions: number | null) => {
       if (!isLive) return
+      // Enter commits and then the blur commits again; the second one is a
+      // no-op and should cost nothing.
+      if (sessions === (livePatient?.carePlanSessions ?? null)) return
       void savePatientFields({ carePlanSessions: sessions })
     },
-    [isLive, savePatientFields],
+    [isLive, livePatient?.carePlanSessions, savePatientFields],
   )
 
   const totalSessionsDone = treatmentRecords.length + completedSessions.length
@@ -673,6 +698,25 @@ export function usePatientCockpit(patientId: string) {
     [patientId, liveDocuments, reloadDocuments],
   )
 
+  /**
+   * Add a document to the chart. Only where the chart has a database: the demo
+   * has nowhere to put a file, and pretending to accept one would be worse than
+   * not offering.
+   */
+  const uploadDocumentRecord = useCallback(
+    async (file: File, type: DocumentType): Promise<boolean> => {
+      if (!liveDocuments) return false
+      const written = await uploadDocument(patientId, file, type)
+      if (!written.ok) {
+        setSaveError(written.reason)
+        return false
+      }
+      reloadDocuments()
+      return true
+    },
+    [patientId, liveDocuments, reloadDocuments],
+  )
+
   return {
     hydrated,
     live: isLive,
@@ -680,6 +724,8 @@ export function usePatientCockpit(patientId: string) {
     clearSaveError: useCallback(() => setSaveError(null), []),
     clinicalStatus,
     setClinicalStatus,
+    setPatientStatus,
+    uploadDocumentRecord,
     sessionNotes,
     setSessionNotes,
     canvasStrokes,

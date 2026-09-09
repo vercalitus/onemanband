@@ -6,7 +6,7 @@ import { useLocale } from "@/components/providers/locale-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { cn } from "@/lib/utils"
 import { toISODate } from "@/lib/date-helpers"
-import type { AppointmentType, DocumentRecord } from "@/types/domain"
+import type { AppointmentType, DocumentRecord, DocumentType } from "@/types/domain"
 import { PatientLibrary } from "./patient-library"
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
   patientName: string
   documentRecords?: DocumentRecord[]
   onDeleteDocument?: (id: string) => void | Promise<boolean>
+  onUploadDocument?: (file: File, type: DocumentType) => Promise<boolean>
   lastAppointmentType?: AppointmentType
   nextSessionNumber?: number
 }
@@ -32,6 +33,7 @@ export function PatientActionBar({
   patientName,
   documentRecords = [],
   onDeleteDocument,
+  onUploadDocument,
   lastAppointmentType = "adjustments",
   nextSessionNumber,
 }: Props) {
@@ -178,13 +180,15 @@ export function PatientActionBar({
           </div>
         </div>
 
-        {/* Patient Library — below Quick Actions */}
-        {documentRecords.length > 0 && (
-          <PatientLibrary
-            documentRecords={documentRecords}
-            onDeleteDocument={onDeleteDocument ?? (() => {})}
-          />
-        )}
+        {/* Patient Library — below Quick Actions. On narrower screens it is
+            rendered in the main column instead: this aside does not exist
+            there, and a tablet in the treatment room could not see a single
+            document. */}
+        <PatientLibrary
+          documentRecords={documentRecords}
+          onDeleteDocument={onDeleteDocument ?? (() => {})}
+          onUploadDocument={onUploadDocument}
+        />
       </aside>
     </>
   )
