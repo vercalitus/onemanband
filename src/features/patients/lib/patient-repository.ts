@@ -22,6 +22,7 @@ export interface PatientDraft {
   phone?: string
   email?: string
   address?: string
+  dateOfBirth?: string
   status?: PatientStatus
   medicalHistorySummary?: string
   generalNotes?: string
@@ -37,6 +38,7 @@ interface PatientRow {
   phone: string | null
   email: string | null
   address: string | null
+  date_of_birth: string | null
   tags: string[] | null
   medical_history_summary: string | null
   general_notes: string | null
@@ -48,7 +50,7 @@ interface PatientRow {
 }
 
 const COLUMNS =
-  "id, full_name, status, phone, email, address, tags, medical_history_summary, general_notes, last_seen_at, clinical_status, clinical_status_updated_at, body_map_marks, care_plan_sessions"
+  "id, full_name, status, phone, email, address, date_of_birth, tags, medical_history_summary, general_notes, last_seen_at, clinical_status, clinical_status_updated_at, body_map_marks, care_plan_sessions"
 
 function toSummary(row: PatientRow): PatientSummary {
   return {
@@ -58,6 +60,7 @@ function toSummary(row: PatientRow): PatientSummary {
     phone: row.phone ?? "",
     email: row.email ?? "",
     address: row.address ?? undefined,
+    dateOfBirth: row.date_of_birth ?? undefined,
     /*
      * The best date anyone has. Backfilled at import from the bookkeeping
      * history: most patients here pay at the session, so the date of their
@@ -209,6 +212,9 @@ export async function createPatient(draft: PatientDraft): Promise<PatientWrite> 
       phone: draft.phone || null,
       email: draft.email || null,
       address: draft.address || null,
+      // The dialog asked for it and then wrote it into the notes as prose.
+      // The column existed the whole time.
+      date_of_birth: draft.dateOfBirth || null,
       status: draft.status ?? "active",
       medical_history_summary: draft.medicalHistorySummary ?? "",
       general_notes: draft.generalNotes ?? "",

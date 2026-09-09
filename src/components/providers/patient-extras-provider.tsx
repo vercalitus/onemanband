@@ -166,6 +166,7 @@ export function useAddPatient(): (draft: PatientSummary) => Promise<PatientSumma
         phone: draft.phone,
         email: draft.email,
         address: draft.address,
+        dateOfBirth: draft.dateOfBirth,
         status: draft.status,
         medicalHistorySummary: draft.medicalHistorySummary,
         generalNotes: draft.generalNotes,

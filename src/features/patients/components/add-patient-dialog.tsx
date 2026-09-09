@@ -127,6 +127,7 @@ export function AddPatientDialog({
       // could reach anyone.
       phone: phone.trim(),
       email: emailTrim,
+      dateOfBirth: dob || undefined,
       status: "active",
       lastVisit: visitIso,
       balance: "₪0",

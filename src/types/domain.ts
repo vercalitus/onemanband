@@ -132,6 +132,8 @@ export interface PatientSummary {
   phone: string
   email: string
   address?: string
+  /** ISO date. Collected at intake; a column, not a line in the notes. */
+  dateOfBirth?: string
   lastVisit: string
   balance: string
   tags: string[]
