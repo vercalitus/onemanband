@@ -97,10 +97,25 @@ export interface TodoItem {
  *    confirming tomorrow's appointment and booking a no-show back in are whole
  *    jobs in themselves and a page change would be the longest part of them.
  */
+/** What a self-registration already told us, handed to the new-patient form. */
+export interface AddPatientPrefill {
+  fullName?: string
+  phone?: string
+  email?: string
+  dateOfBirth?: string
+  complaint?: string
+}
+
 export type TodoAction =
   | { kind: "link"; labelKey: string; href: string }
   | { kind: "confirm"; labelKey: string; appointmentId: string }
   | { kind: "schedule"; labelKey: string; patientId: string; patientName: string }
+  /**
+   * Open the new-patient form with what the patient wrote, and close the
+   * intake once the record exists. The review screen this flow still lacks,
+   * in its smallest useful form: nobody retypes a registration.
+   */
+  | { kind: "intake"; labelKey: string; intakeId: string; prefill: AddPatientPrefill }
 
 export interface PulseMetric {
   id: string

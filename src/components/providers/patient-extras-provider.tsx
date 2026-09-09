@@ -152,12 +152,12 @@ export function useMergedPatients(): PatientSummary[] {
 /**
  * Add a patient, to the database when there is one.
  *
- * Returns whether it was persisted, because the two outcomes are genuinely
+ * Returns the saved row, or null, because the two outcomes are genuinely
  * different and the caller should be able to say so: a patient saved to
- * Postgres is a record, one held in this provider is a demo row that vanishes
- * on refresh.
+ * Postgres is a record with an id other things can point at; one held in this
+ * provider is a demo row that vanishes on refresh.
  */
-export function useAddPatient(): (draft: PatientSummary) => Promise<boolean> {
+export function useAddPatient(): (draft: PatientSummary) => Promise<PatientSummary | null> {
   const { addPatient, refreshLive } = usePatientExtras()
   return useCallback(
     async (draft: PatientSummary) => {
@@ -174,13 +174,13 @@ export function useAddPatient(): (draft: PatientSummary) => Promise<boolean> {
       })
       if (written.ok) {
         refreshLive()
-        return true
+        return written.patient
       }
       if (process.env.NODE_ENV === "development") {
         console.warn(`[patients] kept in session only: ${written.reason}`)
       }
       addPatient(draft)
-      return false
+      return null
     },
     [addPatient, refreshLive],
   )

@@ -4,6 +4,7 @@ import { z } from "zod"
 import {
   cancelPendingRows,
   enqueueMessageRows,
+  listFailedMessageRows,
 } from "@/features/automations/lib/server-store"
 import type { OutboxMessage } from "@/types/automation"
 
@@ -21,6 +22,15 @@ import type { OutboxMessage } from "@/types/automation"
  */
 
 export const dynamic = "force-dynamic"
+
+/**
+ * What the cron could not deliver. The dashboard's "message failed to send"
+ * row reads this; it used to read the browser's queue, which the cron never
+ * touches, so a real failure was invisible everywhere.
+ */
+export async function GET() {
+  return NextResponse.json({ ok: true, failed: await listFailedMessageRows() })
+}
 
 const messageSchema = z.object({
   id: z.string(),

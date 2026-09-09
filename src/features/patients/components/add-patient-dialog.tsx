@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useLocale } from "@/components/providers/locale-provider"
-import type { PatientSummary } from "@/types/domain"
+import type { AddPatientPrefill, PatientSummary } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
@@ -39,10 +39,13 @@ export function AddPatientDialog({
   open,
   onOpenChange,
   onSave,
+  initial,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (patient: PatientSummary) => void
+  /** Seeded into the form on open — what a self-registration already said. */
+  initial?: AddPatientPrefill
 }) {
   const { t } = useLocale()
   const [fullName, setFullName] = useState("")
@@ -60,17 +63,17 @@ export function AddPatientDialog({
   useEffect(() => {
     if (!open) return
     setError(null)
-    setFullName("")
-    setPhone("")
-    setEmail("")
-    setDob("")
-    setComplaint("")
+    setFullName(initial?.fullName ?? "")
+    setPhone(initial?.phone ?? "")
+    setEmail(initial?.email ?? "")
+    setDob(initial?.dateOfBirth ?? "")
+    setComplaint(initial?.complaint ?? "")
     setKupaId("clalit")
     setReferralId("google")
     setFirstVisit("")
     setPlanChoice(10)
     setCustomPlan("8")
-  }, [open])
+  }, [open, initial])
 
   function resolveSessionCount(): number {
     if (planChoice === "custom") {

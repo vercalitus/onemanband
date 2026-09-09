@@ -22,7 +22,9 @@ import { useLocale } from "@/components/providers/locale-provider"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAddTask } from "@/components/providers/add-task-provider"
+import { useGlobalAddPatient } from "@/components/providers/global-add-patient-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
+import { approveIntake } from "@/features/automations/lib/remote-intakes"
 import { useTodos } from "@/components/providers/todos-provider"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
 import {
@@ -108,6 +110,7 @@ function TodoRow({
   const { t } = useLocale()
   const router = useRouter()
   const { openCreateAppointment, confirmAppointment } = useScheduleDay()
+  const { openGlobalAddPatient } = useGlobalAddPatient()
   const done = Boolean(item.completed)
   // Reactive signals carry i18n keys + params; authored tasks carry plain strings.
   const title = item.titleKey ? t(item.titleKey, item.params) : item.title
@@ -171,6 +174,15 @@ function TodoRow({
             if (!action) return
             if (action.kind === "link") router.push(action.href)
             else if (action.kind === "confirm") confirmAppointment(action.appointmentId)
+            else if (action.kind === "intake")
+              openGlobalAddPatient({
+                prefill: action.prefill,
+                // Closed only for a record that exists. A save that failed
+                // leaves the registration on the board, which is the truth.
+                onSaved: (saved) => {
+                  if (saved) void approveIntake(action.intakeId, saved.id)
+                },
+              })
             else
               openCreateAppointment(undefined, {
                 id: action.patientId,

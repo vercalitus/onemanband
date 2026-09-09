@@ -1,7 +1,18 @@
 import "server-only"
 
+import {
+  DEFAULT_CLINIC_TIMEZONE,
+  clinicDateTimeToUtc,
+  clinicHhmm,
+  clinicIsoDate,
+} from "@/features/automations/lib/clinic-time"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
-import type { AccessToken, OutboxMessage, PatientResponse } from "@/types/automation"
+import type {
+  AccessToken,
+  OutboxMessage,
+  PatientIntake,
+  PatientResponse,
+} from "@/types/automation"
 
 /**
  * The part of the automation store that has to survive leaving one device.
@@ -361,4 +372,177 @@ export async function markInvoiceResponsesHandled(invoiceId: string): Promise<vo
     .update({ handled: true })
     .eq("external_invoice_id", invoiceId)
     .eq("handled", false)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Failed sends                                                                */
+/* -------------------------------------------------------------------------- */
+
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+
+/**
+ * Messages the cron tried to send and could not.
+ *
+ * The dashboard's "message failed to send" row read the browser's queue, and
+ * the cron sends from this one — so a real failure landed here and the board
+ * never heard of it. The patient simply did not turn up. Names are looked up
+ * because the queue row holds only an id, and a row that says "0501234567
+ * failed" asks the reader to go and find out who that is.
+ */
+export async function listFailedMessageRows(): Promise<OutboxMessage[]> {
+  const db = createSupabaseAdminClient()
+  if (!db) return []
+
+  const { data } = await db
+    .from("automation_outbox")
+    .select("*")
+    .eq("status", "failed")
+    .order("created_at", { ascending: false })
+    .limit(100)
+  const rows = data ?? []
+  if (!rows.length) return []
+
+  const patientIds = [
+    ...new Set(
+      rows
+        .map((row) => row.external_patient_id as string | null)
+        .filter((id): id is string => !!id && isUuid(id)),
+    ),
+  ]
+  const names = new Map<string, string>()
+  if (patientIds.length) {
+    const { data: patients } = await db
+      .from("patients")
+      .select("id, full_name")
+      .in("id", patientIds)
+    for (const p of patients ?? []) names.set(p.id, p.full_name)
+  }
+
+  return rows.map((row) => ({
+    ...fromOutboxRow(row),
+    patientName: names.get(row.external_patient_id as string) ?? "",
+  }))
+}
+
+/* -------------------------------------------------------------------------- */
+/* Self-registration                                                           */
+/* -------------------------------------------------------------------------- */
+
+const APPOINTMENT_TYPES = new Set(["first", "adjustments", "kupa"])
+
+export type IntakeWrite = { ok: true; id: string } | { ok: false; reason: string }
+
+/**
+ * File what a patient wrote on `/book/<token>`.
+ *
+ * Until now the intake was written to the *patient's* browser and nowhere
+ * else, and the dashboard row that says "approve new patient registration"
+ * read the practitioner's. Every self-registration died on the phone it was
+ * typed on, and the clinic never knew anyone had tried.
+ *
+ * The token decides the clinic and whether the link is still good. Nothing
+ * else about the request is trusted: it is self-reported data from an
+ * unauthenticated page, which is exactly why it lands here and not in
+ * `patients`.
+ */
+export async function addIntakeRow(intake: PatientIntake): Promise<IntakeWrite> {
+  const db = createSupabaseAdminClient()
+  if (!db) return { ok: false, reason: "no store" }
+
+  const { data: tokenRow } = await db
+    .from("automation_access_tokens")
+    .select("clinic_id, kind, expires_at, single_use, used_at")
+    .eq("token", intake.token)
+    .maybeSingle()
+  if (!tokenRow) return { ok: false, reason: "unknown token" }
+  if (tokenRow.kind !== "book") return { ok: false, reason: "wrong token kind" }
+  if (new Date(tokenRow.expires_at).getTime() < Date.now()) return { ok: false, reason: "expired" }
+  if (tokenRow.single_use && tokenRow.used_at) return { ok: false, reason: "used" }
+
+  const requestedStart =
+    intake.requestedDate && intake.requestedStart
+      ? clinicDateTimeToUtc(
+          DEFAULT_CLINIC_TIMEZONE,
+          intake.requestedDate,
+          intake.requestedStart,
+        ).toISOString()
+      : null
+
+  const { data, error } = await db
+    .from("patient_intakes")
+    .insert({
+      clinic_id: tokenRow.clinic_id,
+      token: intake.token,
+      full_name: intake.fullName,
+      phone: intake.phone,
+      email: intake.email || null,
+      date_of_birth: intake.dateOfBirth || null,
+      reason: intake.reason ?? "",
+      document_paths: intake.documentNames ?? [],
+      requested_type: APPOINTMENT_TYPES.has(intake.requestedType) ? intake.requestedType : null,
+      requested_start: requestedStart,
+      status: "submitted",
+      submitted_at: intake.submittedAt ?? new Date().toISOString(),
+    })
+    .select("id")
+    .single()
+
+  if (error) return { ok: false, reason: error.message }
+  return { ok: true, id: data.id }
+}
+
+/** Registrations nobody has looked at yet. */
+export async function listSubmittedIntakeRows(): Promise<PatientIntake[]> {
+  const db = createSupabaseAdminClient()
+  if (!db) return []
+
+  const { data } = await db
+    .from("patient_intakes")
+    .select("*")
+    .eq("status", "submitted")
+    .order("created_at", { ascending: false })
+    .limit(100)
+
+  return (data ?? []).map((row) => {
+    const start = row.requested_start ? new Date(row.requested_start) : null
+    return {
+      id: row.id,
+      token: row.token ?? "",
+      fullName: row.full_name,
+      phone: row.phone,
+      email: row.email ?? "",
+      dateOfBirth: row.date_of_birth ?? undefined,
+      reason: row.reason ?? "",
+      documentNames: row.document_paths ?? [],
+      requestedType: row.requested_type ?? "first",
+      requestedDate: start ? clinicIsoDate(start, DEFAULT_CLINIC_TIMEZONE) : undefined,
+      requestedStart: start ? clinicHhmm(start, DEFAULT_CLINIC_TIMEZONE) : undefined,
+      status: row.status,
+      createdAt: row.created_at,
+      submittedAt: row.submitted_at ?? undefined,
+    }
+  })
+}
+
+/**
+ * The intake became a patient record. The intake keeps pointing at it so the
+ * origin of the record is never lost — a patient who registered themselves is
+ * a different fact from one typed in at reception.
+ */
+export async function markIntakeApprovedRow(
+  id: string,
+  by: { patientId?: string; approvedBy?: string },
+): Promise<boolean> {
+  const db = createSupabaseAdminClient()
+  if (!db) return false
+  const { error } = await db
+    .from("patient_intakes")
+    .update({
+      status: "approved",
+      approved_patient_id: by.patientId && isUuid(by.patientId) ? by.patientId : null,
+      approved_by: by.approvedBy ?? null,
+    })
+    .eq("id", id)
+  return !error
 }

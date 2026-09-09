@@ -14,6 +14,8 @@ import {
 
 import { AUTOMATION_STORE_EVENT } from "@/features/automations/lib/automation-store"
 import { BILLING_STORE_EVENT } from "@/features/automations/lib/billing-bridge"
+import { useRemoteIntakes } from "@/features/automations/lib/remote-intakes"
+import { useRemoteFailures } from "@/features/automations/lib/remote-outbox"
 import { useRemoteResponses } from "@/features/automations/lib/remote-responses"
 import { APPOINTMENTS_CHANGED_EVENT } from "@/features/calendar/lib/appointment-repository"
 import { deriveAutomationTodos } from "@/features/dashboard/lib/automation-signals"
@@ -135,6 +137,8 @@ export function TodosProvider({ children }: { children: ReactNode }) {
    * already in the board is preserved on refresh.
    */
   const remoteResponses = useRemoteResponses()
+  const remoteIntakes = useRemoteIntakes()
+  const remoteFailures = useRemoteFailures()
 
   /**
    * Bumped whenever a record the board is derived from changes — a booking
@@ -250,7 +254,7 @@ export function TodosProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const sync = () => {
-      const derived = deriveAutomationTodos(remoteResponses)
+      const derived = deriveAutomationTodos(remoteResponses, remoteIntakes, remoteFailures)
       setTodos((prev) => {
         const byId = new Map(prev.map((t) => [t.id, t]))
         const fresh = derived.filter((t) => !byId.has(t.id))
@@ -263,7 +267,7 @@ export function TodosProvider({ children }: { children: ReactNode }) {
     sync()
     window.addEventListener(AUTOMATION_STORE_EVENT, sync)
     return () => window.removeEventListener(AUTOMATION_STORE_EVENT, sync)
-  }, [remoteResponses])
+  }, [remoteResponses, remoteIntakes, remoteFailures])
 
   /**
    * The practitioner's own tasks, loaded from the clinic rather than invented

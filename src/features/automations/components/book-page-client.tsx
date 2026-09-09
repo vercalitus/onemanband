@@ -102,7 +102,16 @@ export function BookPageClient({ token }: { token: string }) {
     setStage("slot")
   }
 
-  const submit = (slot: FreeSlot) => {
+  /**
+   * Send the registration to the clinic.
+   *
+   * To the server first: this page runs on the patient's phone, and an intake
+   * kept in this browser's storage is one the clinic will never see — which is
+   * exactly what used to happen. The local store is only the demo's path, taken
+   * when the server says it has no store; any other failure is shown, because
+   * "done" on screen with nothing filed anywhere is the worst outcome here.
+   */
+  const submit = async (slot: FreeSlot) => {
     const intake: PatientIntake = {
       id: randomId("intake"),
       token,
@@ -119,9 +128,41 @@ export function BookPageClient({ token }: { token: string }) {
       createdAt: new Date().toISOString(),
       submittedAt: new Date().toISOString(),
     }
-    upsertIntake(intake)
-    markTokenUsed(token)
-    setStage("done")
+
+    let answer: { ok: boolean; reason?: string } | null = null
+    try {
+      const res = await fetch("/api/automations/public/intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          fullName: intake.fullName,
+          phone: intake.phone,
+          email: intake.email,
+          dateOfBirth: intake.dateOfBirth,
+          reason: intake.reason,
+          documentNames: intake.documentNames,
+          requestedType: intake.requestedType,
+          requestedDate: intake.requestedDate,
+          requestedStart: intake.requestedStart,
+        }),
+      })
+      answer = (await res.json()) as { ok: boolean; reason?: string }
+    } catch {
+      answer = null
+    }
+
+    if (answer?.ok) {
+      setStage("done")
+      return
+    }
+    if (answer?.reason === "no store") {
+      upsertIntake(intake)
+      markTokenUsed(token)
+      setStage("done")
+      return
+    }
+    setError(t("public.book.errorSubmit"))
   }
 
   if (stage === "loading") {
