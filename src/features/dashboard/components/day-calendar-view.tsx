@@ -5,11 +5,11 @@ import { FolderOpen, Plus } from "lucide-react"
 import { type ReactNode, useCallback, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { AppointmentStatus, AppointmentType, ScheduleItem } from "@/types/domain"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
-import { useAppointmentAutomations } from "@/features/automations/lib/use-appointment-automations"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { useOutstandingBalances } from "@/features/calendar/lib/payment-status"
 import {
@@ -58,14 +58,12 @@ function HourDivider({ hour }: { hour: number }) {
 
 export function DayCalendarView({
   appointments,
-  onAppointmentsChange,
   selectedDate,
   showCanceled = true,
   showAddButton = true,
   heightClassName = "h-[min(70vh,520px)] md:h-[500px]",
 }: {
   appointments: ScheduleItem[]
-  onAppointmentsChange: (next: ScheduleItem[]) => void
   selectedDate?: Date
   showCanceled?: boolean
   showAddButton?: boolean
@@ -120,7 +118,7 @@ export function DayCalendarView({
     [appointments],
   )
 
-  const syncAutomations = useAppointmentAutomations()
+  const { commitAppointment } = useScheduleDay()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("edit")
   const [activeAppointment, setActiveAppointment] = useState<ScheduleItem | null>(null)
@@ -307,12 +305,7 @@ export function DayCalendarView({
         defaultStartMinutes={defaultStartMinutes}
         defaultDate={defaultDate}
         allAppointments={appointments}
-        onSave={(item, { isNew }) => {
-          const previous = appointments.find((a) => a.id === item.id) ?? null
-          if (isNew) onAppointmentsChange(sortByStart([...appointments, item]))
-          else onAppointmentsChange(sortByStart(appointments.map((a) => (a.id === item.id ? item : a))))
-          void syncAutomations(item, { isNew, previous })
-        }}
+        onSave={(item, { isNew }) => commitAppointment(item, { isNew })}
       />
     </>
   )

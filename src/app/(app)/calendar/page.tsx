@@ -49,7 +49,7 @@ function formatHeader(view: CalendarView, value: Date, locale: Locale) {
 
 export default function CalendarPage() {
   const { locale, t } = useLocale()
-  const { appointments, setAppointments, openCreateAppointment } = useScheduleDay()
+  const { appointments, openCreateAppointment } = useScheduleDay()
 
   const [view, setView] = useState<CalendarView>("day")
   const [selected, setSelected] = useState<Date>(() => new Date())
@@ -141,7 +141,6 @@ export default function CalendarPage() {
           {view === "day" ? (
             <DayCalendarView
               appointments={appointments}
-              onAppointmentsChange={setAppointments}
               selectedDate={selected}
               showCanceled={showCanceled}
               showAddButton={false}
@@ -150,7 +149,6 @@ export default function CalendarPage() {
           ) : view === "week" ? (
             <WeekView
               appointments={appointments}
-              onAppointmentsChange={setAppointments}
               value={selected}
               onSelectDate={setSelected}
               showCanceled={showCanceled}

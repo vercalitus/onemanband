@@ -275,7 +275,7 @@ function BoardSection({
 
 export function DashboardOverview() {
   const { locale, t } = useLocale()
-  const { appointments: dayAppointments, setAppointments: setDayAppointments } = useScheduleDay()
+  const { appointments: dayAppointments } = useScheduleDay()
   const { todos, toggleComplete, signalsAreLive } = useTodos()
   const { openAddTask } = useAddTask()
 
@@ -372,7 +372,7 @@ export function DashboardOverview() {
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">
-            <DayCalendarView appointments={dayAppointments} onAppointmentsChange={setDayAppointments} />
+            <DayCalendarView appointments={dayAppointments} />
           </CardContent>
         </Card>
 

@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -17,6 +18,7 @@ import {
   APPOINTMENT_OVERLAY_EVENT,
   applyAppointmentOverlay,
 } from "@/features/automations/lib/appointment-overlay"
+import { useAppointmentAutomations } from "@/features/automations/lib/use-appointment-automations"
 import { useNoShowWatcher } from "@/features/automations/lib/use-no-show-watcher"
 import {
   fetchAppointments,
@@ -44,6 +46,18 @@ function sortByStart(list: ScheduleItem[]) {
 type ScheduleDayContextValue = {
   appointments: ScheduleItem[]
   setAppointments: Dispatch<SetStateAction<ScheduleItem[]>>
+  /**
+   * The one way a booking changes: create, edit, move, cancel, complete.
+   *
+   * Every calendar used to do this itself — update the list, then tell the
+   * automation engine. Two of them only ever updated the list, so a visit
+   * booked on the calendar page or the dashboard grid was gone on the next
+   * load; the one that did write it through never told the engine, so a visit
+   * booked from the chart got no confirmation and no reminder. One path, and
+   * the engine hears about the row the database actually holds, under the id
+   * a later cancellation will use.
+   */
+  commitAppointment: (item: ScheduleItem, meta: { isNew: boolean }) => void
   /**
    * Opens the "New Appointment" dialog. Accepts an optional ISO date so callers
    * (e.g. the calendar's mini-calendar) can pre-select the day the user clicked.
@@ -149,6 +163,11 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
 
   useNoShowWatcher(appointments, setAppointments)
   useQuestionnaireFiling()
+  const syncAutomations = useAppointmentAutomations()
+  // Read through a ref: a commit needs the list as it is at that moment, not
+  // as it was when the callback was built.
+  const latest = useRef(appointments)
+  latest.current = appointments
   const [headerCreateOpen, setHeaderCreateOpen] = useState(false)
   const [headerDefaultStart, setHeaderDefaultStart] = useState<number | undefined>(undefined)
   const [headerDefaultDate, setHeaderDefaultDate] = useState<string | undefined>(undefined)
@@ -207,8 +226,8 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
    * whole truth.
    */
   const persist = useCallback(
-    async (item: ScheduleItem, { isNew }: { isNew: boolean }) => {
-      if (!live) return
+    async (item: ScheduleItem, { isNew }: { isNew: boolean }): Promise<ScheduleItem | null> => {
+      if (!live) return null
       const written = await saveAppointment(item, { isNew })
       if (written.ok) {
         // Take the row back from the database: it carries the real id for a
@@ -220,23 +239,47 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
               : prev.map((a) => (a.id === item.id ? written.appointment : a)),
           ),
         )
-        return
+        return written.appointment
       }
       setSaveError(written.reason)
       refresh()
+      return null
     },
     [live, refresh],
   )
 
+  const commitAppointment = useCallback(
+    (item: ScheduleItem, { isNew }: { isNew: boolean }) => {
+      const previous = isNew ? null : (latest.current.find((a) => a.id === item.id) ?? null)
+      // Optimistic locally so the grid moves under the hand, then written
+      // through. Postgres owns the overlap rule, so a booking it refuses is
+      // taken back off the board rather than left looking saved.
+      setAppointments((prev) =>
+        sortByStart(isNew ? [...prev, item] : prev.map((a) => (a.id === item.id ? item : a))),
+      )
+      if (!live) {
+        // The demo day: the local list is the whole truth, and the engine
+        // plans against it so the demo still shows what a booking triggers.
+        void syncAutomations(item, { isNew, previous })
+        return
+      }
+      // The engine hears about the saved row, never the draft: a new booking's
+      // id is minted by the database, and a reminder queued under the draft's
+      // id could never be cancelled by the appointment it belongs to.
+      void persist(item, { isNew }).then((saved) => {
+        if (saved) void syncAutomations(saved, { isNew, previous })
+      })
+    },
+    [live, persist, syncAutomations],
+  )
+
   const confirmAppointment = useCallback(
     (id: string) => {
-      const current = appointments.find((a) => a.id === id)
+      const current = latest.current.find((a) => a.id === id)
       if (!current || current.status === "confirmed") return
-      const next = { ...current, status: "confirmed" as const }
-      setAppointments((prev) => prev.map((a) => (a.id === id ? next : a)))
-      void persist(next, { isNew: false })
+      commitAppointment({ ...current, status: "confirmed" }, { isNew: false })
     },
-    [appointments, persist],
+    [commitAppointment],
   )
 
   const value = useMemo(
@@ -244,11 +287,12 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
       appointments,
       setAppointments,
       openCreateAppointment,
+      commitAppointment,
       confirmAppointment,
       saveError,
       clearSaveError: () => setSaveError(null),
     }),
-    [appointments, openCreateAppointment, confirmAppointment, saveError],
+    [appointments, openCreateAppointment, commitAppointment, confirmAppointment, saveError],
   )
 
   return (
@@ -282,13 +326,8 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
         defaultDate={headerDefaultDate}
         allAppointments={appointments}
         onSave={(item, { isNew }) => {
-          // Optimistic locally so the grid moves under the hand, then written
-          // through. Postgres owns the overlap rule, so a booking it refuses
-          // has to be taken back off the board rather than left looking saved.
-          if (isNew) setAppointments((prev) => sortByStart([...prev, item]))
-          else setAppointments((prev) => sortByStart(prev.map((a) => (a.id === item.id ? item : a))))
           setHeaderCreateOpen(false)
-          void persist(item, { isNew })
+          commitAppointment(item, { isNew })
         }}
       />
     </ScheduleDayContext.Provider>
