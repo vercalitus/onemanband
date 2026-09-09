@@ -162,6 +162,12 @@ Defined in `src/types/domain.ts` and enforced in Postgres:
 - **Statuses:** `scheduled`, `confirmed`, `checked_in`, `completed`, `cancelled`, `no_show`
 - **No overlap** per clinic (Postgres `EXCLUDE` constraint on `tstzrange`)
 - Helpers: `src/lib/appointment-time.ts`, `src/lib/appointment-types.ts`
+- **Every change to a booking goes through `commitAppointment`** in
+  `schedule-day-provider.tsx` — create, edit, move, cancel, complete. It writes
+  the row, then hands the *saved* row to the automation engine under the id the
+  database minted. There used to be three paths: two updated the screen and
+  never the database, the third wrote the row and never told the engine. Do not
+  call `setAppointments` or `useAppointmentAutomations` from a calendar view.
 
 ### Patients
 
