@@ -41,7 +41,7 @@ export function useAppointmentAutomations() {
   const patients = useMergedPatients()
 
   return useCallback(
-    (next: ScheduleItem, meta: { isNew: boolean; previous?: ScheduleItem | null }) => {
+    async (next: ScheduleItem, meta: { isNew: boolean; previous?: ScheduleItem | null }) => {
       try {
         const settings = readClinicSettings()
         const ctx = planContextFromSettings(settings, {
@@ -88,14 +88,14 @@ export function useAppointmentAutomations() {
           // A missed visit is still billable, so it takes the same invoice
           // path as a completed one — the sequence attaches it to the notice.
           case "no_show":
-            onNoShow({ ...input, ...bill(settings, next, "no_show", ctx, patients) }, ctx)
+            onNoShow({ ...input, ...(await bill(settings, next, "no_show", ctx, patients)) }, ctx)
             break
 
           case "completed":
             onTreatmentCompleted(
               {
                 ...input,
-                ...bill(settings, next, "visit", ctx, patients),
+                ...(await bill(settings, next, "visit", ctx, patients)),
                 completedSessions: completedSessionsFor(next.patientId) + 1,
               },
               ctx,
@@ -120,20 +120,25 @@ export function useAppointmentAutomations() {
  * points at a real invoice rather than quoting a number that exists nowhere.
  * Idempotent: `issueInvoiceForVisit` keys off the appointment, and the dunning
  * sequence is only started for a newly created invoice.
+ *
+ * When the row could not be written there is no invoice, and the completion
+ * message goes out without one rather than naming a debt that does not exist.
+ * The visit is still on the calendar as completed and unbilled, which is where
+ * the Finances page will pick it up.
  */
-function bill(
+async function bill(
   settings: ReturnType<typeof readClinicSettings>,
   item: ScheduleItem,
   reason: "visit" | "no_show",
   ctx: PlanContext,
   /** Passed in rather than imported — see the note in the hook above. */
   patients: PatientSummary[],
-): { invoiceId?: string; invoiceAmount?: string; invoiceIssuedDate?: string } {
+): Promise<{ invoiceId?: string; invoiceAmount?: string; invoiceIssuedDate?: string }> {
   const row = settings.treatmentTypes.find((t) => t.type === item.appointmentType)
   if (!row) return {}
 
   const patient = patients.find((p) => p.id === item.patientId)
-  const { invoice, created } = issueInvoiceForVisit({
+  const issued = await issueInvoiceForVisit({
     patientId: item.patientId,
     patientName: item.patientName,
     appointmentId: item.id,
@@ -143,6 +148,11 @@ function bill(
     provider: settings.integrations.billingProvider,
     reason,
   })
+  if (!issued.ok) {
+    console.error(`[billing] visit ${item.id} completed but no invoice written: ${issued.reason}`)
+    return {}
+  }
+  const { invoice, created } = issued
 
   if (created) {
     onInvoiceIssued(

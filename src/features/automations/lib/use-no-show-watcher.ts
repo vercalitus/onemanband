@@ -43,7 +43,7 @@ export function useNoShowWatcher(
   latest.current = appointments
 
   useEffect(() => {
-    const sweep = () => {
+    const sweep = async () => {
       try {
         const settings = readClinicSettings()
         const watermark = new Date(ensureNoShowWatermark()).getTime()
@@ -81,17 +81,27 @@ export function useNoShowWatcher(
 
           let invoiceId: string | undefined
           let invoiceAmount: string | undefined
-          if (price !== undefined) {
-            const { invoice, created } = issueInvoiceForVisit({
-              patientId: appointment.patientId,
-              patientName: appointment.patientName,
-              appointmentId: appointment.id,
-              treatmentType: appointment.appointmentType,
-              amount: price,
-              visitDate: appointment.date,
-              provider: settings.integrations.billingProvider,
-              reason: "no_show",
-            })
+          const issued =
+            price !== undefined
+              ? await issueInvoiceForVisit({
+                  patientId: appointment.patientId,
+                  patientName: appointment.patientName,
+                  appointmentId: appointment.id,
+                  treatmentType: appointment.appointmentType,
+                  amount: price,
+                  visitDate: appointment.date,
+                  provider: settings.integrations.billingProvider,
+                  reason: "no_show",
+                })
+              : null
+          if (issued && !issued.ok) {
+            // The notice still goes out; it just cannot name a charge.
+            console.error(
+              `[billing] no-show ${appointment.id} but no invoice written: ${issued.reason}`,
+            )
+          }
+          if (issued?.ok) {
+            const { invoice, created } = issued
             invoiceId = invoice.id
             invoiceAmount = invoice.displayAmount
             if (created) {

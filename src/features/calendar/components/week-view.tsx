@@ -213,7 +213,7 @@ export function WeekView({
           const previous = appointments.find((a) => a.id === item.id) ?? null
           if (isNew) onAppointmentsChange(sortByStart([...appointments, item]))
           else onAppointmentsChange(sortByStart(appointments.map((a) => (a.id === item.id ? item : a))))
-          syncAutomations(item, { isNew, previous })
+          void syncAutomations(item, { isNew, previous })
         }}
       />
     </>

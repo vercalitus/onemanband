@@ -222,6 +222,68 @@ export type InvoiceWrite =
   | { ok: true; invoice: BillingInvoice }
   | { ok: false; reason: string }
 
+/** `null` is an answer — no such invoice. A failed read is not. */
+export type InvoiceLookup =
+  | { ok: true; invoice: BillingInvoice | null }
+  | { ok: false; reason: string }
+
+/**
+ * The invoice already raised for a visit, if there is one.
+ *
+ * `appointment_id` carries no unique constraint, so "one invoice per visit" is
+ * a lookup here rather than a conflict the database would raise. Two tabs
+ * completing the same visit in the same second is the race this does not
+ * cover; one practitioner completing it twice — a double tap, a replayed
+ * planner — is the one it does, and that is the one that happens.
+ */
+export async function findInvoiceByAppointment(
+  appointmentId: string,
+  formatMoney: (n: number) => string,
+): Promise<InvoiceLookup> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return { ok: false, reason: "supabase not configured" }
+
+  const { data, error } = await db
+    .from("finances")
+    .select(SELECT)
+    .eq("appointment_id", appointmentId)
+    .neq("invoice_status", "void")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) return { ok: false, reason: error.message }
+  return { ok: true, invoice: data ? toInvoice(data as unknown as FinanceRow, formatMoney) : null }
+}
+
+/**
+ * An invoice raised by hand for this patient on this day, with no visit
+ * behind it. One per patient per day is the whole idempotency rule for a
+ * manual charge — enough to stop a double tap from billing twice.
+ */
+export async function findManualInvoiceOn(
+  patientId: string,
+  issuedAt: string,
+  formatMoney: (n: number) => string,
+): Promise<InvoiceLookup> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return { ok: false, reason: "supabase not configured" }
+
+  const { data, error } = await db
+    .from("finances")
+    .select(SELECT)
+    .eq("patient_id", patientId)
+    .is("appointment_id", null)
+    .eq("issued_at", issuedAt)
+    .neq("invoice_status", "void")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) return { ok: false, reason: error.message }
+  return { ok: true, invoice: data ? toInvoice(data as unknown as FinanceRow, formatMoney) : null }
+}
+
 export async function createInvoice(
   input: {
     patientId: string

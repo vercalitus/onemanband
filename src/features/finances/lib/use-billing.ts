@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { createTranslator } from "@/lib/i18n/dictionary"
+import { BILLING_STORE_EVENT } from "@/features/automations/lib/billing-bridge"
 import { onInvoicePaid } from "@/features/automations/lib/events"
 import { clearRemoteClaim } from "@/features/automations/lib/remote-responses"
 import {
@@ -107,6 +108,15 @@ export function useBilling() {
   }, [formatMoney])
 
   useEffect(() => refreshLive(), [refreshLive])
+
+  // An invoice raised elsewhere — a visit completed on the calendar, a charge
+  // from the header search — lands in the ledger this page is showing. Re-read
+  // rather than patch in: the row that was written is the row to show.
+  useEffect(() => {
+    if (!live) return
+    window.addEventListener(BILLING_STORE_EVENT, refreshLive)
+    return () => window.removeEventListener(BILLING_STORE_EVENT, refreshLive)
+  }, [live, refreshLive])
 
   // Hydrate persisted state on mount. Done in an effect (not initialiser) so
   // SSR markup matches the first client render and avoids hydration warnings.

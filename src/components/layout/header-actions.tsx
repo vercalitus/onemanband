@@ -448,24 +448,28 @@ function PatientActionSheet({ patient, onBack, onNavigate, onSchedule }: ActionS
     setDone(t(next ? "header.search.muted" : "header.search.unmuted"))
   }
 
-  const issueInvoice = () => {
+  const issueInvoice = async () => {
     const settings = readClinicSettings()
     const type = readField<AppointmentType>(patient.id, "lastAppointmentType", "adjustments")
     const price = settings.treatmentTypes.find((r) => r.type === type)?.priceIls
     if (price === undefined) return
 
     const visitDate = new Date().toISOString().slice(0, 10)
-    const { invoice, created } = issueInvoiceForVisit({
+    // No appointment behind a manually issued invoice; the bridge keys it by
+    // patient and day instead — enough to stop a double tap billing twice.
+    const issued = await issueInvoiceForVisit({
       patientId: patient.id,
       patientName: patient.fullName,
-      // No appointment behind a manually issued invoice, so key it by day —
-      // enough to stop a double tap billing twice.
-      appointmentId: `manual-${patient.id}-${visitDate}`,
       treatmentType: type,
       amount: price,
       visitDate,
       provider: settings.integrations.billingProvider,
     })
+    if (!issued.ok) {
+      setDone(t("header.search.invoiceFailed"))
+      return
+    }
+    const { invoice, created } = issued
 
     if (created) {
       onInvoiceIssued(

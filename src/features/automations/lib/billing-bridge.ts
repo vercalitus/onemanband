@@ -1,4 +1,10 @@
+import {
+  createInvoice,
+  findInvoiceByAppointment,
+  findManualInvoiceOn,
+} from "@/features/finances/lib/finance-repository"
 import { addFinanceRecord } from "@/features/patients/lib/patient-extras-store"
+import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
 import { formatIls } from "@/lib/format-ils"
 import type {
   BillingInvoice,
@@ -8,26 +14,110 @@ import type {
 } from "@/types/domain"
 
 /**
- * Turns a completed (or missed) visit into a real invoice.
+ * Turns a completed (or missed) visit into a debt the clinic can chase.
  *
- * The spec is explicit that the post-treatment invoice is *entered into the
- * financial section and the patient file*, not merely messaged — so this
- * writes two records: a `BillingInvoice` for the Financial OS and a
- * `FinanceRecord` on the patient's chart. Sending is a separate concern
- * handled by the automation sequence, which links to what this created.
+ * A `finances` row is the only place an unpaid visit exists. The clinic bills
+ * on a cash basis, so the bookkeeping provider never hears about a visit until
+ * it is paid — which means that without this row there is no outstanding
+ * balance, nothing on the Finances page, and nothing for a payment reminder to
+ * point at. Sending is a separate concern handled by the automation sequence,
+ * which links to what this created.
  *
- * Mock mode writes straight to the same localStorage keys `useBilling` reads,
- * and fires an event so an open Finances page picks it up. Supabase replaces
- * both writes with one insert into `public.finances`.
+ * This used to write to localStorage regardless of whether the clinic was
+ * real. On a live clinic the Finances page reads Postgres, so the "debt" was
+ * created in a browser key, overwritten a second later by the real ledger, and
+ * a reminder ladder started for an invoice id that existed nowhere the app
+ * reads. A patient would have been chased for a charge the practitioner could
+ * not see.
+ *
+ * So: a clinic with real patients gets a real row, and a failure to write one
+ * is reported rather than papered over with a browser copy. The localStorage
+ * path remains for the demo, which is the only thing it was ever right for.
  */
 
 const STORAGE_KEY_INVOICES = "billing.invoices.v1"
 
-/** Fired after an automation writes an invoice, so open views can re-read. */
+/** Fired after an invoice is written, so open views can re-read. */
 export const BILLING_STORE_EVENT = "billing-store-changed"
 
 /** Net terms for auto-issued invoices; also the anchor for the dunning ladder. */
 const DUE_DAYS = 7
+
+export interface IssueInvoiceInput {
+  patientId: string
+  patientName: string
+  /**
+   * The visit being billed. One invoice per appointment, never two. Absent for
+   * a charge raised by hand, which is keyed by patient and day instead.
+   */
+  appointmentId?: string
+  treatmentType: BillingTreatmentType
+  amount: number
+  /** Clinic-local ISO date the visit happened. */
+  visitDate: string
+  provider: InvoiceProvider
+  /** A missed visit is still billable, but reads differently on the chart. */
+  reason?: "visit" | "no_show"
+}
+
+export type IssuedInvoice =
+  /** `created` is false when this visit had already been invoiced. */
+  | { ok: true; invoice: BillingInvoice; created: boolean }
+  /** The clinic is real and the row could not be written. No debt exists. */
+  | { ok: false; reason: string }
+
+const addDays = (iso: string, days: number) => {
+  const [y, m, d] = iso.split("-").map(Number)
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+}
+
+function notifyChanged(): void {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new Event(BILLING_STORE_EVENT))
+}
+
+/**
+ * Issue the invoice for a visit.
+ *
+ * Idempotent on the appointment (or, for a manual charge, on patient and day):
+ * replaying the same completion — a double click, a re-run of the planner —
+ * returns the existing invoice rather than billing the patient twice.
+ */
+export async function issueInvoiceForVisit(input: IssueInvoiceInput): Promise<IssuedInvoice> {
+  // Patients are the anchor for demo data everywhere, and this is no
+  // exception: a configured deploy that is still demonstrating on the mock
+  // dataset has mock patient ids, which the ledger's foreign keys would refuse.
+  if (await clinicHasPatients()) return issueLive(input)
+  return issueLocal(input)
+}
+
+async function issueLive(input: IssueInvoiceInput): Promise<IssuedInvoice> {
+  const existing = input.appointmentId
+    ? await findInvoiceByAppointment(input.appointmentId, formatIls)
+    : await findManualInvoiceOn(input.patientId, input.visitDate, formatIls)
+  // Could not ask is not "none". Writing here would risk a second invoice for
+  // a visit that already has one.
+  if (!existing.ok) return existing
+  if (existing.invoice) return { ok: true, invoice: existing.invoice, created: false }
+
+  const written = await createInvoice(
+    {
+      patientId: input.patientId,
+      appointmentId: input.appointmentId,
+      amount: input.amount,
+      treatmentType: input.treatmentType,
+      issuedAt: input.visitDate,
+      dueAt: addDays(input.visitDate, DUE_DAYS),
+    },
+    formatIls,
+  )
+  if (!written.ok) return written
+
+  notifyChanged()
+  return { ok: true, invoice: written.invoice, created: true }
+}
+
+/* ----------------------------- demo dataset ----------------------------- */
 
 function readInvoices(): BillingInvoice[] {
   if (typeof window === "undefined") return []
@@ -45,48 +135,17 @@ function writeInvoices(next: BillingInvoice[]): void {
   if (typeof window === "undefined") return
   try {
     window.localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(next))
-    window.dispatchEvent(new Event(BILLING_STORE_EVENT))
+    notifyChanged()
   } catch {
     /* quota / private mode */
   }
 }
 
-export interface IssueInvoiceInput {
-  patientId: string
-  patientName: string
-  /** Deterministic id source — one invoice per appointment, never two. */
-  appointmentId: string
-  treatmentType: BillingTreatmentType
-  amount: number
-  /** Clinic-local ISO date the visit happened. */
-  visitDate: string
-  provider: InvoiceProvider
-  /** A missed visit is still billable, but reads differently on the chart. */
-  reason?: "visit" | "no_show"
-}
-
-export interface IssuedInvoice {
-  invoice: BillingInvoice
-  /** False when this appointment had already been invoiced. */
-  created: boolean
-}
-
-const addDays = (iso: string, days: number) => {
-  const [y, m, d] = iso.split("-").map(Number)
-  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
-}
-
-/**
- * Issue the invoice for a visit.
- *
- * Idempotent on `appointmentId`: replaying the same completion — a double
- * click, a re-run of the planner — returns the existing invoice rather than
- * billing the patient twice.
- */
-export function issueInvoiceForVisit(input: IssueInvoiceInput): IssuedInvoice {
-  const id = `inv-auto-${input.appointmentId}`
+function issueLocal(input: IssueInvoiceInput): IssuedInvoice {
+  const key = input.appointmentId ?? `manual-${input.patientId}-${input.visitDate}`
+  const id = `inv-auto-${key}`
   const existing = readInvoices().find((i) => i.id === id)
-  if (existing) return { invoice: existing, created: false }
+  if (existing) return { ok: true, invoice: existing, created: false }
 
   const invoice: BillingInvoice = {
     id,
@@ -121,25 +180,5 @@ export function issueInvoiceForVisit(input: IssueInvoiceInput): IssuedInvoice {
   }
   addFinanceRecord(input.patientId, financeRecord)
 
-  return { invoice, created: true }
-}
-
-/** Look up an auto-issued invoice for an appointment, if one exists. */
-export function findInvoiceForAppointment(appointmentId: string): BillingInvoice | null {
-  return readInvoices().find((i) => i.id === `inv-auto-${appointmentId}`) ?? null
-}
-
-/** Mark an auto-issued invoice paid. The caller stops the dunning ladder. */
-export function markInvoicePaid(invoiceId: string): BillingInvoice | null {
-  const invoices = readInvoices()
-  const target = invoices.find((i) => i.id === invoiceId)
-  if (!target) return null
-  const paid: BillingInvoice = {
-    ...target,
-    status: "paid",
-    paymentStatus: "paid",
-    paidAt: new Date().toISOString().slice(0, 10),
-  }
-  writeInvoices(invoices.map((i) => (i.id === invoiceId ? paid : i)))
-  return paid
+  return { ok: true, invoice, created: true }
 }
