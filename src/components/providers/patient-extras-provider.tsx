@@ -126,12 +126,27 @@ export function usePatientExtras() {
 }
 
 export function useMergedPatients(): PatientSummary[] {
-  const { extras, live } = usePatientExtras()
+  const { extras, live, loading } = usePatientExtras()
   return useMemo(() => {
     // One real patient is enough to retire the demo dataset entirely.
     if (live && live.length) return live
+    /*
+     * A read still in flight is not an empty clinic either.
+     *
+     * Reading 1,178 rows takes a few seconds on a phone, and for those seconds
+     * this returned the demo dataset: eight invented people, rendered as the
+     * clinic, each one a link. A practitioner who clicked one landed on
+     * `/patients/pt-004` after the real list had arrived — where that id does
+     * not exist — and was told the link led nowhere. The list had lied to him
+     * for exactly as long as it took to click.
+     *
+     * So on a deploy that has a database, nobody is shown until the database
+     * has answered. The demo stays for deploys that have no database at all,
+     * which is the only case it was ever meant for.
+     */
+    if (loading && isSupabaseConfigured()) return []
     return [...extras, ...mockPatients]
-  }, [extras, live])
+  }, [extras, live, loading])
 }
 
 /**

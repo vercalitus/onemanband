@@ -23,6 +23,7 @@ import {
   saveAppointment,
 } from "@/features/calendar/lib/appointment-repository"
 import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
+import { isSupabaseConfigured } from "@/lib/env"
 import { useQuestionnaireFiling } from "@/features/automations/lib/use-questionnaire-filing"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import {
@@ -80,12 +81,20 @@ export function useScheduleDay(): ScheduleDayContextValue {
 
 /** Shared schedule store + globally-triggered "create appointment" dialog (no route change). */
 export function ScheduleDayProvider({ children }: { children: ReactNode }) {
-  // Seed with today + a few illustrative future visits so the week/month views
-  // surface data outside today on first load.
-  const [appointments, setAppointments] = useState<ScheduleItem[]>(() => [
-    ...todaySchedule,
-    ...weeklySchedule,
-  ])
+  /*
+   * The demo day, only where there is no database to ask.
+   *
+   * A configured deploy starts empty and waits for the real diary. It used to
+   * start on the demo day regardless, for the second or two before the read
+   * came back — and a demo visit is a link to `/patients/pt-004`, which is not
+   * a patient. Nothing invented is shown while the truth is on its way.
+   *
+   * `isSupabaseConfigured` reads public env, so the server render and the
+   * client agree on the initial list and hydration is unaffected.
+   */
+  const [appointments, setAppointments] = useState<ScheduleItem[]>(() =>
+    isSupabaseConfigured() ? [] : [...todaySchedule, ...weeklySchedule],
+  )
   /** True once the schedule is coming from Postgres rather than the mock file. */
   const [live, setLive] = useState(false)
 

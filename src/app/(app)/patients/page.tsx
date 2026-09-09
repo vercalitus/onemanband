@@ -5,7 +5,11 @@ import { Activity, Search, UserPlus } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { useAddPatient, useMergedPatients } from "@/components/providers/patient-extras-provider"
+import {
+  useAddPatient,
+  useMergedPatients,
+  usePatientExtras,
+} from "@/components/providers/patient-extras-provider"
 import { Badge } from "@/components/ui/badge"
 import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-badge"
 import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
@@ -89,6 +93,10 @@ export default function PatientsPage() {
   const { appointments } = useScheduleDay()
   const paymentClaims = usePaymentClaims()
   const merged = useMergedPatients()
+  // An empty list while the first read is still running is "loading", not
+  // "nobody matches" — the two read very differently to someone at reception.
+  const { loading: patientsLoading } = usePatientExtras()
+  const listPending = patientsLoading && merged.length === 0
   const addPatient = useAddPatient()
   const [query, setQuery] = useState("")
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set())
@@ -332,7 +340,7 @@ export default function PatientsPage() {
           <div className="space-y-3 lg:hidden">
             {rows.length === 0 ? (
               <p className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
-                {t("patients.empty.filters")}
+                {t(listPending ? "patients.loading" : "patients.empty.filters")}
               </p>
             ) : (
               shown.map(({ patient, days, balance }) => (
@@ -356,7 +364,7 @@ export default function PatientsPage() {
                 {rows.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={5} className="py-12 text-center text-sm text-slate-400">
-                      {t("patients.empty.filters")}
+                      {t(listPending ? "patients.loading" : "patients.empty.filters")}
                     </TableCell>
                   </TableRow>
                 ) : (

@@ -31,6 +31,7 @@ import { clinicHasPatients, fetchPatients } from "@/features/patients/lib/patien
 import { fetchTreatmentCounts } from "@/features/patients/lib/treatment-repository"
 import { useLocale } from "@/components/providers/locale-provider"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
+import { isSupabaseConfigured } from "@/lib/env"
 import {
   dashboardTodos,
   patients as mockPatients,
@@ -109,7 +110,12 @@ export function useTodos(): TodosContextValue {
  */
 export function TodosProvider({ children }: { children: ReactNode }) {
   const { formatMoney } = useLocale()
-  const [todos, setTodos] = useState<TodoItem[]>(seedTodos)
+  // The demo board only where there is no clinic to derive one from. A
+  // configured deploy starts empty: the seed rows point at demo patients, and
+  // for the moment before the real board arrived they were clickable.
+  const [todos, setTodos] = useState<TodoItem[]>(() =>
+    isSupabaseConfigured() ? [] : seedTodos(),
+  )
   const [signalsAreLive, setSignalsAreLive] = useState(false)
 
   /**

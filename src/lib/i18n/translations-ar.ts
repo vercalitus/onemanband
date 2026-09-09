@@ -165,6 +165,7 @@ export const AR_MESSAGES: Record<string, string> = {
   "patients.showing": "عرض {shown} من {total}",
   "patients.showMore": "عرض {n} إضافيًا",
   "patients.empty.filters": "لا يوجد مرضى يطابقون عوامل التصفية الحالية.",
+  "patients.loading": "جارٍ تحميل مرضى العيادة…",
   "patients.debtBadge": "دين: {amount}",
   "patients.claimBadge": "يقول إنه دفع",
   "patients.claimBadge.amount": "يقول إنه دفع {amount}",
