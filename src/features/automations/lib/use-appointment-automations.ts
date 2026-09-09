@@ -41,7 +41,20 @@ export function useAppointmentAutomations() {
   const patients = useMergedPatients()
 
   return useCallback(
-    async (next: ScheduleItem, meta: { isNew: boolean; previous?: ScheduleItem | null }) => {
+    async (
+      next: ScheduleItem,
+      meta: {
+        isNew: boolean
+        previous?: ScheduleItem | null
+        /**
+         * Where to reach the patient, when the caller already knows and the
+         * list may not yet: a patient created a moment ago and booked in the
+         * same breath — the registration review — is not in the cached list
+         * until it re-reads, and without this the reminder found no number.
+         */
+        contact?: { phone?: string; email?: string }
+      },
+    ) => {
       try {
         const settings = readClinicSettings()
         const ctx = planContextFromSettings(settings, {
@@ -53,8 +66,8 @@ export function useAppointmentAutomations() {
         const input = {
           patientId: next.patientId,
           patientName: next.patientName,
-          phone: patient?.phone,
-          email: patient?.email,
+          phone: meta.contact?.phone || patient?.phone,
+          email: meta.contact?.email || patient?.email,
           appointmentId: next.id,
           appointmentDate: next.date,
           appointmentStart: next.start,

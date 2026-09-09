@@ -58,7 +58,10 @@ type ScheduleDayContextValue = {
    * the engine hears about the row the database actually holds, under the id
    * a later cancellation will use.
    */
-  commitAppointment: (item: ScheduleItem, meta: { isNew: boolean }) => void
+  commitAppointment: (
+    item: ScheduleItem,
+    meta: { isNew: boolean; contact?: { phone?: string; email?: string } },
+  ) => void
   /**
    * Opens the "New Appointment" dialog. Accepts an optional ISO date so callers
    * (e.g. the calendar's mini-calendar) can pre-select the day the user clicked.
@@ -251,7 +254,10 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
   )
 
   const commitAppointment = useCallback(
-    (item: ScheduleItem, { isNew }: { isNew: boolean }) => {
+    (
+      item: ScheduleItem,
+      { isNew, contact }: { isNew: boolean; contact?: { phone?: string; email?: string } },
+    ) => {
       const previous = isNew ? null : (latest.current.find((a) => a.id === item.id) ?? null)
       // Optimistic locally so the grid moves under the hand, then written
       // through. Postgres owns the overlap rule, so a booking it refuses is
@@ -262,14 +268,14 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
       if (!live) {
         // The demo day: the local list is the whole truth, and the engine
         // plans against it so the demo still shows what a booking triggers.
-        void syncAutomations(item, { isNew, previous })
+        void syncAutomations(item, { isNew, previous, contact })
         return
       }
       // The engine hears about the saved row, never the draft: a new booking's
       // id is minted by the database, and a reminder queued under the draft's
       // id could never be cancelled by the appointment it belongs to.
       void persist(item, { isNew }).then((saved) => {
-        if (saved) void syncAutomations(saved, { isNew, previous })
+        if (saved) void syncAutomations(saved, { isNew, previous, contact })
       })
     },
     [live, persist, syncAutomations],

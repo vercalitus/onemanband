@@ -213,7 +213,9 @@ function TodoRow({
                       treatment: action.prefill.complaint ?? "",
                       appointmentType: type,
                     },
-                    { isNew: true },
+                    // The record is seconds old and not yet in the cached
+                    // list; the reminder needs the number from here.
+                    { isNew: true, contact: { phone: saved.phone, email: saved.email } },
                   )
                 },
               })
