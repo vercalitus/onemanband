@@ -45,7 +45,6 @@ const isoToday = (now: Date) =>
   `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
 const visitHappened = (a: ScheduleItem, today: string) =>
   a.status === "completed" ||
-  a.status === "checked_in" ||
   ((a.status === "confirmed" || a.status === "scheduled") && a.date < today)
 
 function bookedMinutes(appointments: ScheduleItem[]): number {
