@@ -154,24 +154,38 @@ function fromOutboxRow(row: Record<string, unknown>): OutboxMessage {
 /**
  * Copy newly planned messages into the queue the cron reads.
  *
- * `ignoreDuplicates` leans on the unique index rather than checking first: two
- * tabs planning the same event at the same moment would both pass a check and
- * both insert. The database is the only place that can decide this once.
+ * One insert per message, and a duplicate is not a failure. This used to be an
+ * upsert naming `clinic_id,step_id,channel` as the conflict target — a unique
+ * constraint that migration 060 had already dropped in favour of an
+ * expression index over the bridge columns. Postgres refuses an ON CONFLICT
+ * that matches no constraint, the error was swallowed, and the function
+ * returned 0 with a 200: every message the browser planned since then reached
+ * this function and none reached the table. The cron was draining a queue
+ * nothing could fill.
+ *
+ * The unique index still decides duplicates — two tabs planning the same
+ * event at the same moment both insert, and the second gets 23505 — it just
+ * cannot be named as a conflict target, so the answer is read from the error.
  */
 export async function enqueueMessageRows(messages: OutboxMessage[]): Promise<number> {
   const db = createSupabaseAdminClient()
   const clinicId = await soleClinicId()
   if (!db || !clinicId || !messages.length) return 0
 
-  const { data, error } = await db
-    .from("automation_outbox")
-    .upsert(
-      messages.map((m) => toOutboxRow(m, clinicId)),
-      { ignoreDuplicates: true, onConflict: "clinic_id,step_id,channel" },
-    )
-    .select("id")
-  if (error) return 0
-  return data?.length ?? 0
+  let queued = 0
+  for (const message of messages) {
+    const { error } = await db.from("automation_outbox").insert(toOutboxRow(message, clinicId))
+    if (!error) {
+      queued += 1
+      continue
+    }
+    // Already queued for this patient, visit and step. Not a failure.
+    if (error.code === "23505") continue
+    // Anything else is a message that will never be sent, and that must not
+    // be quiet — it is precisely the failure this table exists to prevent.
+    console.error(`[automations/outbox] could not queue ${message.trigger}/${message.channel}: ${error.message}`)
+  }
+  return queued
 }
 
 /** Everything whose moment has come and which has not been dealt with. */
