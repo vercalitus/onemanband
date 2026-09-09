@@ -106,16 +106,36 @@ export interface AddPatientPrefill {
   complaint?: string
 }
 
+/**
+ * The rest of a self-registration, beside the fields that prefill the form:
+ * the slot the patient asked for and the files they attached. Shown for review
+ * on the new-patient form, booked and filed on save.
+ */
+export interface IntakeReview {
+  intakeId: string
+  requestedDate?: string
+  requestedStart?: string
+  requestedType?: AppointmentType
+  /** `path` is empty for the demo, which keeps names only. */
+  documents: { path: string; name: string }[]
+}
+
 export type TodoAction =
   | { kind: "link"; labelKey: string; href: string }
   | { kind: "confirm"; labelKey: string; appointmentId: string }
   | { kind: "schedule"; labelKey: string; patientId: string; patientName: string }
   /**
-   * Open the new-patient form with what the patient wrote, and close the
-   * intake once the record exists. The review screen this flow still lacks,
-   * in its smallest useful form: nobody retypes a registration.
+   * Open the new-patient form with what the patient wrote — and the slot they
+   * asked for and the files they attached — then close the intake once the
+   * record exists. Nobody retypes a registration.
    */
-  | { kind: "intake"; labelKey: string; intakeId: string; prefill: AddPatientPrefill }
+  | {
+      kind: "intake"
+      labelKey: string
+      intakeId: string
+      prefill: AddPatientPrefill
+      review: IntakeReview
+    }
 
 export interface PulseMetric {
   id: string

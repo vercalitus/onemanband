@@ -525,10 +525,19 @@ export async function listSubmittedIntakeRows(): Promise<PatientIntake[]> {
   })
 }
 
+/** The original file name, with the upload stamp taken back off. */
+export const intakeFileName = (path: string) =>
+  (path.split("/").pop() ?? path).replace(/^\d{4}-\d{2}-\d{2}T[\d-]+Z-/, "")
+
 /**
  * The intake became a patient record. The intake keeps pointing at it so the
  * origin of the record is never lost — a patient who registered themselves is
  * a different fact from one typed in at reception.
+ *
+ * What the patient attached moves with them: each file leaves the `intakes/`
+ * folder for the patient's own, and gets the document row that makes it
+ * appear on the chart. A file that will not move stays where it is and is
+ * reported, rather than leaving a row pointing at nothing.
  */
 export async function markIntakeApprovedRow(
   id: string,
@@ -536,11 +545,45 @@ export async function markIntakeApprovedRow(
 ): Promise<boolean> {
   const db = createSupabaseAdminClient()
   if (!db) return false
+
+  const patientId = by.patientId && isUuid(by.patientId) ? by.patientId : null
+
+  if (patientId) {
+    const { data: intake } = await db
+      .from("patient_intakes")
+      .select("clinic_id, document_paths")
+      .eq("id", id)
+      .maybeSingle()
+    const paths = ((intake?.document_paths as string[] | undefined) ?? []).filter((p) =>
+      p.includes("/intakes/"),
+    )
+    for (const from of paths) {
+      const name = intakeFileName(from)
+      const to = `${intake!.clinic_id}/${patientId}/documents/${from.split("/").pop()}`
+      const moved = await db.storage.from("patient-media").move(from, to)
+      if (moved.error) {
+        console.error(`[intakes] could not move ${from}: ${moved.error.message}`)
+        continue
+      }
+      const { error } = await db.from("documents").insert({
+        clinic_id: intake!.clinic_id,
+        patient_id: patientId,
+        uploaded_by: by.approvedBy ?? null,
+        bucket: "patient-media",
+        storage_path: to,
+        file_name: name,
+        document_type: "other",
+        source_label: "self-registration",
+      })
+      if (error) console.error(`[intakes] moved ${to} but could not file it: ${error.message}`)
+    }
+  }
+
   const { error } = await db
     .from("patient_intakes")
     .update({
       status: "approved",
-      approved_patient_id: by.patientId && isUuid(by.patientId) ? by.patientId : null,
+      approved_patient_id: patientId,
       approved_by: by.approvedBy ?? null,
     })
     .eq("id", id)

@@ -25,6 +25,7 @@ import { useAddTask } from "@/components/providers/add-task-provider"
 import { useGlobalAddPatient } from "@/components/providers/global-add-patient-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { approveIntake } from "@/features/automations/lib/remote-intakes"
+import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import { useTodos } from "@/components/providers/todos-provider"
 import { DayCalendarView } from "@/features/dashboard/components/day-calendar-view"
 import {
@@ -60,6 +61,12 @@ const pulseIconChrome = "bg-sky-100 text-sky-600"
 const SECTION_VISIBLE = 5
 
 const PRIORITY_RANK: Record<TodoItem["priority"], number> = { high: 0, medium: 1, low: 2 }
+
+const addMinutesToHHMM = (hhmm: string, minutes: number) => {
+  const [h, m] = hhmm.split(":").map(Number)
+  const total = h * 60 + m + minutes
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
+}
 
 const metricAccent = {
   visits: {
@@ -109,7 +116,7 @@ function TodoRow({
 }) {
   const { t } = useLocale()
   const router = useRouter()
-  const { openCreateAppointment, confirmAppointment } = useScheduleDay()
+  const { openCreateAppointment, confirmAppointment, commitAppointment } = useScheduleDay()
   const { openGlobalAddPatient } = useGlobalAddPatient()
   const done = Boolean(item.completed)
   // Reactive signals carry i18n keys + params; authored tasks carry plain strings.
@@ -177,10 +184,37 @@ function TodoRow({
             else if (action.kind === "intake")
               openGlobalAddPatient({
                 prefill: action.prefill,
+                intake: action.review,
                 // Closed only for a record that exists. A save that failed
                 // leaves the registration on the board, which is the truth.
-                onSaved: (saved) => {
-                  if (saved) void approveIntake(action.intakeId, saved.id)
+                onSaved: (saved, { bookRequestedSlot }) => {
+                  if (!saved) return
+                  void approveIntake(action.intakeId, saved.id)
+                  const { requestedDate, requestedStart, requestedType } = action.review
+                  if (!bookRequestedSlot || !requestedDate || !requestedStart) return
+                  // The slot the patient asked for, on the record that now
+                  // exists — through the one booking path, so the database
+                  // rules on the overlap and the reminder ladder is laid.
+                  const type = requestedType ?? "first"
+                  const minutes =
+                    readClinicSettings().treatmentTypes.find((row) => row.type === type)
+                      ?.defaultMinutes ?? 30
+                  commitAppointment(
+                    {
+                      id: crypto.randomUUID(),
+                      patientId: saved.id,
+                      patientName: saved.fullName,
+                      date: requestedDate,
+                      dayLabel: "",
+                      provider: "",
+                      start: requestedStart,
+                      end: addMinutesToHHMM(requestedStart, minutes),
+                      status: "scheduled",
+                      treatment: action.prefill.complaint ?? "",
+                      appointmentType: type,
+                    },
+                    { isNew: true },
+                  )
                 },
               })
             else

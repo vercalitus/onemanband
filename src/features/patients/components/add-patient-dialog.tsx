@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarPlus, UserPlus, XIcon } from "lucide-react"
+import { CalendarPlus, ExternalLink, FileText, UserPlus, XIcon } from "lucide-react"
 import { useEffect, useState, type FormEvent } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -16,8 +16,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useLocale } from "@/components/providers/locale-provider"
-import type { AddPatientPrefill, PatientSummary } from "@/types/domain"
+import type { AddPatientPrefill, IntakeReview, PatientSummary } from "@/types/domain"
 import { cn } from "@/lib/utils"
+
+/** What the practitioner decided about the registration while saving. */
+export interface AddPatientSaveOptions {
+  /** Book the slot the patient asked for, on the record just created. */
+  bookRequestedSlot: boolean
+}
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
 
@@ -40,14 +46,39 @@ export function AddPatientDialog({
   onOpenChange,
   onSave,
   initial,
+  intake,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (patient: PatientSummary) => void
+  onSave: (patient: PatientSummary, options: AddPatientSaveOptions) => void
   /** Seeded into the form on open — what a self-registration already said. */
   initial?: AddPatientPrefill
+  /** The registration's slot and files, for review. Absent for a walk-in. */
+  intake?: IntakeReview
 }) {
-  const { t } = useLocale()
+  const { t, localeTag } = useLocale()
+  const hasRequestedSlot = !!(intake?.requestedDate && intake?.requestedStart)
+  const [bookSlot, setBookSlot] = useState(true)
+  const [openingPath, setOpeningPath] = useState<string | null>(null)
+
+  /** Signed on demand, opened in a tab. A link that outlives the click is a leak. */
+  const openIntakeFile = async (path: string) => {
+    if (!intake) return
+    setOpeningPath(path)
+    try {
+      const res = await fetch("/api/automations/intakes/file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intakeId: intake.intakeId, path }),
+      })
+      const body = (await res.json()) as { ok: boolean; url?: string }
+      if (body.ok && body.url) window.open(body.url, "_blank", "noopener,noreferrer")
+    } catch {
+      /* the file stays listed; the practitioner can try again */
+    } finally {
+      setOpeningPath(null)
+    }
+  }
   const [fullName, setFullName] = useState("")
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
@@ -68,6 +99,7 @@ export function AddPatientDialog({
     setEmail(initial?.email ?? "")
     setDob(initial?.dateOfBirth ?? "")
     setComplaint(initial?.complaint ?? "")
+    setBookSlot(true)
     setKupaId("clalit")
     setReferralId("google")
     setFirstVisit("")
@@ -140,9 +172,21 @@ export function AddPatientDialog({
       carePlanSessions: sessions,
     }
 
-    onSave(patient)
+    onSave(patient, { bookRequestedSlot: hasRequestedSlot && bookSlot })
     onOpenChange(false)
   }
+
+  const requestedSlotLabel = hasRequestedSlot
+    ? t("addPatient.intake.requested", {
+        date: new Date(`${intake!.requestedDate}T00:00:00`).toLocaleDateString(localeTag, {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        }),
+        time: intake!.requestedStart ?? "",
+        type: intake?.requestedType ? t(`appt.type.${intake.requestedType}`) : "",
+      })
+    : null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -193,6 +237,65 @@ export function AddPatientDialog({
               <p className="rounded-xl border border-rose-200/90 bg-rose-50 px-3 py-2.5 text-sm text-rose-800" role="alert">
                 {error}
               </p>
+            ) : null}
+
+            {/* What the patient sent, beside what they typed. Reviewed here
+                rather than on a separate screen: the decision is one decision
+                — this person becomes a patient, with this slot and these
+                files — and it should be made in one place. */}
+            {intake ? (
+              <section className="space-y-3 rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+                <h3 className="text-sm font-semibold tracking-tight text-slate-900">
+                  {t("addPatient.intake.title")}
+                </h3>
+                {hasRequestedSlot ? (
+                  <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={bookSlot}
+                      onChange={(e) => setBookSlot(e.target.checked)}
+                      className="mt-0.5 size-4 rounded border-slate-300 text-sky-600"
+                    />
+                    <span>
+                      <span className="block font-medium">{t("addPatient.intake.bookSlot")}</span>
+                      <span className="block text-xs text-slate-500">{requestedSlotLabel}</span>
+                    </span>
+                  </label>
+                ) : (
+                  <p className="text-xs text-slate-500">{t("addPatient.intake.noSlot")}</p>
+                )}
+                <div>
+                  <p className={LABEL}>{t("addPatient.intake.documents")}</p>
+                  {intake.documents.length ? (
+                    <ul className="mt-1.5 space-y-1.5">
+                      {intake.documents.map((doc) => (
+                        <li
+                          key={doc.path || doc.name}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <FileText className="size-4 shrink-0 text-slate-400" aria-hidden />
+                            <span className="truncate">{doc.name}</span>
+                          </span>
+                          {doc.path ? (
+                            <button
+                              type="button"
+                              disabled={openingPath === doc.path}
+                              onClick={() => void openIntakeFile(doc.path)}
+                              className="flex shrink-0 items-center gap-1 text-xs font-semibold text-sky-700 hover:underline disabled:opacity-50"
+                            >
+                              {t("addPatient.intake.open")}
+                              <ExternalLink className="size-3" aria-hidden />
+                            </button>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">{t("addPatient.intake.noDocuments")}</p>
+                  )}
+                </div>
+              </section>
             ) : null}
 
             <section className="space-y-4">

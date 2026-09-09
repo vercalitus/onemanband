@@ -45,7 +45,7 @@ export function BookPageClient({ token }: { token: string }) {
   const [email, setEmail] = useState("")
   const [dateOfBirth, setDateOfBirth] = useState("")
   const [visitReason, setVisitReason] = useState("")
-  const [documents, setDocuments] = useState<string[]>([])
+  const [documents, setDocuments] = useState<IntakeDocument[]>([])
   const [type, setType] = useState<AppointmentType>("first")
   const [error, setError] = useState("")
 
@@ -120,7 +120,8 @@ export function BookPageClient({ token }: { token: string }) {
       email: email.trim(),
       dateOfBirth: dateOfBirth || undefined,
       reason: visitReason.trim(),
-      documentNames: documents,
+      // Storage paths once uploaded; the demo, which stores nothing, keeps names.
+      documentNames: documents.map((doc) => doc.path || doc.name),
       requestedType: type,
       requestedDate: slot.date,
       requestedStart: slot.start,
@@ -291,6 +292,7 @@ export function BookPageClient({ token }: { token: string }) {
         </Field>
 
         <DocumentPicker
+          token={token}
           documents={documents}
           onChange={setDocuments}
           required={Boolean(settings?.automations.selfBooking.requireDocuments)}
@@ -331,24 +333,59 @@ function Field({
   )
 }
 
+/** A file the patient attached: where it went, and what they called it. */
+interface IntakeDocument {
+  /** Empty in the demo, which transmits nothing and keeps the name. */
+  path: string
+  name: string
+}
+
 /**
  * Document upload.
  *
- * Mock mode keeps file *names* only — nothing is transmitted or stored. The
- * private `patient-media` bucket and its clinic-scoped RLS already exist
- * (see supabase/migrations/*_patient_media_storage.sql); this control switches
- * to it when the app goes live, with the path `<clinic>/<patient>/<file>`.
+ * Each file goes to the clinic's private bucket the moment it is chosen,
+ * under an `intakes/` folder the registration will point at. It used to keep
+ * the file *name* and transmit nothing, so a patient who attached three scans
+ * had, as far as the clinic could ever tell, attached three strings. The demo
+ * — a deploy with no store — still keeps names, because that is what it has.
  */
 function DocumentPicker({
+  token,
   documents,
   onChange,
   required,
 }: {
-  documents: string[]
-  onChange: (next: string[]) => void
+  token: string
+  documents: IntakeDocument[]
+  onChange: (next: IntakeDocument[]) => void
   required: boolean
 }) {
   const { t } = useLocale()
+  const [uploading, setUploading] = useState(0)
+  const [failed, setFailed] = useState<string | null>(null)
+
+  const upload = async (files: File[]) => {
+    setFailed(null)
+    setUploading((n) => n + files.length)
+    const added: IntakeDocument[] = []
+    for (const file of files) {
+      try {
+        const form = new FormData()
+        form.append("token", token)
+        form.append("file", file)
+        const res = await fetch("/api/automations/public/intake-file", { method: "POST", body: form })
+        const body = (await res.json()) as { ok: boolean; path?: string; reason?: string }
+        if (body.ok && body.path) added.push({ path: body.path, name: file.name })
+        else if (body.reason === "no store") added.push({ path: "", name: file.name })
+        else setFailed(file.name)
+      } catch {
+        setFailed(file.name)
+      } finally {
+        setUploading((n) => n - 1)
+      }
+    }
+    if (added.length) onChange([...documents, ...added])
+  }
 
   return (
     <div>
@@ -358,30 +395,36 @@ function DocumentPicker({
       </span>
       <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-3.5 py-3 text-sm text-slate-600 transition-colors hover:border-sky-400">
         <FileUp className="size-4 text-sky-600" aria-hidden />
-        {t("public.book.documentsHint")}
+        {uploading > 0 ? t("public.book.uploading") : t("public.book.documentsHint")}
         <input
           type="file"
           multiple
           accept="image/*,.pdf"
           className="hidden"
+          disabled={uploading > 0}
           onChange={(e) => {
-            const names = Array.from(e.target.files ?? []).map((f) => f.name)
-            if (names.length) onChange([...documents, ...names])
+            const files = Array.from(e.target.files ?? [])
+            if (files.length) void upload(files)
             e.target.value = ""
           }}
         />
       </label>
+      {failed ? (
+        <p className="mt-2 text-sm font-medium text-[rgb(171,119,93)]" role="alert">
+          {t("public.book.uploadFailed", { name: failed })}
+        </p>
+      ) : null}
       {documents.length ? (
         <ul className="mt-2 space-y-1.5">
-          {documents.map((name, i) => (
+          {documents.map((doc, i) => (
             <li
-              key={`${name}-${i}`}
+              key={`${doc.path || doc.name}-${i}`}
               className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
             >
-              <span className="truncate">{name}</span>
+              <span className="truncate">{doc.name}</span>
               <button
                 type="button"
-                aria-label={`${t("public.book.removeDocument")}: ${name}`}
+                aria-label={`${t("public.book.removeDocument")}: ${doc.name}`}
                 onClick={() => onChange(documents.filter((_, idx) => idx !== i))}
                 className="shrink-0 text-slate-400 hover:text-slate-700"
               >

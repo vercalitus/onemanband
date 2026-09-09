@@ -1,6 +1,17 @@
 import { listIntakes, listOutbox, listResponses } from "@/features/automations/lib/automation-store"
 import type { OutboxMessage, PatientIntake, PatientResponse } from "@/types/automation"
-import type { TodoItem } from "@/types/domain"
+import type { AppointmentType, TodoItem } from "@/types/domain"
+
+const APPOINTMENT_TYPES = new Set<AppointmentType>(["first", "adjustments", "kupa"])
+
+/** A stored path becomes a name; a demo entry, which is only a name, stays one. */
+const intakeDocument = (entry: string) =>
+  entry.includes("/")
+    ? {
+        path: entry,
+        name: (entry.split("/").pop() ?? entry).replace(/^\d{4}-\d{2}-\d{2}T[\d-]+Z-/, ""),
+      }
+    : { path: "", name: entry }
 
 /**
  * Reactive signals produced by patient self-service.
@@ -249,6 +260,15 @@ export function deriveAutomationTodos(
           email: intake.email,
           dateOfBirth: intake.dateOfBirth,
           complaint: intake.reason,
+        },
+        review: {
+          intakeId: intake.id,
+          requestedDate: intake.requestedDate,
+          requestedStart: intake.requestedStart,
+          requestedType: APPOINTMENT_TYPES.has(intake.requestedType as AppointmentType)
+            ? (intake.requestedType as AppointmentType)
+            : undefined,
+          documents: (intake.documentNames ?? []).map(intakeDocument),
         },
       },
     })
