@@ -197,8 +197,25 @@ export function TodosProvider({ children }: { children: ReactNode }) {
         uninvoicedVisits: uninvoiced,
         patients: patientFetch.source === "live" ? patientFetch.patients : [],
         treatmentCounts: counts ?? new Map(),
+        /*
+         * "Connected" means a payment recorded here produces a numbered tax
+         * document at the bookkeeping provider. The ping answers ok for the
+         * simulated provider — that is the truth about the ping — but a
+         * simulated document is no receipt, and a draft has no number and no
+         * tax event. Production ran with neither and the board said nothing,
+         * so the first payment taken there would have had no receipt and no
+         * warning. Named after the provider the clinic means to use, since
+         * "simulated" is not a thing anyone connects.
+         */
         billing: billing
-          ? { ok: !!billing.ok, provider: billing.provider, message: billing.message }
+          ? {
+              ok: !!billing.ok && billing.provider !== "simulated" && !billing.draftsOnly,
+              provider:
+                billing.provider === "simulated"
+                  ? settings.integrations.billingProvider
+                  : billing.provider,
+              message: billing.message,
+            }
           : null,
       })
 
