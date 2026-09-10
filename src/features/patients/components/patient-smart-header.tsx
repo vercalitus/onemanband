@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Mail, MapPin, Pencil, Phone, X } from "lucide-react"
 import { useState } from "react"
@@ -8,9 +9,23 @@ import { useLocale } from "@/components/providers/locale-provider"
 import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-badge"
 import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
 import { cn } from "@/lib/utils"
-import type { BodyMapView, PatientSummary, TreatmentMark } from "@/types/domain"
+import type { BodyMapView, BodyMark3d, PatientSummary, TreatmentMark } from "@/types/domain"
 import type { ClinicalStatus, PatientContactOverrides } from "../lib/use-patient-cockpit"
 import { BodyMapContent } from "./body-map-card"
+
+/**
+ * three.js is ~170 KB and the chart is opened many times a day for things that
+ * are not the body map. It arrives when the panel is opened, not before.
+ */
+const SkeletonViewer = dynamic(
+  () => import("@/features/body-map-3d/components/skeleton-viewer").then((m) => m.SkeletonViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[560px] rounded-2xl border border-slate-200 bg-slate-50" aria-hidden />
+    ),
+  },
+)
 
 const STATUS_BADGE: Record<PatientSummary["status"], string> = {
   active: "bg-slate-100 text-slate-700 border-slate-200",
@@ -35,6 +50,10 @@ interface Props {
   onAddTreatmentMark: (view: BodyMapView, x: number, y: number) => void
   onUpdateTreatmentMarkNote: (id: string, note: string) => void
   onRemoveTreatmentMark: (id: string) => void
+  bodyMarks3d: BodyMark3d[]
+  onAddBodyMark3d: (mark: Omit<BodyMark3d, "id" | "createdAt">) => void
+  onUpdateBodyMark3dNote: (id: string, note: string) => void
+  onRemoveBodyMark3d: (id: string) => void
 }
 
 const FIELD_CLASS =
@@ -55,6 +74,10 @@ export function PatientSmartHeader({
   onAddTreatmentMark,
   onUpdateTreatmentMarkNote,
   onRemoveTreatmentMark,
+  bodyMarks3d,
+  onAddBodyMark3d,
+  onUpdateBodyMark3dNote,
+  onRemoveBodyMark3d,
 }: Props) {
   const { t, localeTag } = useLocale()
   const paymentClaimed = usePaymentClaims().patients.has(patient.id)
@@ -409,17 +432,39 @@ export function PatientSmartHeader({
           id="bodymap-panel"
           className={cn(
             "overflow-hidden transition-all duration-300",
-            mapOpen ? "max-h-[1300px]" : "max-h-0",
+            mapOpen ? "max-h-[2200px]" : "max-h-0",
           )}
         >
           <div className="border-t border-slate-100 px-6 pb-5 pt-4">
-            <p className="mb-3 text-xs text-slate-400">{t("patientChart.bodyMapHint")}</p>
-            <BodyMapContent
-              marks={treatmentMarks}
-              onAddMark={onAddTreatmentMark}
-              onUpdateNote={onUpdateTreatmentMarkNote}
-              onRemoveMark={onRemoveTreatmentMark}
-            />
+            {/* Mounted only once opened: the panel is collapsed by default and a
+                WebGL context per chart visit is not free. */}
+            {mapOpen && (
+              <SkeletonViewer
+                annotations={bodyMarks3d}
+                onSave={onAddBodyMark3d}
+                onDelete={onRemoveBodyMark3d}
+                onUpdateNote={onUpdateBodyMark3dNote}
+              />
+            )}
+
+            {/*
+             * The three flat diagrams, kept for the charts that already carry
+             * marks made on them. A dot at 41% across a picture cannot be
+             * translated onto a skeleton — nothing in it says which bone was
+             * meant — so those marks stay where they are readable, and no new
+             * ones are started here.
+             */}
+            {treatmentMarks.length > 0 && (
+              <div className="mt-6 border-t border-slate-100 pt-4">
+                <p className="mb-3 text-xs text-slate-400">{t("patientChart.bodyMapLegacy")}</p>
+                <BodyMapContent
+                  marks={treatmentMarks}
+                  onAddMark={onAddTreatmentMark}
+                  onUpdateNote={onUpdateTreatmentMarkNote}
+                  onRemoveMark={onRemoveTreatmentMark}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

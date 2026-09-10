@@ -104,6 +104,10 @@ export function PatientDetailClient() {
     saveContactOverrides,
     deleteDocumentRecord,
     treatmentMarks,
+    bodyMarks3d,
+    addBodyMark3d,
+    updateBodyMark3dNote,
+    removeBodyMark3d,
     addTreatmentMark,
     updateTreatmentMarkNote,
     removeTreatmentMark,
@@ -235,6 +239,10 @@ export function PatientDetailClient() {
             onAddTreatmentMark={addTreatmentMark}
             onUpdateTreatmentMarkNote={updateTreatmentMarkNote}
             onRemoveTreatmentMark={removeTreatmentMark}
+            bodyMarks3d={bodyMarks3d}
+            onAddBodyMark3d={addBodyMark3d}
+            onUpdateBodyMark3dNote={updateBodyMark3dNote}
+            onRemoveBodyMark3d={removeBodyMark3d}
           />
 
           <div className="flex justify-end">

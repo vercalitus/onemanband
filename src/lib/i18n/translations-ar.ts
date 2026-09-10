@@ -175,6 +175,7 @@ export const AR_MESSAGES: Record<string, string> = {
   "header.openDiary": "فتح مفكرة اليوم",
 
   // خريطة الجسم ثلاثية الأبعاد (نموذج أولي، ‏/lab)
+  "patientChart.bodyMapLegacy": "علامات سابقة رُسمت على المخططات المسطّحة. محفوظة كما سُجّلت.",
   "bodyMap3d.marked": "مُعلَّم",
   "bodyMap3d.underCursor": "تحت المؤشر",
   "bodyMap3d.mode.pen": "قلم",
@@ -202,18 +203,6 @@ export const AR_MESSAGES: Record<string, string> = {
   "bodyMap3d.saveNote": "حفظ الملاحظة",
   "bodyMap3d.deleteMark": "حذف العلامة",
   "bodyMap3d.strokeCount": "{n} خطوط",
-  "bodyMap3d.lab.badge": "نموذج أولي — ليس جزءًا من الملف",
-  "bodyMap3d.lab.badgeBody":
-    "الهيكل مُولَّد برمجيًا لا مُنزَّل: تخطيطي عن قصد، لكن كل فقرة تحمل اسمها منذ اللحظة الأولى. العلامات تبقى في هذا المتصفح ولا تمسّ سجل المريض.",
-  "bodyMap3d.lab.heading": "خريطة الجسم ثلاثية الأبعاد",
-  "bodyMap3d.lab.checkTitle": "ما الذي يُجرَّب",
-  "bodyMap3d.lab.check1":
-    "اضغط أسفل الظهر: يجب أن يُدير النموذج ويُظهر الفقرات القطنية من الخلف، لا الصدر.",
-  "bodyMap3d.lab.check2": "اسم العظمة تحت المؤشر يظهر كبيرًا في اللوحة الجانبية، عند التحويم وعند التعليم.",
-  "bodyMap3d.lab.check3":
-    "ارسم خطًا بالقلم، ثم أدِر وقرّب: يجب أن يبقى الخط على العظمة التي رُسم عليها، لأنه عليها.",
-  "bodyMap3d.lab.check4": "في الوضعين يمكن كتابة ملاحظة، وفتح علامة محفوظة يُعيد الزاوية التي صُنعت منها.",
-  "bodyMap3d.lab.check5": "راحة اليد على الشاشة لا ترسم بمجرد التعرّف على القلم — نفس قاعدة لوحة الجلسة.",
   "patientChart.library.add": "إضافة مستند",
   "patientChart.library.uploading": "جارٍ الرفع…",
   "patientChart.library.empty": "لا توجد مستندات في الملف بعد.",

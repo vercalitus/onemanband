@@ -161,6 +161,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "header.openDiary": "פתיחת היומן של היום",
 
   // מפת גוף תלת־ממדית (אב־טיפוס, /lab)
+  "patientChart.bodyMapLegacy": "סימונים קודמים, שנעשו על הדיאגרמות השטוחות. נשמרים כפי שנרשמו.",
   "bodyMap3d.marked": "מסומן",
   "bodyMap3d.underCursor": "מתחת לסמן",
   "bodyMap3d.mode.pen": "עט",
@@ -188,18 +189,6 @@ export const HE_MESSAGES: Record<string, string> = {
   "bodyMap3d.saveNote": "שמירת הערה",
   "bodyMap3d.deleteMark": "מחיקת הסימון",
   "bodyMap3d.strokeCount": "{n} קווים",
-  "bodyMap3d.lab.badge": "אב־טיפוס — לא חלק מהתיק",
-  "bodyMap3d.lab.badgeBody":
-    "השלד נבנה בקוד ולא הורד: סכמטי בכוונה, אבל כל חוליה נושאת את שמה מהרגע הראשון. הסימונים נשמרים בדפדפן הזה בלבד ולא נוגעים ברשומה של המטופל.",
-  "bodyMap3d.lab.heading": "מפת גוף תלת־ממדית",
-  "bodyMap3d.lab.checkTitle": "מה לבדוק",
-  "bodyMap3d.lab.check1":
-    "לחצו על גב תחתון: המודל צריך להסתובב ולהראות את החוליות המותניות מאחור, לא את החזה.",
-  "bodyMap3d.lab.check2": "שם העצם שמתחת לסמן מופיע גדול בפאנל הצדדי, גם בריחוף וגם בסימון.",
-  "bodyMap3d.lab.check3":
-    "ציירו קו בעט, ואז סובבו והתקרבו: הקו צריך להישאר על העצם שעליה צויר, כי הוא עליה.",
-  "bodyMap3d.lab.check4": "בשני המצבים אפשר לכתוב הערה, ופתיחת סימון שמור מחזירה את הזווית שבה נעשה.",
-  "bodyMap3d.lab.check5": "כף יד על המסך לא מציירת ברגע שהעט זוהה — אותו כלל כמו בקנבס הסשן.",
   "patientChart.library.add": "הוספת מסמך",
   "patientChart.library.uploading": "מעלה…",
   "patientChart.library.empty": "אין עדיין מסמכים בתיק.",

@@ -770,6 +770,7 @@ export const EN_MESSAGES: Record<string, string> = {
   "header.openDiary": "Open today's diary",
 
   // 3D body map (prototype, /lab)
+  "patientChart.bodyMapLegacy": "Earlier marks, made on the flat diagrams. Kept as they were recorded.",
   "bodyMap3d.marked": "Marked",
   "bodyMap3d.underCursor": "Under the cursor",
   "bodyMap3d.mode.pen": "Pen",
@@ -797,18 +798,6 @@ export const EN_MESSAGES: Record<string, string> = {
   "bodyMap3d.saveNote": "Save note",
   "bodyMap3d.deleteMark": "Delete mark",
   "bodyMap3d.strokeCount": "{n} strokes",
-  "bodyMap3d.lab.badge": "Prototype — not part of the chart",
-  "bodyMap3d.lab.badgeBody":
-    "The skeleton is generated in code rather than downloaded: schematic on purpose, but every vertebra carries its name from the first frame. Marks stay in this browser and never touch the patient's record.",
-  "bodyMap3d.lab.heading": "3D body map",
-  "bodyMap3d.lab.checkTitle": "What to try",
-  "bodyMap3d.lab.check1":
-    "Press Lower back: it should turn the model and show you the lumbar spine from behind, not the chest.",
-  "bodyMap3d.lab.check2": "The bone under the cursor is named large in the side panel, on hover and when marked.",
-  "bodyMap3d.lab.check3":
-    "Draw a line with the pen, then turn and zoom: the line should stay on the bone you drew it on, because it is on it.",
-  "bodyMap3d.lab.check4": "Either way you can write a note, and opening a saved mark brings back the angle it was made from.",
-  "bodyMap3d.lab.check5": "A palm resting on the screen does not draw once a pen has been seen — the same rule as the session canvas.",
   "patientChart.library.add": "Add document",
   "patientChart.library.uploading": "Uploading…",
   "patientChart.library.empty": "No documents on file yet.",

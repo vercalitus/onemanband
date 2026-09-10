@@ -8,6 +8,7 @@ import * as THREE from "three"
 
 import { buildSkeleton, type SkeletonPart } from "../lib/skeleton-parts"
 import { useLocale } from "@/components/providers/locale-provider"
+import type { BodyMark3d, BoneStroke } from "@/types/domain"
 
 /**
  * One skeleton, turned to any angle, marked on the bone itself.
@@ -30,21 +31,6 @@ import { useLocale } from "@/components/providers/locale-provider"
  * only where there is bone under the cursor, and the pen lifts when it leaves
  * the skeleton. For marking anatomy that is the right constraint.
  */
-
-/** A stroke, in scene coordinates, sitting on the surface it was drawn on. */
-export type SurfaceStroke = [number, number, number][]
-
-export interface Annotation {
-  id: string
-  /** Bones the mark covers. What makes this a record and not a picture. */
-  bones: string[]
-  strokes: SurfaceStroke[]
-  note?: string
-  /** Where the camera stood, so the mark can be looked at from its own angle. */
-  camera: [number, number, number]
-  target: [number, number, number]
-  createdAt: string
-}
 
 type Mode = "pen" | "point"
 
@@ -148,8 +134,8 @@ export function SkeletonViewer({
   onDelete,
   onUpdateNote,
 }: {
-  annotations: Annotation[]
-  onSave: (annotation: Omit<Annotation, "id" | "createdAt">) => void
+  annotations: BodyMark3d[]
+  onSave: (annotation: Omit<BodyMark3d, "id" | "createdAt">) => void
   onDelete: (id: string) => void
   onUpdateNote: (id: string, note: string) => void
 }) {
@@ -157,8 +143,8 @@ export function SkeletonViewer({
   const parts = useMemo(() => buildSkeleton(), [])
   const [mode, setMode] = useState<Mode>("point")
   const [hovered, setHovered] = useState<string | null>(null)
-  const [strokes, setStrokes] = useState<SurfaceStroke[]>([])
-  const [liveStroke, setLiveStroke] = useState<SurfaceStroke>([])
+  const [strokes, setStrokes] = useState<BoneStroke[]>([])
+  const [liveStroke, setLiveStroke] = useState<BoneStroke>([])
   const [bones, setBones] = useState<string[]>([])
   const [note, setNote] = useState("")
   /** The saved mark whose details are open, expanded in place in the list. */
@@ -179,7 +165,7 @@ export function SkeletonViewer({
   const drawing = useRef(false)
   const activePointer = useRef<number | null>(null)
   const penSeen = useRef(false)
-  const current = useRef<SurfaceStroke>([])
+  const current = useRef<BoneStroke>([])
 
   const highlighted = useMemo(() => {
     const open = annotations.find((a) => a.id === openId)
@@ -326,7 +312,7 @@ export function SkeletonViewer({
   }
 
   /** Open a saved mark: its own angle back, its note in place, in one tap. */
-  const toggleOpen = (a: Annotation) => {
+  const toggleOpen = (a: BodyMark3d) => {
     if (openId === a.id) {
       setOpenId(null)
       return

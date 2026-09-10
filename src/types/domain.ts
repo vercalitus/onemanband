@@ -176,6 +176,7 @@ export interface PatientSummary {
   clinicalStatusUpdatedAt?: string
   /** Where on the body this patient has been treated. */
   bodyMapMarks?: TreatmentMark[]
+  bodyMap3d?: BodyMark3d[]
   /**
    * Sessions this patient's course of treatment runs to. Undefined means none
    * has been agreed, and the chart shows the practice default instead of
@@ -212,6 +213,28 @@ export interface TreatmentMark {
   x: number
   y: number
   note?: string
+  createdAt: string
+}
+
+/** A stroke on the skeleton: positions on the bone surface, in scene units. */
+export type BoneStroke = [number, number, number][]
+
+/**
+ * A mark on the rotatable skeleton.
+ *
+ * The record is `bones` — names like `T5`, `Scapula L` — because that is what
+ * a practitioner reads back and what survives the model being redrawn. The
+ * strokes are the drawing, kept as positions on the bone rather than on the
+ * screen so they stay put when the body is turned. `camera` and `target` are a
+ * convenience: opening a mark returns to the angle it was made from.
+ */
+export interface BodyMark3d {
+  id: string
+  bones: string[]
+  strokes: BoneStroke[]
+  note?: string
+  camera: [number, number, number]
+  target: [number, number, number]
   createdAt: string
 }
 
