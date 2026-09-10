@@ -115,35 +115,31 @@ function CameraProbe({
 }
 
 /**
- * Where the camera goes when a region is chosen.
+ * The regions of the body, and the one view each of them means.
  *
- * Heights match the vertebra levels the skeleton is built from, and each
- * region also carries the side it is looked at from. Keeping the current
- * angle and changing only the height was wrong: pressing "lower back" while
- * facing the front showed the lower back from the front, which is the chest.
- * A button that names the back has to show the back — so it turns the model
- * too. In the model's own axes +Z is anterior, so a posterior view sits at
- * negative Z, with a little offset to one side so the column reads as three
- * dimensional rather than flat.
+ * A region tag is a whole instruction, not half of one. It carries the height
+ * to look at, how close to stand, and — the part that was missing — which side
+ * to look from, so it lands in the same place every time no matter where the
+ * practitioner had turned the model to. Keeping the current angle and changing
+ * only the height meant "lower back" pressed while facing the front framed the
+ * lumbar spine from the front, which is the chest.
+ *
+ * Which side follows the anatomy rather than a convention: the spine and the
+ * pelvis are read from behind, the ribcage and the limbs from the front. In
+ * the model's own axes +Z is anterior — the sternum sits at +11.5, the spinous
+ * processes at negative Z — so a posterior view is a negative Z. Each is
+ * offset a little to one side and above, because a dead-on view of a symmetric
+ * skeleton reads as a flat drawing.
  */
 const REGIONS: { key: string; y: number; distance: number; from: [number, number, number] }[] = [
   { key: "bodyMap3d.region.all", y: 86, distance: 340, from: [0.4, 0.14, -1] },
-  { key: "bodyMap3d.region.neck", y: 145, distance: 95, from: [0.28, 0.16, -1] },
+  { key: "bodyMap3d.region.headNeck", y: 152, distance: 118, from: [0.3, 0.14, -1] },
+  { key: "bodyMap3d.region.shoulders", y: 138, distance: 155, from: [0.22, 0.16, -1] },
+  { key: "bodyMap3d.region.chest", y: 126, distance: 150, from: [0.2, 0.08, 1] },
   { key: "bodyMap3d.region.upperBack", y: 123, distance: 140, from: [0.24, 0.1, -1] },
-  { key: "bodyMap3d.region.lowerBack", y: 99, distance: 105, from: [0.24, 0.08, -1] },
-  { key: "bodyMap3d.region.pelvis", y: 83, distance: 115, from: [0.24, 0.24, -1] },
-]
-
-/**
- * The four named sides, so turning to one is a press rather than a drag —
- * this is the "arrows on the side" a trackpad user asked for, in the form
- * that actually says where it will take you.
- */
-const VIEWS: { key: string; from: [number, number, number] }[] = [
-  { key: "bodyMap3d.view.back", from: [0, 0.08, -1] },
-  { key: "bodyMap3d.view.front", from: [0, 0.08, 1] },
-  { key: "bodyMap3d.view.left", from: [-1, 0.08, 0] },
-  { key: "bodyMap3d.view.right", from: [1, 0.08, 0] },
+  { key: "bodyMap3d.region.lowerBack", y: 99, distance: 108, from: [0.24, 0.08, -1] },
+  { key: "bodyMap3d.region.pelvis", y: 83, distance: 118, from: [0.24, 0.22, -1] },
+  { key: "bodyMap3d.region.legs", y: 45, distance: 180, from: [0.25, 0.06, 1] },
 ]
 
 export function SkeletonViewer({
@@ -347,19 +343,19 @@ export function SkeletonViewer({
   }
 
   /**
-   * Look at a height from a given side. A region supplies both; a side button
-   * supplies only the direction and keeps whatever height and distance the
-   * practitioner is already at, so turning to the front does not also throw
-   * away the zoom they set up on L4.
+   * Go to a region: one fixed place, reached the same way from wherever the
+   * model happens to be turned to. Nothing about the current view is kept —
+   * that is the whole point of a named region.
    */
-  const lookFrom = (from: [number, number, number], y?: number, distance?: number) => {
+  const lookFrom = (from: [number, number, number], y: number, distance: number) => {
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!camera || !controls) return
-    const target = new THREE.Vector3(0, y ?? controls.target.y, 0)
-    const radius = distance ?? camera.position.distanceTo(controls.target)
+    const target = new THREE.Vector3(0, y, 0)
     controls.target.copy(target)
-    camera.position.copy(target.clone().add(new THREE.Vector3(...from).normalize().multiplyScalar(radius)))
+    camera.position.copy(
+      target.clone().add(new THREE.Vector3(...from).normalize().multiplyScalar(distance)),
+    )
     controls.update()
   }
 
@@ -455,34 +451,19 @@ export function SkeletonViewer({
           />
         </Canvas>
 
-        {/* Shortcuts on the model rather than in the panel: they are about what
-            you are looking at, not about the mark you are making. Regions set a
-            height and a side; the second row only changes the side. */}
-        <div className="pointer-events-auto absolute inset-x-3 top-3 flex flex-col items-center gap-1.5">
-          <div className="flex flex-wrap justify-center gap-1.5">
-            {REGIONS.map((r) => (
-              <button
-                key={r.key}
-                type="button"
-                onClick={() => lookFrom(r.from, r.y, r.distance)}
-                className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur transition-colors hover:border-sky-300 hover:text-sky-700"
-              >
-                {t(r.key)}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap justify-center gap-1">
-            {VIEWS.map((v) => (
-              <button
-                key={v.key}
-                type="button"
-                onClick={() => lookFrom(v.from)}
-                className="rounded-full border border-slate-200 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-slate-500 shadow-sm backdrop-blur transition-colors hover:border-sky-300 hover:text-sky-700"
-              >
-                {t(v.key)}
-              </button>
-            ))}
-          </div>
+        {/* One row, on the model rather than in the panel: it is about what you
+            are looking at, not about the mark you are making. */}
+        <div className="pointer-events-auto absolute inset-x-3 top-3 flex flex-wrap justify-center gap-1.5">
+          {REGIONS.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => lookFrom(r.from, r.y, r.distance)}
+              className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur transition-colors hover:border-sky-300 hover:text-sky-700"
+            >
+              {t(r.key)}
+            </button>
+          ))}
         </div>
 
         <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[11px] font-medium text-slate-500">
