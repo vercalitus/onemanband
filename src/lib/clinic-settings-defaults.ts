@@ -71,7 +71,10 @@ export function defaultNotifications(): ClinicNotifications {
   return {
     whatsappEnabled: true,
     smsEnabled: false,
-    emailEnabled: true,
+    // Mail from this clinic goes to the practitioner, not to patients — see
+    // `PATIENT_CHANNELS` in plan-messages.ts, which enforces it regardless of
+    // what a stored settings blob on some device says.
+    emailEnabled: false,
     dailyDigest: true,
     weeklyReport: false,
   }

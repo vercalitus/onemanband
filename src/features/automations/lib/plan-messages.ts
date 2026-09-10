@@ -173,6 +173,21 @@ function tokenKindForActions(actions: AutomationAction[]) {
 const recipientFor = (channel: MessageChannel, event: AutomationEvent): string | undefined =>
   channel === "email" ? event.email : event.phone
 
+/**
+ * How this clinic talks to its patients: WhatsApp, and SMS as the fallback.
+ *
+ * Not a setting, because it is not a preference. Patients are reached on
+ * WhatsApp; the clinic's mailbox is for the practitioner — a document from the
+ * bookkeeping provider, a digest, a note to himself. A sequence step may still
+ * list `email`, and the seeded playbook does; it is dropped here rather than
+ * halfway through a rollout when somebody notices patients being mailed.
+ *
+ * SUMIT mailing a tax document to the patient is a different thing entirely
+ * and is unaffected: that mail is sent by the bookkeeping provider, from its
+ * own record of the customer, and is the receipt the patient is owed.
+ */
+const PATIENT_CHANNELS: ReadonlySet<MessageChannel> = new Set(["whatsapp", "sms"])
+
 /** Minutes from midnight, clinic-local. */
 const minutesOfDay = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number)
@@ -244,10 +259,12 @@ export function planMessages(event: AutomationEvent, ctx: PlanContext): OutboxMe
     for (const step of sequence.steps) {
       if (!step.enabled) continue
 
-      // Three gates, narrowest last: the clinic's master switch, the patient's
-      // own opt-out, and finally whether we have an address at all.
+      // Four gates, narrowest last: this is a channel patients are reached on
+      // at all, the clinic's master switch, the patient's own opt-out, and
+      // finally whether we have an address for it.
       const channels = step.channels.filter(
         (c) =>
+          PATIENT_CHANNELS.has(c) &&
           ctx.channelEnabled[c] &&
           allowsChannel(event.patientId, c) &&
           recipientFor(c, event),
