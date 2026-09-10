@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
+import { useLocale } from "@/components/providers/locale-provider"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import type { Annotation } from "@/features/body-map-3d/components/skeleton-viewer"
 
@@ -17,8 +18,8 @@ const SkeletonViewer = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[540px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-sm text-slate-400">
-        טוען את המודל…
+      <div className="flex h-[560px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-sm text-slate-400">
+        …
       </div>
     ),
   },
@@ -27,6 +28,7 @@ const SkeletonViewer = dynamic(
 const storageKey = (patientId: string) => `lab.bodymap3d.${patientId}`
 
 export function BodyMapLabClient({ patientId }: { patientId: string }) {
+  const { t } = useLocale()
   const patients = useMergedPatients()
   const patient = patients.find((p) => p.id === patientId)
   const [annotations, setAnnotations] = useState<Annotation[]>([])
@@ -57,15 +59,14 @@ export function BodyMapLabClient({ patientId }: { patientId: string }) {
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3">
-        <p className="text-sm font-semibold text-amber-900">אב־טיפוס — לא חלק מהתיק</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-amber-800">
-          השלד נבנה בקוד, לא הורד: סכמטי בכוונה, אבל כל חוליה נושאת את שמה מהרגע
-          הראשון. הסימונים נשמרים בדפדפן הזה בלבד ולא נוגעים ברשומה של המטופל.
-        </p>
+        <p className="text-sm font-semibold text-amber-900">{t("bodyMap3d.lab.badge")}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-amber-800">{t("bodyMap3d.lab.badgeBody")}</p>
       </div>
 
       <div className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">מפת גוף תלת־ממדית</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          {t("bodyMap3d.lab.heading")}
+        </h1>
         {patient && (
           <Link
             href={`/patients/${patientId}`}
@@ -91,23 +92,20 @@ export function BodyMapLabClient({ patientId }: { patientId: string }) {
             ])
           }
           onDelete={(id) => persist(annotations.filter((a) => a.id !== id))}
+          onUpdateNote={(id, note) =>
+            persist(annotations.map((a) => (a.id === id ? { ...a, note: note || undefined } : a)))
+          }
         />
       )}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
-        <p className="font-semibold text-slate-800">מה לבדוק</p>
+        <p className="font-semibold text-slate-800">{t("bodyMap3d.lab.checkTitle")}</p>
         <ul className="mt-2 list-disc space-y-1 ps-5">
-          <li>
-            סיבוב 360°, זום פנימה, ושתי אצבעות (או גרירה בכפתור ימני) כדי להזיז את
-            המודל — כך אפשר להתקרב לחוליה בלי שהראש ייחתך.
-          </li>
-          <li>שם העצם שמתחת לסמן מופיע גדול בפאנל הימני, גם בריחוף וגם בבחירה.</li>
-          <li>
-            «עט» מקפיא את התצוגה ומצייר חופשי — אזור שלם או נקודה קטנה. «נקודה»
-            משאיר את המודל מסתובב, והקשה בוחרת עצם אחת.
-          </li>
-          <li>בשני המצבים אפשר לכתוב הערה, ומה שנשמר זוכר גם את הזווית שבה סומן.</li>
-          <li>כף היד על המסך לא מציירת ברגע שהעט זוהה — אותו כלל כמו בקנבס הסשן.</li>
+          <li>{t("bodyMap3d.lab.check1")}</li>
+          <li>{t("bodyMap3d.lab.check2")}</li>
+          <li>{t("bodyMap3d.lab.check3")}</li>
+          <li>{t("bodyMap3d.lab.check4")}</li>
+          <li>{t("bodyMap3d.lab.check5")}</li>
         </ul>
       </div>
     </div>

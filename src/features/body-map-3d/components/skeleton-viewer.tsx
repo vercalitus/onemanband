@@ -2,11 +2,13 @@
 
 import { Canvas, useThree } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
+import { ChevronDown } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 
 import { buildSkeleton, type SkeletonPart } from "../lib/skeleton-parts"
 import { drawStrokes, type Stroke, type StrokePoint } from "@/features/patients/lib/canvas-strokes"
+import { useLocale } from "@/components/providers/locale-provider"
 
 /**
  * One skeleton, turned to any angle, marked on two ways.
@@ -108,15 +110,34 @@ function CameraProbe({
   return null
 }
 
+/**
+ * Where the camera goes when a region is chosen.
+ *
+ * Heights match the vertebra levels the skeleton is built from. Only the
+ * target and the distance change — the angle the practitioner is looking from
+ * is kept, because losing your orientation is worse than being at the wrong
+ * height.
+ */
+const REGIONS: { key: string; y: number; distance: number }[] = [
+  { key: "bodyMap3d.region.all", y: 86, distance: 340 },
+  { key: "bodyMap3d.region.neck", y: 145, distance: 95 },
+  { key: "bodyMap3d.region.upperBack", y: 123, distance: 140 },
+  { key: "bodyMap3d.region.lowerBack", y: 99, distance: 105 },
+  { key: "bodyMap3d.region.pelvis", y: 83, distance: 115 },
+]
+
 export function SkeletonViewer({
   annotations,
   onSave,
   onDelete,
+  onUpdateNote,
 }: {
   annotations: Annotation[]
   onSave: (annotation: Omit<Annotation, "id" | "createdAt">) => void
   onDelete: (id: string) => void
+  onUpdateNote: (id: string, note: string) => void
 }) {
+  const { t, localeTag } = useLocale()
   const parts = useMemo(() => buildSkeleton(), [])
   const [mode, setMode] = useState<Mode>("rotate")
   const [hovered, setHovered] = useState<string | null>(null)
@@ -124,6 +145,9 @@ export function SkeletonViewer({
   const [bones, setBones] = useState<string[]>([])
   const [note, setNote] = useState("")
   const [viewing, setViewing] = useState<Annotation | null>(null)
+  /** The saved mark whose details are open, expanded in place in the list. */
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [editNote, setEditNote] = useState("")
 
   const cameraRef = useRef<THREE.Camera | null>(null)
   const controlsRef = useRef<{ target: THREE.Vector3; update: () => void } | null>(null)
@@ -267,7 +291,13 @@ export function SkeletonViewer({
     setMode("rotate")
   }
 
-  const show = (a: Annotation) => {
+  /** Open a saved mark: its own angle back, its note in place, in one tap. */
+  const toggleOpen = (a: Annotation) => {
+    if (openId === a.id) {
+      setOpenId(null)
+      setViewing(null)
+      return
+    }
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (camera && controls) {
@@ -275,8 +305,28 @@ export function SkeletonViewer({
       controls.target.set(...a.target)
       controls.update()
     }
+    setOpenId(a.id)
+    setEditNote(a.note ?? "")
     setViewing(a)
     setMode("rotate")
+  }
+
+  /**
+   * Move to a region without turning the model.
+   *
+   * The camera keeps the direction it is already looking from and only slides
+   * along it to a new height — so choosing "neck" from behind still shows the
+   * neck from behind.
+   */
+  const goToRegion = (y: number, distance: number) => {
+    const camera = cameraRef.current
+    const controls = controlsRef.current
+    if (!camera || !controls) return
+    const direction = camera.position.clone().sub(controls.target).normalize()
+    const target = new THREE.Vector3(0, y, 0)
+    controls.target.copy(target)
+    camera.position.copy(target.clone().add(direction.multiplyScalar(distance)))
+    controls.update()
   }
 
   /** The bone the reader is being told about, largest thing on the panel. */
@@ -343,13 +393,25 @@ export function SkeletonViewer({
             makeDefault
             enabled={!drawingMode}
             /*
-             * Panning matters more here than it looks. Zoomed in on the
-             * lumbar spine with no pan, the only way to reach the neck is to
-             * zoom out and back in — the model is pinned to its centre and
-             * the top of it is simply off the screen.
+             * Panning exists but nobody finds it: the gesture is a right-drag,
+             * which is not a thing anyone guesses. So it stays on for whoever
+             * knows it, Shift+drag is offered as a visible alternative, and
+             * the region buttons beside the model are the real answer.
              */
             enablePan
             screenSpacePanning
+            /*
+             * And this is what stops the model being cut off in the first
+             * place: zooming moves toward the pointer rather than the middle
+             * of the body, so scrolling over L3 keeps L3 where it is instead
+             * of sliding it off the top.
+             */
+            zoomToCursor
+            mouseButtons={{
+              LEFT: THREE.MOUSE.ROTATE,
+              MIDDLE: THREE.MOUSE.DOLLY,
+              RIGHT: THREE.MOUSE.PAN,
+            }}
             target={[0, 86, 0]}
             minDistance={40}
             maxDistance={480}
@@ -373,18 +435,37 @@ export function SkeletonViewer({
           onPointerCancel={onPointerUp}
         />
 
-        {drawingMode && (
-          <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs font-semibold text-sky-700">
-            התצוגה קפואה — ציירו על השלד
-          </p>
+        {/* Region shortcuts, on the model rather than in the panel: they are
+            about what you are looking at, not about the mark you are making. */}
+        {!drawingMode && (
+          <div className="pointer-events-auto absolute inset-x-3 top-3 flex flex-wrap justify-center gap-1.5">
+            {REGIONS.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => goToRegion(r.y, r.distance)}
+                className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur transition-colors hover:border-sky-300 hover:text-sky-700"
+              >
+                {t(r.key)}
+              </button>
+            ))}
+          </div>
         )}
+
+        <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[11px] font-medium text-slate-500">
+          {drawingMode ? (
+            <span className="font-semibold text-sky-700">{t("bodyMap3d.frozen")}</span>
+          ) : (
+            t("bodyMap3d.controlsHint")
+          )}
+        </p>
       </div>
 
       {/* ── What is being marked, and what it says ────────────────────────── */}
       <div className="flex flex-col gap-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-            {pointMode || drawingMode ? "מסומן" : "מתחת לסמן"}
+            {pointMode || drawingMode ? t("bodyMap3d.marked") : t("bodyMap3d.underCursor")}
           </p>
           <p
             className="mt-1 break-words text-3xl font-bold leading-tight tracking-tight text-sky-700"
@@ -397,11 +478,11 @@ export function SkeletonViewer({
         <div className="grid grid-cols-3 gap-2">
           {(
             [
-              ["rotate", "סיבוב"],
-              ["pen", "עט"],
-              ["point", "נקודה"],
+              ["rotate", "bodyMap3d.mode.rotate"],
+              ["pen", "bodyMap3d.mode.pen"],
+              ["point", "bodyMap3d.mode.point"],
             ] as const
-          ).map(([value, label]) => (
+          ).map(([value, labelKey]) => (
             <button
               key={value}
               type="button"
@@ -415,76 +496,59 @@ export function SkeletonViewer({
                   : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
 
         <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-          מרטין — אפשר להגדיל, להקטין, לסובב ולסמן מה שרוצים.
+          {t("bodyMap3d.intro")}
           <br />
-          <span className="text-slate-500">
-            <b>סיבוב</b>: גרירה מסובבת · שתי אצבעות מזיזות ומקרבות ·{" "}
-            <b>עט</b>: התצוגה נעצרת וציירו חופשי · <b>נקודה</b>: הקישו על עצם
-            כדי לבחור אותה.
-          </span>
+          <span className="text-slate-500">{t("bodyMap3d.introDetail")}</span>
         </p>
 
-        {(hasDraft || viewing) && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              הערה
+        {/* The mark being made. Only while one is: an empty note box beside an
+            untouched model is a question nobody asked. */}
+        {hasDraft && !viewing && (
+          <div className="rounded-2xl border-2 border-sky-200 bg-sky-50/40 p-4">
+            <label
+              htmlFor="mark-note"
+              className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700"
+            >
+              {t("bodyMap3d.noteOnMark")}
             </label>
-            {viewing ? (
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                {viewing.note || <span className="italic text-slate-400">ללא הערה</span>}
-              </p>
-            ) : (
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={3}
-                placeholder="מה נמצא כאן"
-                className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
-              />
-            )}
-
+            <textarea
+              id="mark-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder={t("bodyMap3d.notePlaceholder")}
+              className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
+            />
             <div className="mt-2 flex flex-wrap gap-2">
-              {viewing ? (
+              <button
+                type="button"
+                onClick={save}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                {t("bodyMap3d.saveMark")}
+              </button>
+              {strokes.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setViewing(null)}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+                  onClick={() => setStrokes((prev) => prev.slice(0, -1))}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
                 >
-                  סגירה
+                  {t("bodyMap3d.undoStroke")}
                 </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={save}
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                  >
-                    שמירה
-                  </button>
-                  {strokes.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setStrokes((prev) => prev.slice(0, -1))}
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
-                    >
-                      ביטול קו
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={clear}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
-                  >
-                    ניקוי
-                  </button>
-                </>
               )}
+              <button
+                type="button"
+                onClick={clear}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
+              >
+                {t("bodyMap3d.clear")}
+              </button>
             </div>
           </div>
         )}
@@ -492,32 +556,86 @@ export function SkeletonViewer({
         {annotations.length > 0 && (
           <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              סימונים שמורים
+              {t("bodyMap3d.saved")}
             </p>
             <ul className="space-y-2">
-              {annotations.map((a) => (
-                <li key={a.id} className="flex items-start gap-2 rounded-xl border border-slate-100 px-3 py-2">
-                  <button type="button" onClick={() => show(a)} className="min-w-0 flex-1 text-start">
-                    <span dir="ltr" className="block font-mono text-sm font-semibold text-slate-800">
-                      {a.bones.join(" · ") || "—"}
-                    </span>
-                    {a.note && (
-                      <span className="mt-0.5 block text-xs leading-snug text-slate-600">{a.note}</span>
-                    )}
-                    <span className="mt-0.5 block text-[11px] text-slate-400">
-                      {new Date(a.createdAt).toLocaleString("he-IL")}
-                      {a.strokes.length ? ` · ${a.strokes.length} קווים` : ""}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDelete(a.id)}
-                    className="shrink-0 text-xs font-semibold text-slate-400 hover:text-rose-600"
+              {annotations.map((a) => {
+                const open = openId === a.id
+                return (
+                  <li
+                    key={a.id}
+                    className={`overflow-hidden rounded-xl border ${
+                      open ? "border-sky-200 bg-sky-50/40" : "border-slate-100"
+                    }`}
                   >
-                    מחיקה
-                  </button>
-                </li>
-              ))}
+                    {/* The row itself opens: one tap brings back the angle it
+                        was marked from and reveals its note, right here rather
+                        than in a card somewhere else on the page. */}
+                    <button
+                      type="button"
+                      onClick={() => toggleOpen(a)}
+                      className="flex w-full items-start gap-2 px-3 py-2 text-start"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span dir="ltr" className="block font-mono text-sm font-semibold text-slate-800">
+                          {a.bones.join(" · ") || "—"}
+                        </span>
+                        {!open && a.note && (
+                          <span className="mt-0.5 block truncate text-xs text-slate-600">{a.note}</span>
+                        )}
+                        <span className="mt-0.5 block text-[11px] text-slate-400">
+                          {new Date(a.createdAt).toLocaleString(localeTag)}
+                          {a.strokes.length
+                            ? ` · ${t("bodyMap3d.strokeCount", { n: a.strokes.length })}`
+                            : ""}
+                        </span>
+                      </span>
+                      <ChevronDown
+                        className={`mt-0.5 size-4 shrink-0 text-slate-400 transition-transform ${
+                          open ? "rotate-180" : ""
+                        }`}
+                        aria-hidden
+                      />
+                    </button>
+
+                    {open && (
+                      <div className="border-t border-sky-100 px-3 py-3">
+                        <label
+                          htmlFor={`note-${a.id}`}
+                          className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+                        >
+                          {t("bodyMap3d.note")}
+                        </label>
+                        <textarea
+                          id={`note-${a.id}`}
+                          value={editNote}
+                          onChange={(e) => setEditNote(e.target.value)}
+                          rows={3}
+                          placeholder={t("bodyMap3d.notePlaceholder")}
+                          className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
+                        />
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onUpdateNote(a.id, editNote.trim())}
+                            disabled={editNote.trim() === (a.note ?? "")}
+                            className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-40"
+                          >
+                            {t("bodyMap3d.saveNote")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete(a.id)}
+                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
+                          >
+                            {t("bodyMap3d.deleteMark")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )}
