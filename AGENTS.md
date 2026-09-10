@@ -196,29 +196,34 @@ So:
 
 What a settled row holds, in full: who, how much, when, whether it was paid, and the SUMIT document id.
 
-#### The customer cards are not linked yet — issuing will duplicate 519 of them
+#### One patient, one customer card — `patients.sumit_customer_id`
 
-A patient created here does **not** create a SUMIT customer. The card is created
-by SUMIT itself, at the moment the first document for that patient is filed,
-matched on `SearchMode: ExternalIdentifier` with our patient UUID.
+A patient created here does **not** create a SUMIT customer. The card comes
+into existence when the first document for that patient is filed, and which
+card it lands on is decided by two fields on the request:
 
-Verified against the live account on 2026-09-10 (read-only, plus two approved
-draft documents for an invented patient):
+| `sumit_customer_id` | What is sent | What SUMIT does |
+|---|---|---|
+| set | `SearchMode: None` + `ID` | files onto that card |
+| null | `SearchMode: ExternalIdentifier` + our patient UUID | finds the card it made earlier, or makes one |
 
-- SUMIT holds **521 customer cards** across 2,050 historical documents.
-- **519 of our 1,181 patients already have one**, from before this app existed.
-- Those cards carry no `ExternalIdentifier`, so our UUID will never match them.
-- Two identical draft filings for a new patient created the card once and
-  reused it the second time — the mechanism is correct, it simply has nothing
-  to match against for anyone Martin billed before.
+The identifier is sent either way, so the link exists on SUMIT's side too, and
+`linkSumitCustomer()` records the id SUMIT returns the first time — never
+overwriting one that is already set.
 
-So the first invoice for any of those 519 opens a **second card** and splits
-their history. The 661 with no card are fine: creating one is the right
-behaviour. The fix is to store the SUMIT `CustomerID` on the patient row and
-send `ID` + `SearchMode: None` when a link exists; the computed pairing is at
-`C:\Users\verca\onemanband-sumit-link-review.json` (outside the repo) and
-Martin must approve it before anything is written — merging customer files in
-a bookkeeping account is not an automatic act.
+Why the column exists, verified against the live account on 2026-09-10:
+SUMIT held **521 cards** across 2,050 historical documents and **519 of the
+1,181 patients already had one**, from before this app existed. Those cards
+carry no `ExternalIdentifier`, so a search on our UUID could never match them
+and the first invoice for any of those patients would have opened a duplicate
+and split their bookkeeping history. Proven both ways with draft documents for
+an invented patient: searching by identifier created a card and then reused it,
+and `None` + `ID` filed onto an existing card without creating another.
+
+**520 links are backfilled.** One patient is deliberately unlinked — two cards
+share that name, and choosing between them is a person's job. The pairing used
+is at `C:\Users\verca\onemanband-sumit-link-review.json`, outside the repo
+because it holds names.
 
 ### The patient chart
 
