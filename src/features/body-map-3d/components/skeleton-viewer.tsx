@@ -5,53 +5,53 @@ import { OrbitControls } from "@react-three/drei"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 
-import { buildSkeleton, SKELETON_HEIGHT, type SkeletonPart } from "../lib/skeleton-parts"
+import { buildSkeleton, type SkeletonPart } from "../lib/skeleton-parts"
 import { drawStrokes, type Stroke, type StrokePoint } from "@/features/patients/lib/canvas-strokes"
 
 /**
- * One skeleton, turned to any angle, drawn on with the pen.
+ * One skeleton, turned to any angle, marked on two ways.
  *
  * The question this exists to answer is whether marking a rotatable model
  * beats three fixed diagrams on a tablet, in the hand of someone with a
- * patient in front of them. So the two things it does are rotate and draw.
+ * patient in front of them.
  *
  * **Rotate, freeze, draw** rather than painting onto the mesh. A stroke
  * painted onto the surface follows the bone when the model turns, which
  * sounds better and costs a per-patient texture, seams where the ink breaks,
  * and a fixed resolution that goes soft when you zoom. Freezing the view keeps
  * the stroke a vector — the same one the session canvas draws — and matches
- * how a finding is actually recorded: turn to the angle that shows it, then
- * annotate that.
+ * how a finding is recorded: turn to the angle that shows it, then annotate.
  *
- * A tap that does not travel is not a stroke: it is a question about a bone,
- * answered by raycasting the model and naming what was hit.
+ * Two ways to mark, because they are two different acts. Drawing outlines an
+ * area with the pen. Pointing names one bone and says something about it —
+ * that one keeps the model turnable, because finding the level is most of the
+ * work.
+ *
+ * What makes either a record rather than a picture: the model is raycast, so
+ * a mark knows it is on T4.
  */
 
 export interface Annotation {
   id: string
-  /** Bones the pen passed over. What makes this a record and not a picture. */
+  /** Bones the mark covers. What makes this a record and not a picture. */
   bones: string[]
   strokes: Stroke[]
-  /** Where the camera stood, so the annotation can be shown from its own angle. */
+  note?: string
+  /** Where the camera stood, so the mark can be shown from its own angle. */
   camera: [number, number, number]
   target: [number, number, number]
-  note?: string
   createdAt: string
 }
 
-const GROUP_COLOR: Record<SkeletonPart["group"], string> = {
-  spine: "#e2e8f0",
-  skull: "#eef2f7",
-  ribs: "#e8edf4",
-  arms: "#e6ebf2",
-  legs: "#e6ebf2",
-  pelvis: "#e8edf4",
-}
+type Mode = "rotate" | "pen" | "point"
 
-/** Screen-space drawing surface. Coordinates are the element's own pixels. */
-interface DrawSurface {
-  width: number
-  height: number
+const GROUP_COLOR: Record<SkeletonPart["group"], string> = {
+  spine: "#dfe6ee",
+  skull: "#eef2f7",
+  ribs: "#e6ecf3",
+  arms: "#e4eaf1",
+  legs: "#e4eaf1",
+  pelvis: "#e6ecf3",
 }
 
 function SkeletonMeshes({
@@ -59,13 +59,13 @@ function SkeletonMeshes({
   highlighted,
   onHover,
   onPick,
-  picking,
+  pickable,
 }: {
   parts: SkeletonPart[]
   highlighted: Set<string>
   onHover: (name: string | null) => void
-  onPick: (name: string, point: THREE.Vector3) => void
-  picking: boolean
+  onPick: (name: string) => void
+  pickable: boolean
 }) {
   return (
     <group>
@@ -76,22 +76,24 @@ function SkeletonMeshes({
           position={part.position}
           quaternion={part.quaternion}
           onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-            if (picking) return
             e.stopPropagation()
             onHover(part.name)
           }}
-          onPointerOut={() => !picking && onHover(null)}
-          onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+          onPointerOut={() => onHover(null)}
+          // `onClick` and not `onPointerDown`: a drag that starts on a bone is
+          // someone turning the model, not someone choosing it.
+          onClick={(e: ThreeEvent<MouseEvent>) => {
+            if (!pickable) return
             e.stopPropagation()
-            onPick(part.name, e.point)
+            onPick(part.name)
           }}
         >
           <meshStandardMaterial
             color={highlighted.has(part.name) ? "#0284c7" : GROUP_COLOR[part.group]}
-            roughness={0.75}
-            metalness={0.05}
+            roughness={0.72}
+            metalness={0.04}
             emissive={highlighted.has(part.name) ? "#0369a1" : "#000000"}
-            emissiveIntensity={highlighted.has(part.name) ? 0.35 : 0}
+            emissiveIntensity={highlighted.has(part.name) ? 0.4 : 0}
           />
         </mesh>
       ))}
@@ -99,8 +101,12 @@ function SkeletonMeshes({
   )
 }
 
-/** Hands the live camera out, so an annotation can remember where it was made. */
-function CameraProbe({ onReady }: { onReady: (c: THREE.Camera, controls: unknown) => void }) {
+/** Hands the live camera and controls out, so a mark can remember its angle. */
+function CameraProbe({
+  onReady,
+}: {
+  onReady: (camera: THREE.Camera, controls: unknown) => void
+}) {
   const { camera, controls } = useThree()
   useEffect(() => {
     onReady(camera, controls)
@@ -118,10 +124,11 @@ export function SkeletonViewer({
   onDelete: (id: string) => void
 }) {
   const parts = useMemo(() => buildSkeleton(), [])
-  const [mode, setMode] = useState<"rotate" | "mark">("rotate")
+  const [mode, setMode] = useState<Mode>("rotate")
   const [hovered, setHovered] = useState<string | null>(null)
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [bones, setBones] = useState<string[]>([])
+  const [note, setNote] = useState("")
   const [viewing, setViewing] = useState<Annotation | null>(null)
 
   const cameraRef = useRef<THREE.Camera | null>(null)
@@ -132,14 +139,17 @@ export function SkeletonViewer({
   const activePointer = useRef<number | null>(null)
   const penSeen = useRef(false)
   const current = useRef<Stroke>([])
-  const [surface, setSurface] = useState<DrawSurface>({ width: 0, height: 0 })
+  const [surface, setSurface] = useState({ width: 0, height: 0 })
+
+  const drawingMode = mode === "pen" && !viewing
+  const pointMode = mode === "point" && !viewing
 
   const onCamera = useCallback((camera: THREE.Camera, controls: unknown) => {
     cameraRef.current = camera
     controlsRef.current = controls as { target: THREE.Vector3; update: () => void } | null
   }, [])
 
-  /* Keep the drawing surface the same pixel size as the viewport it covers. */
+  /* Keep the ink layer the same pixel size as the viewport it covers. */
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
@@ -188,19 +198,20 @@ export function SkeletonViewer({
     [parts],
   )
 
+  const addBone = useCallback((name: string | null) => {
+    if (!name) return
+    setBones((prev) => (prev.includes(name) ? prev : [...prev, name]))
+  }, [])
+
   const pointFrom = (e: React.PointerEvent): StrokePoint => {
     const rect = wrapRef.current!.getBoundingClientRect()
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      pressure: e.pressure || 0.5,
-    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top, pressure: e.pressure || 0.5 }
   }
 
   /* Palm rejection, the same rule the session canvas learned: one pointer
      draws, and once a pen has been seen, touch is not ink. */
   const onPointerDown = (e: React.PointerEvent) => {
-    if (mode !== "mark" || viewing) return
+    if (!drawingMode) return
     if (e.pointerType === "pen") penSeen.current = true
     if (e.pointerType === "touch" && penSeen.current) return
     if (activePointer.current !== null) return
@@ -208,15 +219,13 @@ export function SkeletonViewer({
     ;(e.target as Element).setPointerCapture?.(e.pointerId)
     drawing.current = true
     current.current = [pointFrom(e)]
-    const bone = boneAt(e.clientX, e.clientY)
-    if (bone) setBones((prev) => (prev.includes(bone) ? prev : [...prev, bone]))
+    addBone(boneAt(e.clientX, e.clientY))
   }
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!drawing.current || e.pointerId !== activePointer.current) return
     current.current.push(pointFrom(e))
-    const canvas = overlayRef.current
-    const ctx = canvas?.getContext("2d")
+    const ctx = overlayRef.current?.getContext("2d")
     if (!ctx || current.current.length < 2) return
     const pts = current.current
     const a = pts[pts.length - 2]
@@ -225,15 +234,11 @@ export function SkeletonViewer({
     ctx.moveTo(a.x, a.y)
     ctx.lineTo(b.x, b.y)
     ctx.lineWidth = 1.5 + (b.pressure || 0.5) * 2.5
-    ctx.strokeStyle = `rgba(15,23,42,${0.72 + (b.pressure || 0.5) * 0.2})`
+    ctx.strokeStyle = `rgba(2,132,199,${0.8 + (b.pressure || 0.5) * 0.2})`
     ctx.lineCap = "round"
     ctx.stroke()
-    // Every few points, ask what is under the pen — a stroke that crosses from
-    // T4 to T6 should say so.
-    if (current.current.length % 12 === 0) {
-      const bone = boneAt(e.clientX, e.clientY)
-      if (bone) setBones((prev) => (prev.includes(bone) ? prev : [...prev, bone]))
-    }
+    // A stroke that crosses from T4 to T6 should say so.
+    if (current.current.length % 10 === 0) addBone(boneAt(e.clientX, e.clientY))
   }
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -244,19 +249,24 @@ export function SkeletonViewer({
     current.current = []
   }
 
+  const clear = () => {
+    setStrokes([])
+    setBones([])
+    setNote("")
+  }
+
   const save = () => {
     const camera = cameraRef.current
     if (!camera || (!strokes.length && !bones.length)) return
-    const target = controlsRef.current?.target ?? new THREE.Vector3(0, SKELETON_HEIGHT / 2, 0)
-    void SKELETON_HEIGHT
+    const target = controlsRef.current?.target ?? new THREE.Vector3(0, 86, 0)
     onSave({
       bones,
       strokes,
+      note: note.trim() || undefined,
       camera: [camera.position.x, camera.position.y, camera.position.z],
       target: [target.x, target.y, target.z],
     })
-    setStrokes([])
-    setBones([])
+    clear()
     setMode("rotate")
   }
 
@@ -272,181 +282,231 @@ export function SkeletonViewer({
     setMode("rotate")
   }
 
-  const marking = mode === "mark" && !viewing
+  /** The bone the reader is being told about, largest thing on the panel. */
+  const headline = viewing
+    ? viewing.bones.join(" · ") || "—"
+    : bones.length
+      ? bones.join(" · ")
+      : hovered || "—"
+
+  const hasDraft = strokes.length > 0 || bones.length > 0
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setViewing(null)
-            setMode(marking ? "rotate" : "mark")
-          }}
-          className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
-            marking
-              ? "bg-emerald-700 text-white hover:bg-emerald-800"
-              : "bg-slate-900 text-white hover:bg-slate-800"
-          }`}
-        >
-          {marking ? "מסובבים — לחזור לסיבוב" : "סימון בעט"}
-        </button>
-        {marking && (
-          <>
-            <button
-              type="button"
-              onClick={() => setStrokes((prev) => prev.slice(0, -1))}
-              disabled={!strokes.length}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 disabled:opacity-40"
-            >
-              ביטול קו
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStrokes([])
-                setBones([])
-              }}
-              disabled={!strokes.length && !bones.length}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 disabled:opacity-40"
-            >
-              ניקוי
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={!strokes.length && !bones.length}
-              className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
-            >
-              שמירת סימון
-            </button>
-          </>
-        )}
-        {viewing && (
-          <button
-            type="button"
-            onClick={() => setViewing(null)}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
-          >
-            סגירת תצוגה
-          </button>
-        )}
-        <span className="ms-auto font-mono text-xs text-slate-500">
-          {marking
-            ? bones.length
-              ? `העט עבר על: ${bones.join(" · ")}`
-              : "ציירו על השלד"
-            : hovered
-              ? hovered
-              : "גררו לסיבוב · שתי אצבעות לזום"}
-        </span>
-      </div>
-
+    <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      {/* ── The model ─────────────────────────────────────────────────────── */}
       <div
         ref={wrapRef}
-        className="relative h-[540px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white"
-        style={{ touchAction: marking ? "none" : "auto" }}
+        className="relative h-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white"
+        style={{ touchAction: drawingMode ? "none" : "auto" }}
       >
-        {/*
-          A three-quarter view from behind, framed to hold the whole frame.
-          Behind, because the back is what gets treated and the curve of the
-          spine is the thing being read; three-quarter, because a flat
-          posterior view flattens the kyphosis it exists to show.
-
-          The distance is not a guess: the frame is ~172 cm and at 35° a
-          camera has to stand about 300 cm back to see all of it.
-        */}
         <Canvas
           camera={{ position: [150, 112, -300], fov: 35 }}
           dpr={[1, 2]}
           /*
-           * Aim the camera before the first frame.
-           *
-           * OrbitControls applies its `target` in an effect, which is one
-           * frame too late: until then the camera looks at the origin — the
-           * floor between the feet — and the body sits above the picture. It
-           * came right the moment anything was touched, which is exactly the
-           * kind of bug that reads as "it didn't load".
+           * Aim before the first frame. OrbitControls applies its `target` in
+           * an effect, one frame too late: until then the camera looks at the
+           * origin — the floor between the feet — and the body sits above the
+           * picture, which reads as a model that failed to load.
            */
           onCreated={({ camera }) => camera.lookAt(0, 86, 0)}
         >
           <color attach="background" args={["#f8fafc"]} />
-          <ambientLight intensity={0.75} />
-          <directionalLight position={[60, 180, 120]} intensity={1.5} />
-          <directionalLight position={[-80, 60, -100]} intensity={0.5} />
+          <ambientLight intensity={0.8} />
+          <directionalLight position={[60, 180, 120]} intensity={1.35} />
+          <directionalLight position={[-80, 90, -140]} intensity={0.9} />
           <CameraProbe onReady={onCamera} />
           <SkeletonMeshes
             parts={parts}
             highlighted={new Set(viewing ? viewing.bones : bones)}
             onHover={setHovered}
-            onPick={(name) =>
-              marking && setBones((prev) => (prev.includes(name) ? prev : [...prev, name]))
-            }
-            picking={marking}
+            onPick={(name) => addBone(name)}
+            pickable={pointMode}
           />
           <OrbitControls
-            // Without this `useThree().controls` is null, and an annotation
-            // could not remember the angle it was drawn at.
+            // Without this `useThree().controls` is null and a saved mark
+            // could not restore the angle it was drawn at.
             makeDefault
-            enabled={!marking}
-            enablePan={false}
-            // Mid-frame, so turning orbits the body rather than swinging it.
+            enabled={!drawingMode}
+            /*
+             * Panning matters more here than it looks. Zoomed in on the
+             * lumbar spine with no pan, the only way to reach the neck is to
+             * zoom out and back in — the model is pinned to its centre and
+             * the top of it is simply off the screen.
+             */
+            enablePan
+            screenSpacePanning
             target={[0, 86, 0]}
-            minDistance={70}
-            maxDistance={420}
+            minDistance={40}
+            maxDistance={480}
           />
         </Canvas>
 
         {/* The ink layer. Transparent to pointers unless the pen is armed, so
-            rotating never has to fight the drawing surface. */}
+            turning the model never has to fight the drawing surface. */}
         <canvas
           ref={overlayRef}
           width={surface.width}
           height={surface.height}
           className="absolute inset-0"
-          style={{ pointerEvents: marking ? "auto" : "none", cursor: marking ? "crosshair" : "grab" }}
+          style={{
+            pointerEvents: drawingMode ? "auto" : "none",
+            cursor: drawingMode ? "crosshair" : pointMode ? "pointer" : "grab",
+          }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         />
+
+        {drawingMode && (
+          <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs font-semibold text-sky-700">
+            התצוגה קפואה — ציירו על השלד
+          </p>
+        )}
       </div>
 
-      {annotations.length > 0 && (
+      {/* ── What is being marked, and what it says ────────────────────────── */}
+      <div className="flex flex-col gap-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-            סימונים שמורים
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {pointMode || drawingMode ? "מסומן" : "מתחת לסמן"}
           </p>
-          <ul className="space-y-2">
-            {annotations.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => show(a)}
-                  className="min-w-0 flex-1 text-start"
-                >
-                  <span className="block font-mono text-sm font-semibold text-slate-800">
-                    {a.bones.length ? a.bones.join(" · ") : "ללא עצם מזוהה"}
-                  </span>
-                  <span className="block text-xs text-slate-400">
-                    {new Date(a.createdAt).toLocaleString("he-IL")} · {a.strokes.length} קווים
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(a.id)}
-                  className="shrink-0 text-xs font-semibold text-slate-400 hover:text-rose-600"
-                >
-                  מחיקה
-                </button>
-              </li>
-            ))}
-          </ul>
+          <p
+            className="mt-1 break-words text-3xl font-bold leading-tight tracking-tight text-sky-700"
+            dir="ltr"
+          >
+            {headline}
+          </p>
         </div>
-      )}
+
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              ["rotate", "סיבוב"],
+              ["pen", "עט"],
+              ["point", "נקודה"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setViewing(null)
+                setMode(value)
+              }}
+              className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                mode === value && !viewing
+                  ? "bg-sky-600 text-white"
+                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
+          מרטין — אפשר להגדיל, להקטין, לסובב ולסמן מה שרוצים.
+          <br />
+          <span className="text-slate-500">
+            <b>סיבוב</b>: גרירה מסובבת · שתי אצבעות מזיזות ומקרבות ·{" "}
+            <b>עט</b>: התצוגה נעצרת וציירו חופשי · <b>נקודה</b>: הקישו על עצם
+            כדי לבחור אותה.
+          </span>
+        </p>
+
+        {(hasDraft || viewing) && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              הערה
+            </label>
+            {viewing ? (
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                {viewing.note || <span className="italic text-slate-400">ללא הערה</span>}
+              </p>
+            ) : (
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={3}
+                placeholder="מה נמצא כאן"
+                className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
+              />
+            )}
+
+            <div className="mt-2 flex flex-wrap gap-2">
+              {viewing ? (
+                <button
+                  type="button"
+                  onClick={() => setViewing(null)}
+                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+                >
+                  סגירה
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={save}
+                    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                  >
+                    שמירה
+                  </button>
+                  {strokes.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setStrokes((prev) => prev.slice(0, -1))}
+                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+                    >
+                      ביטול קו
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={clear}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+                  >
+                    ניקוי
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {annotations.length > 0 && (
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              סימונים שמורים
+            </p>
+            <ul className="space-y-2">
+              {annotations.map((a) => (
+                <li key={a.id} className="flex items-start gap-2 rounded-xl border border-slate-100 px-3 py-2">
+                  <button type="button" onClick={() => show(a)} className="min-w-0 flex-1 text-start">
+                    <span dir="ltr" className="block font-mono text-sm font-semibold text-slate-800">
+                      {a.bones.join(" · ") || "—"}
+                    </span>
+                    {a.note && (
+                      <span className="mt-0.5 block text-xs leading-snug text-slate-600">{a.note}</span>
+                    )}
+                    <span className="mt-0.5 block text-[11px] text-slate-400">
+                      {new Date(a.createdAt).toLocaleString("he-IL")}
+                      {a.strokes.length ? ` · ${a.strokes.length} קווים` : ""}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(a.id)}
+                    className="shrink-0 text-xs font-semibold text-slate-400 hover:text-rose-600"
+                  >
+                    מחיקה
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
