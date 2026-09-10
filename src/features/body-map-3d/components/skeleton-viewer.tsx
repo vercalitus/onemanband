@@ -257,7 +257,13 @@ export function SkeletonViewer({
 
     if (controlsRef.current) controlsRef.current.enabled = false
     activePointer.current = e.pointerId
-    wrapRef.current?.setPointerCapture(e.pointerId)
+    try {
+      // Throws if the pointer is already gone — a stroke that lasted one
+      // event is still a dot, and losing capture is not a reason to drop it.
+      wrapRef.current?.setPointerCapture(e.pointerId)
+    } catch {
+      /* keep drawing without capture */
+    }
     drawing.current = true
     current.current = [hit.point.toArray() as [number, number, number]]
     setLiveStroke(current.current)
