@@ -1,6 +1,7 @@
 "use client"
 
 import { Calendar, CheckCircle2, Receipt } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
@@ -39,6 +40,32 @@ export function PatientActionBar({
 }: Props) {
   const { t, localeTag } = useLocale()
   const { openCreateAppointment } = useScheduleDay()
+
+  /**
+   * Closing a session is two taps, four seconds apart at most.
+   *
+   * It was one, and a session closed halfway through by a hand brushing the
+   * bar became a permanent record — the schema refuses to unwrite it — and a
+   * second closing at the real end made two sessions of one visit. The draft
+   * saves itself continuously; there is nothing to lose by not tapping this.
+   */
+  const [confirmingComplete, setConfirmingComplete] = useState(false)
+  useEffect(() => {
+    if (!confirmingComplete) return
+    const timer = window.setTimeout(() => setConfirmingComplete(false), 4000)
+    return () => window.clearTimeout(timer)
+  }, [confirmingComplete])
+  const completeLabel = confirmingComplete
+    ? t("patientChart.completeSessionConfirm", { n: nextSessionNumber ?? "" })
+    : t("patientChart.completeSession")
+  const handleComplete = () => {
+    if (!confirmingComplete) {
+      setConfirmingComplete(true)
+      return
+    }
+    setConfirmingComplete(false)
+    onCompleteSession()
+  }
 
   /**
    * Booking goes through the shared scheduler, not a dialog of this page's own.
@@ -85,12 +112,17 @@ export function PatientActionBar({
         {/* Complete Session */}
         <button
           type="button"
-          onClick={onCompleteSession}
-          className={cn(BTN_BASE, "bg-slate-900 text-white hover:bg-slate-800")}
+          onClick={handleComplete}
+          className={cn(
+            BTN_BASE,
+            confirmingComplete
+              ? "bg-emerald-700 text-white ring-2 ring-emerald-300 hover:bg-emerald-800"
+              : "bg-slate-900 text-white hover:bg-slate-800",
+          )}
           aria-label={t("patientChart.completeSessionAria")}
         >
           <CheckCircle2 className="size-5 shrink-0" aria-hidden />
-          {t("patientChart.completeSession")}
+          {completeLabel}
         </button>
 
         {/* Issue Invoice */}
@@ -140,11 +172,16 @@ export function PatientActionBar({
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={onCompleteSession}
-              className="flex w-full items-center gap-2 rounded-xl bg-slate-900 px-3 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 active:scale-[0.98]"
+              onClick={handleComplete}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold text-white transition-colors active:scale-[0.98]",
+                confirmingComplete
+                  ? "bg-emerald-700 ring-2 ring-emerald-300 hover:bg-emerald-800"
+                  : "bg-slate-900 hover:bg-slate-800",
+              )}
             >
               <CheckCircle2 className="size-4 shrink-0" aria-hidden />
-              {t("patientChart.completeSession")}
+              {completeLabel}
             </button>
 
             <button

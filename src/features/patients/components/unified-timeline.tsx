@@ -150,6 +150,9 @@ interface SessionEntry {
   /** Private-bucket paths, for a session that was saved to the database. */
   canvasPath?: string
   audioPath?: string
+  /** Marked as saved in error: kept, struck through, counted for nothing. */
+  voidedAt?: string
+  voidReason?: string
   relatedDocs: DocumentRecord[]
   relatedFinances: FinanceRecord[]
 }
@@ -209,6 +212,12 @@ interface Props {
   treatmentsAreLive: boolean
   onDeleteTreatment: (id: string) => void
   onDeleteCompletedSession: (id: string) => void
+  /**
+   * The correction the schema allows for a saved session: mark it as saved
+   * in error. The row stays, struck through, and stops counting. Absent on a
+   * demo chart, where a row is simply deleted.
+   */
+  onVoidTreatment?: (id: string, reason: string) => void | Promise<boolean>
 }
 
 export function UnifiedTimeline({
@@ -220,6 +229,7 @@ export function UnifiedTimeline({
   treatmentsAreLive,
   onDeleteTreatment,
   onDeleteCompletedSession,
+  onVoidTreatment,
 }: Props) {
   const { t, localeTag, locale } = useLocale()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -249,6 +259,8 @@ export function UnifiedTimeline({
       audioKey: null,
       canvasPath: t.canvasPath,
       audioPath: t.audioPath,
+      voidedAt: t.voidedAt,
+      voidReason: t.voidReason,
       relatedDocs: [] as DocumentRecord[],
       relatedFinances: [] as FinanceRecord[],
     })),
@@ -267,10 +279,11 @@ export function UnifiedTimeline({
 
   attachRelated(entries, documentRecords, financeRecords)
 
-  // Assign session numbers (chronological ascending order)
-  const chronological = [...entries].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  )
+  // Assign session numbers (chronological ascending order). A record saved in
+  // error is not a session and takes no number.
+  const chronological = [...entries]
+    .filter((e) => !e.voidedAt)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   const sessionNumberMap = new Map(chronological.map((e, i) => [e.id, i + 1]))
 
   // Display newest first
@@ -290,7 +303,9 @@ export function UnifiedTimeline({
 
   const handleDelete = (entry: SessionEntry) => {
     if (confirmDeleteId === entry.id) {
-      if (entry.kind === "treatment") {
+      if (entry.kind === "treatment" && treatmentsAreLive) {
+        void onVoidTreatment?.(entry.id, "Marked as saved in error")
+      } else if (entry.kind === "treatment") {
         onDeleteTreatment(entry.id)
       } else {
         onDeleteCompletedSession(entry.id)
@@ -324,7 +339,11 @@ export function UnifiedTimeline({
             !!entry.audioKey ||
             !!entry.audioPath
           const confirming = confirmDeleteId === entry.id
-          const deletable = !(entry.kind === "treatment" && treatmentsAreLive)
+          const voided = !!entry.voidedAt
+          // A demo row can be deleted. A saved session cannot — it can be
+          // marked as saved in error, once, and only while it is not already.
+          const voidable = entry.kind === "treatment" && treatmentsAreLive && !!onVoidTreatment && !voided
+          const deletable = !(entry.kind === "treatment" && treatmentsAreLive) || voidable
 
           return (
             <li key={entry.id} className="group relative flex gap-4 pb-5">
@@ -359,11 +378,19 @@ export function UnifiedTimeline({
                   <p className="font-mono text-[11px] tabular-nums text-slate-400">
                     {formatDate(entry.date, localeTag)}
                   </p>
-                  <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 font-mono text-[10px] tabular-nums text-slate-400 ring-1 ring-slate-100">
-                    {t("patientChart.timeline.sessionOf", { n: sessionNumber, total: planTarget })}
-                  </span>
+                  {voided ? (
+                    <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600 ring-1 ring-rose-100">
+                      {t("patientChart.timeline.voided")}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 font-mono text-[10px] tabular-nums text-slate-400 ring-1 ring-slate-100">
+                      {t("patientChart.timeline.sessionOf", { n: sessionNumber, total: planTarget })}
+                    </span>
+                  )}
 
-                  {/* Delete — pushed to the far right, separated from the expand chevron */}
+                  {/* Delete (demo) or mark-as-error (saved) — far right, apart
+                      from the expand chevron. Always visible for a saved
+                      session: on a tablet there is no hover to reveal it. */}
                   <button
                     type="button"
                     hidden={!deletable}
@@ -372,12 +399,26 @@ export function UnifiedTimeline({
                       "ms-auto flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
                       confirming
                         ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200"
-                        : "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
+                        : voidable
+                          ? "text-slate-400 hover:text-rose-500"
+                          : "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
                     )}
-                    aria-label={confirming ? t("patientChart.timeline.confirmDeleteAria") : t("patientChart.timeline.deleteAria")}
+                    aria-label={
+                      voidable
+                        ? confirming
+                          ? t("patientChart.timeline.voidConfirm")
+                          : t("patientChart.timeline.voidAria")
+                        : confirming
+                          ? t("patientChart.timeline.confirmDeleteAria")
+                          : t("patientChart.timeline.deleteAria")
+                    }
                   >
                     <Trash2 className="size-3.5" aria-hidden />
-                    {confirming && <span>{t("patientChart.timeline.confirm")}</span>}
+                    {confirming ? (
+                      <span>{voidable ? t("patientChart.timeline.voidConfirm") : t("patientChart.timeline.confirm")}</span>
+                    ) : voidable ? (
+                      <span>{t("patientChart.timeline.voidAria")}</span>
+                    ) : null}
                   </button>
                 </div>
 
@@ -388,6 +429,7 @@ export function UnifiedTimeline({
                     hasMore
                       ? "cursor-pointer border-slate-100 hover:border-sky-100 hover:shadow-[0_2px_12px_-4px_rgba(14,165,233,0.10)]"
                       : "cursor-default border-slate-100",
+                    voided && "opacity-60 [&_p]:line-through",
                   )}
                 >
                   {/* Card header row — clickable */}

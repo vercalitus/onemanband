@@ -38,6 +38,8 @@ import {
 } from "@/lib/appointment-time"
 import { fromISODate, toISODate } from "@/lib/date-helpers"
 import { cn } from "@/lib/utils"
+import { findFreeSlots, type FreeSlot } from "@/features/automations/lib/availability"
+import { useClinicSettings } from "@/features/settings/lib/use-clinic-settings"
 
 const STATUS_OPTIONS: AppointmentStatus[] = [
   "scheduled",
@@ -170,6 +172,67 @@ export function AppointmentEditDialog({
 
   const adjustDuration = (delta: number) => {
     setDurationMin((d) => clampDurationMinutes(d + delta))
+  }
+
+  /**
+   * The next free slots, so a booking is not found by trial and error.
+   *
+   * The same free-slot maths the patient-facing booking page uses, but for the
+   * practitioner: no lead time, the whole opening day rather than the narrower
+   * windows offered to the public, three weeks out. At most two per day, so a
+   * quiet morning does not fill the strip with one date.
+   */
+  const { settings } = useClinicSettings()
+  const suggestions = useMemo<FreeSlot[]>(() => {
+    if (!open || mode !== "create") return []
+    const openDays = settings.weekdays.filter((w) => w.open)
+    const slots = findFreeSlots({
+      automations: {
+        ...settings.automations,
+        selfBooking: { ...settings.automations.selfBooking, leadTimeHours: 0, horizonDays: 21 },
+        futureAvailability: openDays.map((w) => ({
+          id: `open-${w.weekdayIndex}`,
+          weekdayIndex: w.weekdayIndex,
+          startTime: w.openTime,
+          endTime: w.closeTime,
+        })),
+      },
+      weekdays: settings.weekdays,
+      appointments: allAppointments,
+      durationMinutes: durationMin,
+      limit: 600,
+    })
+    const perDay = new Map<string, number>()
+    const picked: FreeSlot[] = []
+    for (const slot of slots) {
+      const n = perDay.get(slot.date) ?? 0
+      if (n >= 2) continue
+      perDay.set(slot.date, n + 1)
+      picked.push(slot)
+      if (picked.length >= 6) break
+    }
+    return picked
+  }, [open, mode, settings, allAppointments, durationMin])
+
+  const slotLabel = (slot: FreeSlot) => {
+    try {
+      const day = new Intl.DateTimeFormat(localeToBcp47(locale), {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      }).format(fromISODate(slot.date))
+      return `${day} · ${slot.start}`
+    } catch {
+      return `${slot.date} · ${slot.start}`
+    }
+  }
+
+  const applySuggestion = (slot: FreeSlot) => {
+    const startMin = minutesFromHHMM(slot.start)
+    setDate(slot.date)
+    setStartHour(Math.floor(startMin / 60))
+    setStartMinute(startMin % 60)
+    setError(null)
   }
 
   /** Solo practice — no practitioner field; persisted `provider` stays empty / legacy untouched in spread. */
@@ -393,6 +456,37 @@ export function AppointmentEditDialog({
                   {mode === "edit" ? t("appointment.date.hint.edit") : t("appointment.date.hint.create")}
                 </p>
               </div>
+
+              {mode === "create" ? (
+                <div className="grid gap-1.5">
+                  <p className={LABEL}>{t("appointment.nextFree.title")}</p>
+                  {suggestions.length ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {suggestions.map((slot) => {
+                        const chosen =
+                          slot.date === date && minutesFromHHMM(slot.start) === preview.startMin
+                        return (
+                          <button
+                            key={`${slot.date}-${slot.start}`}
+                            type="button"
+                            onClick={() => applySuggestion(slot)}
+                            className={cn(
+                              "rounded-full border px-3 py-1.5 font-mono text-xs tabular-nums transition-colors",
+                              chosen
+                                ? "border-slate-900 bg-slate-900 text-white"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50",
+                            )}
+                          >
+                            {slotLabel(slot)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-400">{t("appointment.nextFree.none")}</p>
+                  )}
+                </div>
+              ) : null}
 
               <div className="space-y-1.5">
                 <p className={LABEL}>{t("appointment.field.startTime")}</p>

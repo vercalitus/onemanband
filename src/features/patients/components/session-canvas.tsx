@@ -34,6 +34,17 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
   const currentStroke = useRef<Stroke>([])
+  /**
+   * The one contact that is drawing, and whether a pen has ever been used.
+   *
+   * A stylus hand rests on the glass. Each palm contact used to arrive as a
+   * new pointer-down that replaced the stroke in progress — the pen went
+   * quiet mid-word, and what had been written was lost — and the palm itself
+   * was drawn as a stroke. So: one pointer draws at a time, and once a pen
+   * has touched the canvas, fingers and palms are not strokes.
+   */
+  const activePointer = useRef<number | null>(null)
+  const penSeen = useRef(false)
   const [strokes, setStrokes] = useState<Stroke[]>(() => initialStrokes ?? [])
   const [undoStack, setUndoStack] = useState<Stroke[][]>([])
   const [isMobileSmall, setIsMobileSmall] = useState(false)
@@ -81,6 +92,10 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   }
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === "pen") penSeen.current = true
+    if (e.pointerType === "touch" && penSeen.current) return
+    if (activePointer.current !== null) return
+    activePointer.current = e.pointerId
     e.currentTarget.setPointerCapture(e.pointerId)
     isDrawing.current = true
     currentStroke.current = [getPoint(e)]
@@ -88,7 +103,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current) return
+    if (!isDrawing.current || e.pointerId !== activePointer.current) return
     currentStroke.current.push(getPoint(e))
 
     // Live preview of the in-progress stroke
@@ -107,9 +122,14 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     ctx.stroke()
   }
 
-  const onPointerUp = () => {
+  const onPointerUp = (e?: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing.current) return
+    if (e && e.pointerId !== activePointer.current) return
     isDrawing.current = false
+    activePointer.current = null
+    // A cancelled pointer — the browser took the contact for a gesture —
+    // still commits what was drawn. Losing half a word is worse than a
+    // slightly short stroke.
     if (currentStroke.current.length > 1) {
       setUndoStack((prev) => [...prev, strokes]) // snapshot before change
       commit([...strokes, currentStroke.current])
@@ -202,7 +222,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerLeave={onPointerUp}
+          onPointerCancel={onPointerUp}
           className="h-[320px] w-full cursor-crosshair touch-none sm:h-[400px] lg:h-[440px]"
           aria-label={t("patientChart.canvas.drawAria")}
           style={{ touchAction: "none" }}

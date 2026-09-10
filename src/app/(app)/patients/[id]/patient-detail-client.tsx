@@ -78,6 +78,7 @@ export function PatientDetailClient() {
     setClinicalStatus,
     setPatientStatus,
     uploadDocumentRecord,
+    voidTreatmentRecord,
     sessionNotes,
     setSessionNotes,
     canvasStrokes,
@@ -334,6 +335,7 @@ export function PatientDetailClient() {
                   treatmentsAreLive={treatmentsAreLive}
                   onDeleteTreatment={deleteTreatmentRecord}
                   onDeleteCompletedSession={deleteCompletedSession}
+                  onVoidTreatment={live ? voidTreatmentRecord : undefined}
                 />
               </div>
             </div>

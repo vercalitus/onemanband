@@ -188,6 +188,13 @@ export interface TreatmentRecord {
   canvasPath?: string
   /** Private-bucket path of the session's voice memo. */
   audioPath?: string
+  /**
+   * Set when a clinician marked the record as saved in error. The record is
+   * kept in full — it is still what was written — but it is not a session:
+   * it counts for nothing and reads as struck through.
+   */
+  voidedAt?: string
+  voidReason?: string
 }
 
 export type BodyMapView = "front" | "back" | "side"

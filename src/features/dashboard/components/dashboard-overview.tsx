@@ -160,9 +160,14 @@ function TodoRow({
       <div className="min-w-0 flex-1">
         <p className={`font-medium ${done ? "text-slate-400 line-through" : "text-slate-900"}`}>{title}</p>
         <p className={`text-xs ${done ? "text-slate-400" : isFault ? "text-rose-700/80" : "text-slate-500"}`}>
-          {dueTrimmed
-            ? `${item.overdue && !done ? t("dashboard.todo.overduePrefix") : t("dashboard.todo.duePrefix")} ${dueTrimmed}`
-            : t("dashboard.todo.noDue")}
+          {/* A signal's second line is a sentence — "Connect it under
+              Settings" — and "Due Connect it under Settings" is not. The
+              prefix belongs to tasks, which carry a due date. */}
+          {!dueTrimmed
+            ? t("dashboard.todo.noDue")
+            : item.kind === "reactive" && !item.overdue
+              ? dueTrimmed
+              : `${item.overdue && !done ? t("dashboard.todo.overduePrefix") : t("dashboard.todo.duePrefix")} ${dueTrimmed}`}
         </p>
       </div>
 

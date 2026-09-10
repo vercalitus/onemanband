@@ -32,10 +32,13 @@ interface TreatmentRow {
   title: string
   note: string
   metadata: { canvas_path?: string; audio_path?: string } | null
+  voided_at: string | null
+  void_reason: string | null
   profiles?: { full_name: string | null } | null
 }
 
-const SELECT = "id, recorded_at, title, note, metadata, profiles(full_name)"
+const SELECT =
+  "id, recorded_at, title, note, metadata, voided_at, void_reason, profiles(full_name)"
 
 function toRecord(row: TreatmentRow): TreatmentRecord {
   return {
@@ -46,7 +49,37 @@ function toRecord(row: TreatmentRow): TreatmentRecord {
     note: row.note,
     canvasPath: row.metadata?.canvas_path,
     audioPath: row.metadata?.audio_path,
+    voidedAt: row.voided_at ?? undefined,
+    voidReason: row.void_reason ?? undefined,
   }
+}
+
+/**
+ * Mark a record as saved in error.
+ *
+ * The only change the schema permits to a treatment row, and it is one-way:
+ * the record stays, in full, and stops being a session. The case it exists
+ * for is a session closed twice — halfway by mistake, then again at the end —
+ * which counted as two visits against the care plan with no way to say which
+ * one was real. See the migration for why this is a mark and not a delete.
+ */
+export async function voidTreatment(
+  id: string,
+  reason: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const db = createSupabaseBrowserClient()
+  if (!db) return { ok: false, reason: "supabase not configured" }
+  const { data: auth } = await db.auth.getUser()
+  const { error } = await db
+    .from("treatments")
+    .update({
+      voided_at: new Date().toISOString(),
+      void_reason: reason,
+      voided_by: auth.user?.id ?? null,
+    })
+    .eq("id", id)
+  if (error) return { ok: false, reason: error.message }
+  return { ok: true }
 }
 
 /**
@@ -121,6 +154,8 @@ export async function fetchTreatmentCounts(): Promise<Map<string, number> | null
     const { data, error } = await db
       .from("treatments")
       .select("patient_id")
+      // A record saved in error is not a session.
+      .is("voided_at", null)
       .range(from, from + PAGE - 1)
 
     if (error) return null

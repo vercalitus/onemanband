@@ -36,6 +36,7 @@ import { updatePatient } from "@/features/patients/lib/patient-repository"
 import {
   createTreatment,
   fetchPatientTreatments,
+  voidTreatment,
 } from "@/features/patients/lib/treatment-repository"
 import {
   fetchInvoices,
@@ -131,6 +132,32 @@ const DEMO_STATUS_SENTENCES = [
   "تحسّن تدريجي في مدى حركة الرقبة؛ التركيز على وضعية الجسم في مكان العمل",
   "שיפור הדרגתי בטווח תנועה צווארי, דגש על יציבה בעבודה",
 ]
+
+/**
+ * Ask the server to read the handwriting. Null when it cannot — no key on the
+ * deploy, a network fault, an empty result — and the session closes without a
+ * transcription rather than without a record.
+ */
+async function transcribeHandwriting(canvas: Blob): Promise<string | null> {
+  try {
+    const bytes = new Uint8Array(await canvas.arrayBuffer())
+    let binary = ""
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+    }
+    const res = await fetch("/api/treatments/transcribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: btoa(binary) }),
+    })
+    if (!res.ok) return null
+    const body = (await res.json()) as { ok: boolean; text?: string }
+    const text = body.ok ? (body.text ?? "").trim() : ""
+    return text || null
+  } catch {
+    return null
+  }
+}
 
 const cleanStoredStatus = (raw: string | null | undefined): string => {
   const text = (raw ?? "").trim()
@@ -423,6 +450,26 @@ export function usePatientCockpit(patientId: string) {
   /** True once the history is coming from Postgres, where a record cannot be unwritten. */
   const treatmentsAreLive = liveTreatments !== null
 
+  /**
+   * Mark a saved session as saved in error. The row stays; it stops counting.
+   * Only for the clinic's own records — a demo row is simply deleted.
+   */
+  const voidTreatmentRecord = useCallback(
+    async (id: string, reason: string): Promise<boolean> => {
+      const result = await voidTreatment(id, reason)
+      if (!result.ok) {
+        setSaveError(result.reason)
+        return false
+      }
+      const at = new Date().toISOString()
+      setLiveTreatments((prev) =>
+        prev ? prev.map((r) => (r.id === id ? { ...r, voidedAt: at, voidReason: reason } : r)) : prev,
+      )
+      return true
+    },
+    [],
+  )
+
   const clinicalStatus: ClinicalStatus = useMemo(() => {
     if (manualStatus.text) {
       return {
@@ -432,7 +479,8 @@ export function usePatientCockpit(patientId: string) {
         manualText: manualStatus.text,
       }
     }
-    const latest = treatmentRecords[0]
+    // A record saved in error says nothing about the patient.
+    const latest = treatmentRecords.find((r) => !r.voidedAt)
     const fromVisit = latest?.note?.trim() || latest?.title?.trim()
     if (latest && fromVisit) {
       return { text: fromVisit, source: "treatment", at: latest.recordedAt, manualText: "" }
@@ -557,7 +605,8 @@ export function usePatientCockpit(patientId: string) {
     [isLive, livePatient?.carePlanSessions, savePatientFields],
   )
 
-  const totalSessionsDone = treatmentRecords.length + completedSessions.length
+  const totalSessionsDone =
+    treatmentRecords.filter((r) => !r.voidedAt).length + completedSessions.length
 
   /**
    * Close the session and write it down.
@@ -578,9 +627,17 @@ export function usePatientCockpit(patientId: string) {
       if (isLive) {
         const canvas = await renderStrokesToBlob(canvasStrokes)
         const audio = await getAudio(activeAudioKey(patientId))
+        // What the pen wrote, as text. The handwriting stays as the image;
+        // the transcription goes into the note, labelled as a machine's
+        // reading of it, so the record can be searched and read at a glance
+        // without anyone pretending the transcription is the original.
+        const transcript = canvas ? await transcribeHandwriting(canvas) : null
+        const note = transcript
+          ? `${sessionNotes.trim()}${sessionNotes.trim() ? "\n\n" : ""}— Handwriting, transcribed automatically —\n${transcript}`
+          : sessionNotes
         const written = await createTreatment(patientId, {
           title: createTranslator("en")(`billing.treatment.${appointmentType}`),
-          note: sessionNotes,
+          note,
           treatmentType: appointmentType,
           canvas,
           audio,
@@ -726,6 +783,7 @@ export function usePatientCockpit(patientId: string) {
     setClinicalStatus,
     setPatientStatus,
     uploadDocumentRecord,
+    voidTreatmentRecord,
     sessionNotes,
     setSessionNotes,
     canvasStrokes,
