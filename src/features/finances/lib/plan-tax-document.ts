@@ -15,6 +15,15 @@ export interface TaxDocumentCustomer {
    * stops a renamed patient from getting a second customer card.
    */
   externalId: string
+  /**
+   * The provider's own id for this customer, when we know it.
+   *
+   * Sent instead of a search. The external identifier alone is enough for
+   * anyone this app has billed before, but not for the 519 patients whose card
+   * was created before it existed — nothing on those cards carries our id, so
+   * a search would miss and a second card would be opened.
+   */
+  sumitCustomerId?: number
   name: string
   email?: string
   phone?: string
@@ -92,6 +101,8 @@ export interface PlanTaxDocumentInput {
     email?: string
     phone?: string
     address?: string
+    /** Their card in the bookkeeping system, when one is already known. */
+    sumitCustomerId?: number
   }
   payment: { amount: number; method: PaymentMethod; date: string }
   draft: boolean
@@ -113,6 +124,7 @@ export function planPaidVisitDocument(input: PlanTaxDocumentInput): TaxDocumentR
     externalReference: invoice.appointmentId ?? invoice.id,
     customer: {
       externalId: patient.id,
+      sumitCustomerId: patient.sumitCustomerId,
       name: patient.fullName,
       email: patient.email,
       phone: patient.phone,
@@ -156,6 +168,7 @@ export function planCreditDocument(input: {
     externalReference: `credit-${input.invoice.appointmentId ?? input.invoice.id}`,
     customer: {
       externalId: input.patient.id,
+      sumitCustomerId: input.patient.sumitCustomerId,
       name: input.patient.fullName,
       email: input.patient.email,
       phone: input.patient.phone,

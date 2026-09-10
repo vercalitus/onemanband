@@ -31,6 +31,8 @@ export const dynamic = "force-dynamic"
 
 const customerSchema = z.object({
   externalId: z.string().min(1),
+  // SUMIT customer ids are past 2^31, so this is not an int32.
+  sumitCustomerId: z.number().int().positive().optional(),
   name: z.string().min(1),
   email: z.string().optional(),
   phone: z.string().optional(),

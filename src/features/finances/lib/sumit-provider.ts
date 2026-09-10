@@ -58,9 +58,24 @@ function toSumitPayload(request: TaxDocumentRequest): Record<string, unknown> {
       Date: request.issueDate,
       Language: LANGUAGE[request.language],
       Customer: {
-        // Matching on our patient id — not on name or email, either of which
-        // a patient may change — is what keeps one patient to one customer card.
-        SearchMode: SumitCustomerSearchMode.ExternalIdentifier,
+        /*
+         * Which card this document lands on.
+         *
+         * When the card is known, name it outright and search for nothing:
+         * `SearchMode: None` with an `ID` is the only way to reach a card that
+         * was created before this app existed, and 519 of the clinic's
+         * patients have one. Searching by our external identifier would miss
+         * every one of them and open a duplicate — proven against the live
+         * account, see AGENTS.md.
+         *
+         * Otherwise match on our patient id — not on name or email, either of
+         * which a patient may change. Either way the identifier is sent, so
+         * SUMIT records it on the card and the link exists on their side too.
+         */
+        SearchMode: request.customer.sumitCustomerId
+          ? SumitCustomerSearchMode.None
+          : SumitCustomerSearchMode.ExternalIdentifier,
+        ID: request.customer.sumitCustomerId ?? null,
         ExternalIdentifier: request.customer.externalId,
         Name: request.customer.name,
         EmailAddress: request.customer.email ?? null,

@@ -39,6 +39,7 @@ interface PatientRow {
   email: string | null
   address: string | null
   date_of_birth: string | null
+  sumit_customer_id: number | null
   tags: string[] | null
   medical_history_summary: string | null
   general_notes: string | null
@@ -50,7 +51,7 @@ interface PatientRow {
 }
 
 const COLUMNS =
-  "id, full_name, status, phone, email, address, date_of_birth, tags, medical_history_summary, general_notes, last_seen_at, clinical_status, clinical_status_updated_at, body_map_marks, care_plan_sessions"
+  "id, full_name, status, phone, email, address, date_of_birth, sumit_customer_id, tags, medical_history_summary, general_notes, last_seen_at, clinical_status, clinical_status_updated_at, body_map_marks, care_plan_sessions"
 
 function toSummary(row: PatientRow): PatientSummary {
   return {
@@ -61,6 +62,7 @@ function toSummary(row: PatientRow): PatientSummary {
     email: row.email ?? "",
     address: row.address ?? undefined,
     dateOfBirth: row.date_of_birth ?? undefined,
+    sumitCustomerId: row.sumit_customer_id ?? undefined,
     /*
      * The best date anyone has. Backfilled at import from the bookkeeping
      * history: most patients here pay at the session, so the date of their
@@ -253,6 +255,33 @@ export interface PatientPatch {
   bodyMapMarks?: TreatmentMark[]
   /** Null clears the plan and returns the chart to the practice default. */
   carePlanSessions?: number | null
+}
+
+/**
+ * Remember which customer card in the bookkeeping system this patient is.
+ *
+ * Written once, the first time a document is filed for a patient who had no
+ * card — SUMIT creates one and hands back its id, and without this the next
+ * document would search by our identifier again. (It would find it, because
+ * SUMIT stores the identifier on the card it made; this makes the link ours as
+ * well as theirs, and it is what the backfill for the 519 existing cards
+ * writes into.)
+ *
+ * Never overwrites: a patient whose card is already known is not re-pointed at
+ * another one by a filing.
+ */
+export async function linkSumitCustomer(
+  patientId: string,
+  customerId: number,
+): Promise<boolean> {
+  const db = createSupabaseBrowserClient()
+  if (!db || !Number.isFinite(customerId)) return false
+  const { error } = await db
+    .from("patients")
+    .update({ sumit_customer_id: customerId })
+    .eq("id", patientId)
+    .is("sumit_customer_id", null)
+  return !error
 }
 
 export async function updatePatient(id: string, patch: PatientPatch): Promise<PatientWrite> {

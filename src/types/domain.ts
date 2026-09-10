@@ -154,6 +154,12 @@ export interface PatientSummary {
   address?: string
   /** ISO date. Collected at intake; a column, not a line in the notes. */
   dateOfBirth?: string
+  /**
+   * This patient's customer card in the bookkeeping system, when one is known.
+   * Sent instead of a search so an existing card is used rather than a
+   * duplicate created — see the migration and "The customer cards" in AGENTS.md.
+   */
+  sumitCustomerId?: number
   lastVisit: string
   balance: string
   tags: string[]

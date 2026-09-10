@@ -13,7 +13,7 @@ import {
   fetchUninvoicedVisits,
   settleInvoiceRow,
 } from "@/features/finances/lib/finance-repository"
-import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
+import { clinicHasPatients, linkSumitCustomer } from "@/features/patients/lib/patient-repository"
 import { planPaidVisitDocument } from "@/features/finances/lib/plan-tax-document"
 import { fileTaxDocument } from "@/features/finances/lib/tax-documents"
 import {
@@ -292,6 +292,7 @@ export function useBilling() {
           email: patient?.email,
           phone: patient?.phone,
           address: patient?.address,
+          sumitCustomerId: patient?.sumitCustomerId,
         },
         payment,
         // Overridden server-side; the deploy decides, not the browser.
@@ -299,6 +300,20 @@ export function useBilling() {
       })
 
       const outcome = await fileTaxDocument(request, { invoiceId })
+
+      // A patient with no card had one made for them just now. Remember which,
+      // so the next document names it instead of searching — and so the link
+      // is ours, not only SUMIT's.
+      if (
+        outcome.status === "filed" &&
+        !patient?.sumitCustomerId &&
+        outcome.document.customerId
+      ) {
+        const customerId = Number(outcome.document.customerId)
+        if (Number.isFinite(customerId)) {
+          void linkSumitCustomer(invoice.patientId, customerId)
+        }
+      }
 
       const settled = (patch: Partial<BillingInvoice>) => {
         setInvoices((prev) =>
