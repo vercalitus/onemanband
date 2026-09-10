@@ -202,12 +202,19 @@ export function AppointmentEditDialog({
       durationMinutes: durationMin,
       limit: 600,
     })
-    const perDay = new Map<string, number>()
+    // Two per day, an hour apart at least: 12:00 and 12:05 are the same
+    // answer twice, and the strip is there to offer alternatives.
+    const lastPerDay = new Map<string, number>()
+    const countPerDay = new Map<string, number>()
     const picked: FreeSlot[] = []
     for (const slot of slots) {
-      const n = perDay.get(slot.date) ?? 0
+      const n = countPerDay.get(slot.date) ?? 0
       if (n >= 2) continue
-      perDay.set(slot.date, n + 1)
+      const start = minutesFromHHMM(slot.start)
+      const last = lastPerDay.get(slot.date)
+      if (last !== undefined && start - last < 60) continue
+      countPerDay.set(slot.date, n + 1)
+      lastPerDay.set(slot.date, start)
       picked.push(slot)
       if (picked.length >= 6) break
     }
