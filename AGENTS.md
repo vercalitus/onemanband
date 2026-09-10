@@ -250,6 +250,7 @@ Patient-facing reminders, self-service links and questionnaires live in `src/fea
 Rules that matter:
 
 - **Clinic timezone (`Asia/Jerusalem`) is authoritative.** Wall-clock rules like "18:00 the evening before" resolve through `lib/clinic-time.ts`, never through the viewer's clock or a fixed offset — Israel observes DST.
+- **Patients are reached on WhatsApp (SMS as fallback), never by email.** `PATIENT_CHANNELS` in `plan-messages.ts` enforces it in the planner, not in settings — a settings blob stored on one device would otherwise keep email on. The clinic mailbox is the practitioner's. The tax document SUMIT mails a patient is not this: it is sent by the bookkeeping provider and is the receipt they are owed.
 - Feature code must call `lib/events.ts` (`onAppointmentBooked`, `onTreatmentCompleted`, `onNoShow`, …), never the planner or the store directly.
 - Patients have no accounts. The token in the URL *is* the authorisation — see `lib/tokens.ts`. Public routes are exempted in `lib/supabase/middleware.ts`.
 - A token carries a snapshot of what the message said (`AccessTokenContext`), so public pages never read clinic records.
@@ -385,7 +386,8 @@ If you see `Cannot find module './611.js'` in dev on Windows, run `npm run dev:f
 - ✅ Live on real clinic data — patients, documents, treatment records, tasks
 - ✅ Auth wall, MFA (TOTP) and password change under Settings → Security
 - ✅ Patient chart writes to Postgres; treatment records immutable by trigger
-- ✅ Billing against SUMIT — drafts only until `SUMIT_LIVE_DOCUMENTS` is set
+- ✅ Billing against SUMIT — credentials are in production as of 2026-09-10 and the ping answers `live: true, vatRate: 18`. Still **drafts only** until `SUMIT_LIVE_DOCUMENTS=1`; while drafting, every document is redirected to `BILLING_TEST_EMAIL` so no patient receives one
+- ✅ Handwriting on a closed session is transcribed into the treatment note (`/api/treatments/transcribe`, Claude vision, `ANTHROPIC_API_KEY`), labelled as automatic, beside the image it was read from
 - ✅ Automation engine, patient self-service pages, message queue
 - ✅ Dashboard signals and KPIs derived from clinic records
 - ✅ Exports and whole-clinic backup read the real clinic and state their source
