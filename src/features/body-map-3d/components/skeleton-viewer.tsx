@@ -1,6 +1,6 @@
 "use client"
 
-import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber"
+import { Canvas, useThree } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
@@ -54,39 +54,33 @@ const GROUP_COLOR: Record<SkeletonPart["group"], string> = {
   pelvis: "#e6ecf3",
 }
 
+/**
+ * The bones, and the object the raycaster is aimed at.
+ *
+ * Picking is done by this component's own raycaster against this group rather
+ * than through react-three-fiber's per-mesh pointer events. Two reasons: those
+ * events compete with OrbitControls over the same drag, and hanging four
+ * handlers off each of ~250 meshes to answer one question is a lot of
+ * bookkeeping for a raycast we can do directly.
+ */
 function SkeletonMeshes({
   parts,
   highlighted,
-  onHover,
-  onPick,
-  pickable,
+  groupRef,
 }: {
   parts: SkeletonPart[]
   highlighted: Set<string>
-  onHover: (name: string | null) => void
-  onPick: (name: string) => void
-  pickable: boolean
+  groupRef: React.RefObject<THREE.Group | null>
 }) {
   return (
-    <group>
+    <group ref={groupRef}>
       {parts.map((part, i) => (
         <mesh
           key={`${part.name}-${i}`}
+          name={part.name}
           geometry={part.geometry}
           position={part.position}
           quaternion={part.quaternion}
-          onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-            e.stopPropagation()
-            onHover(part.name)
-          }}
-          onPointerOut={() => onHover(null)}
-          // `onClick` and not `onPointerDown`: a drag that starts on a bone is
-          // someone turning the model, not someone choosing it.
-          onClick={(e: ThreeEvent<MouseEvent>) => {
-            if (!pickable) return
-            e.stopPropagation()
-            onPick(part.name)
-          }}
         >
           <meshStandardMaterial
             color={highlighted.has(part.name) ? "#0284c7" : GROUP_COLOR[part.group]}
@@ -133,6 +127,10 @@ export function SkeletonViewer({
 
   const cameraRef = useRef<THREE.Camera | null>(null)
   const controlsRef = useRef<{ target: THREE.Vector3; update: () => void } | null>(null)
+  const groupRef = useRef<THREE.Group | null>(null)
+  const raycaster = useRef(new THREE.Raycaster())
+  /** Where a press started, so a drag that turns the model is not a choice. */
+  const pressAt = useRef<{ x: number; y: number } | null>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const drawing = useRef(false)
@@ -169,34 +167,28 @@ export function SkeletonViewer({
     drawStrokes(ctx, shownStrokes)
   }, [shownStrokes, surface])
 
-  /** Which bone sits under a screen point, if any. */
-  const boneAt = useCallback(
-    (clientX: number, clientY: number): string | null => {
-      const el = wrapRef.current
-      const camera = cameraRef.current
-      if (!el || !camera) return null
-      const rect = el.getBoundingClientRect()
-      const ndc = new THREE.Vector2(
-        ((clientX - rect.left) / rect.width) * 2 - 1,
-        -((clientY - rect.top) / rect.height) * 2 + 1,
-      )
-      const ray = new THREE.Raycaster()
-      ray.setFromCamera(ndc, camera)
-      let closest: { name: string; distance: number } | null = null
-      for (const part of parts) {
-        const mesh = new THREE.Mesh(part.geometry)
-        mesh.position.set(...part.position)
-        if (part.quaternion) mesh.quaternion.copy(part.quaternion)
-        mesh.updateMatrixWorld()
-        const hits = ray.intersectObject(mesh, false)
-        if (hits.length && (!closest || hits[0].distance < closest.distance)) {
-          closest = { name: part.name, distance: hits[0].distance }
-        }
-      }
-      return closest?.name ?? null
-    },
-    [parts],
-  )
+  /**
+   * Which bone sits under a screen point, if any.
+   *
+   * Against the live scene graph, so it costs one raycast and stays honest
+   * about what is actually on screen. The first version rebuilt every mesh on
+   * each call, which is fine once for a tap and far too much on every pointer
+   * move.
+   */
+  const boneAt = useCallback((clientX: number, clientY: number): string | null => {
+    const el = wrapRef.current
+    const camera = cameraRef.current
+    const group = groupRef.current
+    if (!el || !camera || !group) return null
+    const rect = el.getBoundingClientRect()
+    const ndc = new THREE.Vector2(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    )
+    raycaster.current.setFromCamera(ndc, camera)
+    const hit = raycaster.current.intersectObjects(group.children, false)[0]
+    return hit?.object.name || null
+  }, [])
 
   const addBone = useCallback((name: string | null) => {
     if (!name) return
@@ -298,6 +290,27 @@ export function SkeletonViewer({
         ref={wrapRef}
         className="relative h-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white"
         style={{ touchAction: drawingMode ? "none" : "auto" }}
+        /*
+         * Hover and pick live here, on the wrapper, so they work the same in
+         * every mode and never take a drag away from OrbitControls: a press
+         * that travels more than a few pixels was someone turning the model.
+         */
+        onPointerMove={(e) => {
+          if (drawingMode) return
+          setHovered(boneAt(e.clientX, e.clientY))
+        }}
+        onPointerLeave={() => !drawingMode && setHovered(null)}
+        onPointerDown={(e) => {
+          if (!pointMode) return
+          pressAt.current = { x: e.clientX, y: e.clientY }
+        }}
+        onPointerUp={(e) => {
+          if (!pointMode || !pressAt.current) return
+          const moved = Math.hypot(e.clientX - pressAt.current.x, e.clientY - pressAt.current.y)
+          pressAt.current = null
+          if (moved > 6) return
+          addBone(boneAt(e.clientX, e.clientY))
+        }}
       >
         <Canvas
           camera={{ position: [150, 112, -300], fov: 35 }}
@@ -318,9 +331,7 @@ export function SkeletonViewer({
           <SkeletonMeshes
             parts={parts}
             highlighted={new Set(viewing ? viewing.bones : bones)}
-            onHover={setHovered}
-            onPick={(name) => addBone(name)}
-            pickable={pointMode}
+            groupRef={groupRef}
           />
           <OrbitControls
             // Without this `useThree().controls` is null and a saved mark
