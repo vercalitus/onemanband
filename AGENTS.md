@@ -196,6 +196,30 @@ So:
 
 What a settled row holds, in full: who, how much, when, whether it was paid, and the SUMIT document id.
 
+#### The customer cards are not linked yet — issuing will duplicate 519 of them
+
+A patient created here does **not** create a SUMIT customer. The card is created
+by SUMIT itself, at the moment the first document for that patient is filed,
+matched on `SearchMode: ExternalIdentifier` with our patient UUID.
+
+Verified against the live account on 2026-09-10 (read-only, plus two approved
+draft documents for an invented patient):
+
+- SUMIT holds **521 customer cards** across 2,050 historical documents.
+- **519 of our 1,181 patients already have one**, from before this app existed.
+- Those cards carry no `ExternalIdentifier`, so our UUID will never match them.
+- Two identical draft filings for a new patient created the card once and
+  reused it the second time — the mechanism is correct, it simply has nothing
+  to match against for anyone Martin billed before.
+
+So the first invoice for any of those 519 opens a **second card** and splits
+their history. The 661 with no card are fine: creating one is the right
+behaviour. The fix is to store the SUMIT `CustomerID` on the patient row and
+send `ID` + `SearchMode: None` when a link exists; the computed pairing is at
+`C:\Users\verca\onemanband-sumit-link-review.json` (outside the repo) and
+Martin must approve it before anything is written — merging customer files in
+a bookkeeping account is not an automatic act.
+
 ### The patient chart
 
 Everything a practitioner writes on `/patients/[id]` is a row: the status line,
