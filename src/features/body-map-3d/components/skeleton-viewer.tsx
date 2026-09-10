@@ -356,7 +356,20 @@ export function SkeletonViewer({
           The distance is not a guess: the frame is ~172 cm and at 35° a
           camera has to stand about 300 cm back to see all of it.
         */}
-        <Canvas camera={{ position: [140, 108, -270], fov: 35 }} dpr={[1, 2]}>
+        <Canvas
+          camera={{ position: [150, 112, -300], fov: 35 }}
+          dpr={[1, 2]}
+          /*
+           * Aim the camera before the first frame.
+           *
+           * OrbitControls applies its `target` in an effect, which is one
+           * frame too late: until then the camera looks at the origin — the
+           * floor between the feet — and the body sits above the picture. It
+           * came right the moment anything was touched, which is exactly the
+           * kind of bug that reads as "it didn't load".
+           */
+          onCreated={({ camera }) => camera.lookAt(0, 86, 0)}
+        >
           <color attach="background" args={["#f8fafc"]} />
           <ambientLight intensity={0.75} />
           <directionalLight position={[60, 180, 120]} intensity={1.5} />
@@ -372,6 +385,9 @@ export function SkeletonViewer({
             picking={marking}
           />
           <OrbitControls
+            // Without this `useThree().controls` is null, and an annotation
+            // could not remember the angle it was drawn at.
+            makeDefault
             enabled={!marking}
             enablePan={false}
             // Mid-frame, so turning orbits the body rather than swinging it.
