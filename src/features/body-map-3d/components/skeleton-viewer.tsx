@@ -141,6 +141,11 @@ export function SkeletonViewer({
 
   const drawingMode = mode === "pen" && !viewing
   const pointMode = mode === "point" && !viewing
+  /** Memoised: a fresh Set every render would re-render all ~250 bones. */
+  const highlighted = useMemo(
+    () => new Set(viewing ? viewing.bones : bones),
+    [viewing, bones],
+  )
 
   const onCamera = useCallback((camera: THREE.Camera, controls: unknown) => {
     cameraRef.current = camera
@@ -297,7 +302,10 @@ export function SkeletonViewer({
          */
         onPointerMove={(e) => {
           if (drawingMode) return
-          setHovered(boneAt(e.clientX, e.clientY))
+          const name = boneAt(e.clientX, e.clientY)
+          // Only when it actually changes: a state write per pointer move
+          // re-renders every bone in the scene, which a tablet feels.
+          setHovered((prev) => (prev === name ? prev : name))
         }}
         onPointerLeave={() => !drawingMode && setHovered(null)}
         onPointerDown={(e) => {
@@ -328,11 +336,7 @@ export function SkeletonViewer({
           <directionalLight position={[60, 180, 120]} intensity={1.35} />
           <directionalLight position={[-80, 90, -140]} intensity={0.9} />
           <CameraProbe onReady={onCamera} />
-          <SkeletonMeshes
-            parts={parts}
-            highlighted={new Set(viewing ? viewing.bones : bones)}
-            groupRef={groupRef}
-          />
+          <SkeletonMeshes parts={parts} highlighted={highlighted} groupRef={groupRef} />
           <OrbitControls
             // Without this `useThree().controls` is null and a saved mark
             // could not restore the angle it was drawn at.
