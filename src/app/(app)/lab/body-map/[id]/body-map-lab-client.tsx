@@ -37,7 +37,21 @@ export function BodyMapLabClient({ patientId }: { patientId: string }) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(storageKey(patientId))
-      setAnnotations(raw ? (JSON.parse(raw) as Annotation[]) : [])
+      const stored = raw ? (JSON.parse(raw) as Annotation[]) : []
+      /*
+       * Strokes used to be screen coordinates and are now positions on the
+       * bone. A mark made before that change keeps its bones and its note —
+       * the part that is actually a record — and loses only the ink, which
+       * has no place to go: nothing in a pair of pixels says where on the
+       * skeleton it was. Silently keeping it would draw a line through the
+       * middle of the body.
+       */
+      setAnnotations(
+        stored.map((a) => ({
+          ...a,
+          strokes: (a.strokes ?? []).filter((s) => s.every((p) => p?.length === 3)),
+        })),
+      )
     } catch {
       setAnnotations([])
     }

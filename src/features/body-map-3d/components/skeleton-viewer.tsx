@@ -380,6 +380,13 @@ export function SkeletonViewer({
           camera={{ position: [150, 112, -300], fov: 35 }}
           dpr={[1, 2]}
           /*
+           * react-three-fiber sets `touch-action: auto` on the canvas itself,
+           * which overrides the wrapper: on a tablet the browser then treats a
+           * pen drag as a scroll and swallows the pointermove events the
+           * stroke is made of. The mark has to win over the page.
+           */
+          style={{ touchAction: "none" }}
+          /*
            * Aim before the first frame. OrbitControls applies its `target` in
            * an effect, one frame too late: until then the camera looks at the
            * origin — the floor between the feet — and the body sits above the
