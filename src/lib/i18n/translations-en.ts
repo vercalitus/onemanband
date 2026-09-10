@@ -676,12 +676,6 @@ export const EN_MESSAGES: Record<string, string> = {
   "patientChart.toast.invoice": "Invoice generated and sent to billing.",
   "patientChart.breadcrumb": "Patients",
   "patientChart.bodyMapTitle": "Treatment Map",
-  "patientChart.bodyMapHint": "Click a spot on a diagram to mark where you treated the patient",
-  "patientChart.bodyMapFront": "Front",
-  "patientChart.bodyMapBack": "Back",
-  "patientChart.bodyMapSide": "Side",
-  "patientChart.bodyMapNoteTitle": "Treatment point",
-  "patientChart.bodyMapNotePh": "Add a note (optional)",
   "patientChart.activeSession": "Active Session",
   "patientChart.live": "Live",
   "patientChart.sessionProgress": "Session {current} of {total}",
@@ -770,7 +764,6 @@ export const EN_MESSAGES: Record<string, string> = {
   "header.openDiary": "Open today's diary",
 
   // 3D body map (prototype, /lab)
-  "patientChart.bodyMapLegacy": "Earlier marks, made on the flat diagrams. Kept as they were recorded.",
   "bodyMap3d.marked": "Marked",
   "bodyMap3d.underCursor": "Under the cursor",
   "bodyMap3d.mode.pen": "Pen",

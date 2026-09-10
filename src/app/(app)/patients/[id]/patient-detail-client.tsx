@@ -103,14 +103,10 @@ export function PatientDetailClient() {
     contactOverrides,
     saveContactOverrides,
     deleteDocumentRecord,
-    treatmentMarks,
     bodyMarks3d,
     addBodyMark3d,
     updateBodyMark3dNote,
     removeBodyMark3d,
-    addTreatmentMark,
-    updateTreatmentMarkNote,
-    removeTreatmentMark,
   } = usePatientCockpit(id)
 
   const [notesOpen, setNotesOpen] = useState(true)
@@ -235,10 +231,6 @@ export function PatientDetailClient() {
             onClinicalStatusChange={setClinicalStatus}
             onStatusChange={live ? setPatientStatus : undefined}
             onSaveOverrides={saveContactOverrides}
-            treatmentMarks={treatmentMarks}
-            onAddTreatmentMark={addTreatmentMark}
-            onUpdateTreatmentMarkNote={updateTreatmentMarkNote}
-            onRemoveTreatmentMark={removeTreatmentMark}
             bodyMarks3d={bodyMarks3d}
             onAddBodyMark3d={addBodyMark3d}
             onUpdateBodyMark3dNote={updateBodyMark3dNote}

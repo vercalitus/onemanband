@@ -161,7 +161,6 @@ export const HE_MESSAGES: Record<string, string> = {
   "header.openDiary": "פתיחת היומן של היום",
 
   // מפת גוף תלת־ממדית (אב־טיפוס, /lab)
-  "patientChart.bodyMapLegacy": "סימונים קודמים, שנעשו על הדיאגרמות השטוחות. נשמרים כפי שנרשמו.",
   "bodyMap3d.marked": "מסומן",
   "bodyMap3d.underCursor": "מתחת לסמן",
   "bodyMap3d.mode.pen": "עט",
@@ -710,12 +709,6 @@ export const HE_MESSAGES: Record<string, string> = {
   "patientChart.toast.invoice": "חשבונית הופקה ונשלחה לגבייה.",
   "patientChart.breadcrumb": "מטופלים",
   "patientChart.bodyMapTitle": "מפת טיפול",
-  "patientChart.bodyMapHint": "לחצו על נקודה בשרטוט כדי לסמן היכן טופל המטופל",
-  "patientChart.bodyMapFront": "חזית",
-  "patientChart.bodyMapBack": "גב",
-  "patientChart.bodyMapSide": "צד",
-  "patientChart.bodyMapNoteTitle": "נקודת טיפול",
-  "patientChart.bodyMapNotePh": "הוספת הערה (לא חובה)",
   "patientChart.activeSession": "טיפול פעיל",
   "patientChart.live": "פעיל",
   "patientChart.sessionProgress": "טיפול {current} מתוך {total}",

@@ -9,10 +9,8 @@ import { useLocale } from "@/components/providers/locale-provider"
 import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-badge"
 import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
 import { cn } from "@/lib/utils"
-import type { BodyMapView, BodyMark3d, PatientSummary, TreatmentMark } from "@/types/domain"
+import type { BodyMark3d, PatientSummary } from "@/types/domain"
 import type { ClinicalStatus, PatientContactOverrides } from "../lib/use-patient-cockpit"
-import { BodyMapContent } from "./body-map-card"
-
 /**
  * three.js is ~170 KB and the chart is opened many times a day for things that
  * are not the body map. It arrives when the panel is opened, not before.
@@ -46,10 +44,6 @@ interface Props {
   /** Absent on the demo chart, where the badge is only a badge. */
   onStatusChange?: (status: PatientSummary["status"]) => void
   onSaveOverrides: (o: PatientContactOverrides) => void
-  treatmentMarks: TreatmentMark[]
-  onAddTreatmentMark: (view: BodyMapView, x: number, y: number) => void
-  onUpdateTreatmentMarkNote: (id: string, note: string) => void
-  onRemoveTreatmentMark: (id: string) => void
   bodyMarks3d: BodyMark3d[]
   onAddBodyMark3d: (mark: Omit<BodyMark3d, "id" | "createdAt">) => void
   onUpdateBodyMark3dNote: (id: string, note: string) => void
@@ -70,10 +64,6 @@ export function PatientSmartHeader({
   onClinicalStatusChange,
   onStatusChange,
   onSaveOverrides,
-  treatmentMarks,
-  onAddTreatmentMark,
-  onUpdateTreatmentMarkNote,
-  onRemoveTreatmentMark,
   bodyMarks3d,
   onAddBodyMark3d,
   onUpdateBodyMark3dNote,
@@ -447,24 +437,6 @@ export function PatientSmartHeader({
               />
             )}
 
-            {/*
-             * The three flat diagrams, kept for the charts that already carry
-             * marks made on them. A dot at 41% across a picture cannot be
-             * translated onto a skeleton — nothing in it says which bone was
-             * meant — so those marks stay where they are readable, and no new
-             * ones are started here.
-             */}
-            {treatmentMarks.length > 0 && (
-              <div className="mt-6 border-t border-slate-100 pt-4">
-                <p className="mb-3 text-xs text-slate-400">{t("patientChart.bodyMapLegacy")}</p>
-                <BodyMapContent
-                  marks={treatmentMarks}
-                  onAddMark={onAddTreatmentMark}
-                  onUpdateNote={onUpdateTreatmentMarkNote}
-                  onRemoveMark={onRemoveTreatmentMark}
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>

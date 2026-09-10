@@ -20,8 +20,6 @@ import type {
   FinanceRecord,
   PatientStatus,
   BodyMark3d,
-  TreatmentMark,
-  BodyMapView,
 } from "@/types/domain"
 import {
   renderStrokesToBlob,
@@ -192,7 +190,6 @@ export function usePatientCockpit(patientId: string) {
   const [deletedDocumentIds, setDeletedDocumentIds] = useState<string[]>([])
   const [contactOverrides, setContactOverridesRaw] = useState<PatientContactOverrides>({})
   const [lastAppointmentType, setLastAppointmentTypeRaw] = useState<AppointmentType>("adjustments")
-  const [treatmentMarks, setTreatmentMarksRaw] = useState<TreatmentMark[]>([])
   const [bodyMarks3d, setBodyMarks3dRaw] = useState<BodyMark3d[]>([])
   const [hydrated, setHydrated] = useState(false)
   /** Why the last write did not stick. Silence here would be the old bug back. */
@@ -224,7 +221,6 @@ export function usePatientCockpit(patientId: string) {
         text: cleanStoredStatus(livePatient.clinicalStatus),
         at: livePatient.clinicalStatusUpdatedAt ?? null,
       })
-      setTreatmentMarksRaw(livePatient.bodyMapMarks ?? [])
       setBodyMarks3dRaw(livePatient.bodyMap3d ?? [])
       // The row itself carries the contact details; an overlay on top of it
       // would be a second copy that can disagree with the record.
@@ -234,7 +230,6 @@ export function usePatientCockpit(patientId: string) {
         text: cleanStoredStatus(readField<string | null>(patientId, "clinicalStatus", null)),
         at: null,
       })
-      setTreatmentMarksRaw(readField<TreatmentMark[]>(patientId, "treatmentMarks", []))
       setBodyMarks3dRaw(readField<BodyMark3d[]>(patientId, "bodyMarks3d", []))
       setContactOverridesRaw(readField(patientId, "contactOverrides", {}))
     }
@@ -371,18 +366,6 @@ export function usePatientCockpit(patientId: string) {
     [patientId],
   )
 
-  const persistMarks = useCallback(
-    (next: TreatmentMark[]) => {
-      setTreatmentMarksRaw(next)
-      if (isLive) {
-        void savePatientFields({ bodyMapMarks: next })
-        return
-      }
-      writeField(patientId, "treatmentMarks", next)
-    },
-    [patientId, isLive, savePatientFields],
-  )
-
   /**
    * Marks on the rotatable skeleton. Same seam as every other thing written on
    * this chart: a live clinic writes a column, the demo writes the browser.
@@ -423,30 +406,6 @@ export function usePatientCockpit(patientId: string) {
       persistMarks3d(bodyMarks3d.filter((m) => m.id !== id))
     },
     [bodyMarks3d, persistMarks3d],
-  )
-
-  const addTreatmentMark = useCallback(
-    (view: BodyMapView, x: number, y: number) => {
-      persistMarks([
-        ...treatmentMarks,
-        { id: `tm-${Date.now()}`, view, x, y, createdAt: new Date().toISOString() },
-      ])
-    },
-    [treatmentMarks, persistMarks],
-  )
-
-  const updateTreatmentMarkNote = useCallback(
-    (id: string, note: string) => {
-      persistMarks(treatmentMarks.map((m) => (m.id === id ? { ...m, note } : m)))
-    },
-    [treatmentMarks, persistMarks],
-  )
-
-  const removeTreatmentMark = useCallback(
-    (id: string) => {
-      persistMarks(treatmentMarks.filter((m) => m.id !== id))
-    },
-    [treatmentMarks, persistMarks],
   )
 
   /**
@@ -855,13 +814,9 @@ export function usePatientCockpit(patientId: string) {
     contactOverrides,
     saveContactOverrides,
     deleteDocumentRecord,
-    treatmentMarks,
     bodyMarks3d,
     addBodyMark3d,
     updateBodyMark3dNote,
     removeBodyMark3d,
-    addTreatmentMark,
-    updateTreatmentMarkNote,
-    removeTreatmentMark,
   }
 }

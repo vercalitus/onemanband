@@ -175,7 +175,6 @@ export const AR_MESSAGES: Record<string, string> = {
   "header.openDiary": "فتح مفكرة اليوم",
 
   // خريطة الجسم ثلاثية الأبعاد (نموذج أولي، ‏/lab)
-  "patientChart.bodyMapLegacy": "علامات سابقة رُسمت على المخططات المسطّحة. محفوظة كما سُجّلت.",
   "bodyMap3d.marked": "مُعلَّم",
   "bodyMap3d.underCursor": "تحت المؤشر",
   "bodyMap3d.mode.pen": "قلم",
@@ -711,12 +710,6 @@ export const AR_MESSAGES: Record<string, string> = {
   "patientChart.toast.invoice": "أُنشئت الفاتورة وأُرسِلت إلى الفوترة.",
   "patientChart.breadcrumb": "المرضى",
   "patientChart.bodyMapTitle": "خريطة العلاج",
-  "patientChart.bodyMapHint": "انقر على نقطة في الرسم لتحديد مكان العلاج",
-  "patientChart.bodyMapFront": "أمام",
-  "patientChart.bodyMapBack": "خلف",
-  "patientChart.bodyMapSide": "جانب",
-  "patientChart.bodyMapNoteTitle": "نقطة العلاج",
-  "patientChart.bodyMapNotePh": "إضافة ملاحظة (اختياري)",
   "patientChart.activeSession": "جلسة نشطة",
   "patientChart.live": "مباشر",
   "patientChart.sessionProgress": "الجلسة {current} من {total}",

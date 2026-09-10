@@ -175,7 +175,6 @@ export interface PatientSummary {
   /** When the status line was written. Shown with it; an undated status reads as current. */
   clinicalStatusUpdatedAt?: string
   /** Where on the body this patient has been treated. */
-  bodyMapMarks?: TreatmentMark[]
   bodyMap3d?: BodyMark3d[]
   /**
    * Sessions this patient's course of treatment runs to. Undefined means none
@@ -202,18 +201,6 @@ export interface TreatmentRecord {
    */
   voidedAt?: string
   voidReason?: string
-}
-
-export type BodyMapView = "front" | "back" | "side"
-
-export interface TreatmentMark {
-  id: string
-  view: BodyMapView
-  /** Percent (0–100) position within the diagram's viewBox — resolution-independent. */
-  x: number
-  y: number
-  note?: string
-  createdAt: string
 }
 
 /** A stroke on the skeleton: positions on the bone surface, in scene units. */
