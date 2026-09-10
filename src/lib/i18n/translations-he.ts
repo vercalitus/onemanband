@@ -187,6 +187,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "bodyMap3d.note": "הערה",
   "bodyMap3d.saveNote": "שמירת הערה",
   "bodyMap3d.deleteMark": "מחיקת הסימון",
+  "bodyMap3d.strokeCountOne": "קו אחד",
   "bodyMap3d.strokeCount": "{n} קווים",
   "patientChart.library.add": "הוספת מסמך",
   "patientChart.library.uploading": "מעלה…",

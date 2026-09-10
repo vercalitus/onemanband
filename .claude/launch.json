@@ -1,0 +1,32 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "dev3003",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:3003"
+      ],
+      "port": 3003
+    },
+    {
+      "name": "mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:mock"
+      ],
+      "port": 3001
+    }
+  ]
+}

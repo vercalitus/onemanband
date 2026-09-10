@@ -21,7 +21,8 @@
     "clean": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\"",
     "rebuild": "npm run clean && npm run build",
     "deploy": "vercel --yes --scope ilanmmaojzs-projects",
-    "deploy:prod": "vercel --prod --yes --scope ilanmmaojzs-projects"
+    "deploy:prod": "vercel --prod --yes --scope ilanmmaojzs-projects",
+    "dev:mock": "node scripts/dev-mock.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

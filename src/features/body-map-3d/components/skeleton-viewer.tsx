@@ -276,8 +276,16 @@ export function SkeletonViewer({
     drawing.current = false
     activePointer.current = null
     if (controlsRef.current) controlsRef.current.enabled = true
-    if (current.current.length > 1) setStrokes((prev) => [...prev, current.current])
+    /*
+     * Take the stroke out of the ref before clearing it. `setStrokes(prev =>
+     * [...prev, current.current])` reads the ref when React runs the updater,
+     * which is after the next line has emptied it — so every saved mark got an
+     * empty stroke and the drawing was lost while the bone names, taken during
+     * the drag, looked correct.
+     */
+    const finished = current.current
     current.current = []
+    if (finished.length > 1) setStrokes((prev) => [...prev, finished])
     setLiveStroke([])
   }
 
@@ -578,7 +586,11 @@ export function SkeletonViewer({
                         <span className="mt-0.5 block text-[11px] text-slate-400">
                           {new Date(a.createdAt).toLocaleString(localeTag)}
                           {a.strokes.length
-                            ? ` · ${t("bodyMap3d.strokeCount", { n: a.strokes.length })}`
+                            ? ` · ${
+                                a.strokes.length === 1
+                                  ? t("bodyMap3d.strokeCountOne")
+                                  : t("bodyMap3d.strokeCount", { n: a.strokes.length })
+                              }`
                             : ""}
                         </span>
                       </span>

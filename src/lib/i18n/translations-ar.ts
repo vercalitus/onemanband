@@ -201,6 +201,7 @@ export const AR_MESSAGES: Record<string, string> = {
   "bodyMap3d.note": "ملاحظة",
   "bodyMap3d.saveNote": "حفظ الملاحظة",
   "bodyMap3d.deleteMark": "حذف العلامة",
+  "bodyMap3d.strokeCountOne": "خط واحد",
   "bodyMap3d.strokeCount": "{n} خطوط",
   "patientChart.library.add": "إضافة مستند",
   "patientChart.library.uploading": "جارٍ الرفع…",

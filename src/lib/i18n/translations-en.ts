@@ -790,6 +790,7 @@ export const EN_MESSAGES: Record<string, string> = {
   "bodyMap3d.note": "Note",
   "bodyMap3d.saveNote": "Save note",
   "bodyMap3d.deleteMark": "Delete mark",
+  "bodyMap3d.strokeCountOne": "1 stroke",
   "bodyMap3d.strokeCount": "{n} strokes",
   "patientChart.library.add": "Add document",
   "patientChart.library.uploading": "Uploading…",
