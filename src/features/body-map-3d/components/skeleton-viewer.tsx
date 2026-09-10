@@ -134,7 +134,7 @@ function CameraProbe({
 const REGIONS: { key: string; y: number; distance: number; from: [number, number, number] }[] = [
   { key: "bodyMap3d.region.all", y: 86, distance: 340, from: [0.4, 0.14, -1] },
   { key: "bodyMap3d.region.headNeck", y: 152, distance: 118, from: [0.3, 0.14, -1] },
-  { key: "bodyMap3d.region.shoulders", y: 138, distance: 155, from: [0.22, 0.16, -1] },
+  { key: "bodyMap3d.region.shoulders", y: 134, distance: 150, from: [0.22, 0.16, -1] },
   { key: "bodyMap3d.region.chest", y: 126, distance: 150, from: [0.2, 0.08, 1] },
   { key: "bodyMap3d.region.upperBack", y: 123, distance: 140, from: [0.24, 0.1, -1] },
   { key: "bodyMap3d.region.lowerBack", y: 99, distance: 108, from: [0.24, 0.08, -1] },
