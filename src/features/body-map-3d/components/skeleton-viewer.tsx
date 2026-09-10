@@ -248,6 +248,7 @@ export function SkeletonViewer({
     const camera = cameraRef.current
     if (!camera || (!strokes.length && !bones.length)) return
     const target = controlsRef.current?.target ?? new THREE.Vector3(0, SKELETON_HEIGHT / 2, 0)
+    void SKELETON_HEIGHT
     onSave({
       bones,
       strokes,
@@ -346,7 +347,16 @@ export function SkeletonViewer({
         className="relative h-[540px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white"
         style={{ touchAction: marking ? "none" : "auto" }}
       >
-        <Canvas camera={{ position: [0, 95, 210], fov: 35 }} dpr={[1, 2]}>
+        {/*
+          A three-quarter view from behind, framed to hold the whole frame.
+          Behind, because the back is what gets treated and the curve of the
+          spine is the thing being read; three-quarter, because a flat
+          posterior view flattens the kyphosis it exists to show.
+
+          The distance is not a guess: the frame is ~172 cm and at 35° a
+          camera has to stand about 300 cm back to see all of it.
+        */}
+        <Canvas camera={{ position: [140, 108, -270], fov: 35 }} dpr={[1, 2]}>
           <color attach="background" args={["#f8fafc"]} />
           <ambientLight intensity={0.75} />
           <directionalLight position={[60, 180, 120]} intensity={1.5} />
@@ -364,9 +374,10 @@ export function SkeletonViewer({
           <OrbitControls
             enabled={!marking}
             enablePan={false}
-            target={[0, 95, 0]}
-            minDistance={90}
-            maxDistance={340}
+            // Mid-frame, so turning orbits the body rather than swinging it.
+            target={[0, 86, 0]}
+            minDistance={70}
+            maxDistance={420}
           />
         </Canvas>
 
