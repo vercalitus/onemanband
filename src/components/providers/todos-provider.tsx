@@ -219,6 +219,7 @@ export function TodosProvider({ children }: { children: ReactNode }) {
                   ? settings.integrations.billingProvider
                   : billing.provider,
               message: billing.message,
+              draftsOnly: !!billing.ok && billing.provider !== "simulated" && !!billing.draftsOnly,
             }
           : null,
       })

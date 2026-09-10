@@ -96,7 +96,13 @@ export interface ClinicSignalInput {
   /** Sessions recorded per patient, for care-plan progress. */
   treatmentCounts: Map<string, number>
   /** Result of the last billing-provider check, when one has been made. */
-  billing?: { ok: boolean; provider: string; message?: string } | null
+  billing?: {
+    ok: boolean
+    provider: string
+    message?: string
+    /** Connected, but filing drafts: real calls, no numbers, no receipts. */
+    draftsOnly?: boolean
+  } | null
 }
 
 export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
@@ -354,19 +360,25 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
 
   /* ── The system itself ─────────────────────────────────────────────────── */
 
-  // 6 — Billing cannot file a document. Worth saying out loud before somebody
-  // takes payment and finds out afterwards that no receipt exists.
+  // 6 — Billing cannot file a numbered document. Worth saying out loud before
+  // somebody takes payment and finds out afterwards that no receipt exists.
+  // Two different situations, and the row says which: no provider at all, or
+  // a provider that is connected and filing drafts — real calls to a real
+  // account, no number, no tax event — until live filing is switched on.
   if (input.billing && !input.billing.ok) {
+    const drafts = !!input.billing.draftsOnly
     items.push({
       id: `rx-provider-${input.billing.provider}`,
       kind: "reactive",
       priority: "high",
       tone: "fault",
-      titleKey: "signal.providerDisconnected",
-      dueKey: "signal.due.provider",
+      titleKey: drafts ? "signal.providerDraftsOnly" : "signal.providerDisconnected",
+      dueKey: drafts ? "signal.due.providerDrafts" : "signal.due.provider",
       params: { provider: input.billing.provider },
-      title: `Reconnect billing provider — ${input.billing.provider}`,
-      due: "Disconnected",
+      title: drafts
+        ? `Billing is filing drafts only — ${input.billing.provider}`
+        : `Reconnect billing provider — ${input.billing.provider}`,
+      due: drafts ? "Drafts only" : "Disconnected",
       completed: false,
       action: {
         kind: "link",

@@ -461,6 +461,8 @@ export const EN_MESSAGES: Record<string, string> = {
   "signal.due.visitOnDate": "Visit {date} — cannot be reminded",
   "signal.syncFailed": "Retry failed billing sync — {patient}",
   "signal.providerDisconnected": "Billing is not connected — a payment cannot be receipted ({provider})",
+  "signal.providerDraftsOnly": "Billing is filing drafts only — a payment gets no numbered receipt ({provider})",
+  "signal.due.providerDrafts": "Switch on live filing when the clinic is ready to issue real documents",
   // Reactive-signal due lines.
   "signal.due.daysOverdue": "{days}d overdue",
   "signal.due.visitOn": "Visit {date}",

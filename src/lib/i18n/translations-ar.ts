@@ -463,6 +463,8 @@ export const AR_MESSAGES: Record<string, string> = {
   "signal.due.visitOnDate": "زيارة {date} — تعذّر إرسال تذكير",
   "signal.syncFailed": "إعادة محاولة مزامنة فوترة فاشلة — {patient}",
   "signal.providerDisconnected": "الفوترة غير مرتبطة — لا يمكن إصدار إيصال ({provider})",
+  "signal.providerDraftsOnly": "الفوترة في وضع المسودات فقط — الدفع لا يحصل على إيصال مرقّم ({provider})",
+  "signal.due.providerDrafts": "فعّل الإصدار الفعلي عندما تكون العيادة جاهزة لإصدار مستندات حقيقية",
   "signal.due.daysOverdue": "متأخر {days} يوم",
   "signal.due.visitOn": "زيارة {date}",
   "signal.due.tomorrowAt": "غدًا {time}",

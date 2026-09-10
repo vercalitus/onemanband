@@ -454,6 +454,8 @@ export const HE_MESSAGES: Record<string, string> = {
   "signal.due.visitOnDate": "טיפול ב-{date} — אי אפשר לשלוח תזכורת",
   "signal.syncFailed": "נסו שוב סנכרון חיוב שנכשל — {patient}",
   "signal.providerDisconnected": "החיוב לא מחובר — לא ניתן להפיק קבלה על תשלום ({provider})",
+  "signal.providerDraftsOnly": "החיוב במצב טיוטות בלבד — תשלום לא מקבל קבלה ממוספרת ({provider})",
+  "signal.due.providerDrafts": "להדליק הפקה חיה כשהקליניקה מוכנה להוציא מסמכים אמיתיים",
   "signal.due.daysOverdue": "{days} ימים באיחור",
   "signal.due.visitOn": "ביקור {date}",
   "signal.due.tomorrowAt": "מחר {time}",
