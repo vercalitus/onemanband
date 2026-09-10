@@ -1,6 +1,6 @@
 "use client"
 
-import { FileImage, FileScan, FileText, X } from "lucide-react"
+import { FileImage, FileScan, FileText, X, type LucideIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -8,7 +8,10 @@ import { openDocument } from "@/features/patients/lib/document-repository"
 import { cn } from "@/lib/utils"
 import type { DocumentRecord } from "@/types/domain"
 
-const DOC_ICONS: Record<string, React.ElementType> = {
+// `LucideIcon`, not `React.ElementType`: react-three-fiber augments the JSX
+// namespace, and under that augmentation an ElementType's props resolve to
+// `never` — so `className` on one of these stops type-checking.
+const DOC_ICONS: Record<string, LucideIcon> = {
   xray: FileScan,
   mri: FileScan,
   insurance: FileText,

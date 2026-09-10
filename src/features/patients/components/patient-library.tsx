@@ -10,6 +10,7 @@ import {
   Loader2,
   Trash2,
   Upload,
+  type LucideIcon,
 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -18,7 +19,9 @@ import { cn } from "@/lib/utils"
 import type { DocumentRecord, DocumentType } from "@/types/domain"
 import { DocumentPreviewModal } from "./document-preview-modal"
 
-const DOC_ICONS: Record<string, React.ElementType> = {
+// See the note in document-preview-modal.tsx: `React.ElementType` resolves to
+// `never` props once react-three-fiber augments JSX.
+const DOC_ICONS: Record<string, LucideIcon> = {
   xray: FileScan,
   mri: FileScan,
   insurance: FileText,
