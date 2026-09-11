@@ -640,6 +640,29 @@ export function SkeletonViewer({
           </div>
         </div>
 
+        {/*
+         * Undo belongs on the model, not in the side panel.
+         *
+         * It lived under the tools, which put it at 855px down a 720px
+         * viewport — present, working, and below the fold, so a stroke drawn by
+         * mistake had no visible way back. Here it is beside the thing being
+         * drawn on, where the hand and the eye already are.
+         *
+         * Outside the draft on purpose: taking off the last bone empties the
+         * draft, and a button that vanishes with the thing it would bring back
+         * is no use. It stays as long as there is something to take back.
+         */}
+        {history.length > 0 && (
+          <button
+            type="button"
+            onClick={undo}
+            className="absolute end-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur transition-colors hover:border-slate-400 hover:text-slate-900"
+          >
+            <Undo2 className="size-3.5 rtl:-scale-x-100" aria-hidden />
+            {t("bodyMap3d.undo")}
+          </button>
+        )}
+
         <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[11px] font-medium text-slate-500">
           {t(mode === "pen" ? "bodyMap3d.hint.pen" : "bodyMap3d.hint.point")}
         </p>
@@ -706,23 +729,6 @@ export function SkeletonViewer({
             </button>
           ))}
         </div>
-
-        {/*
-         * Undo sits outside the draft, and that is the point: taking the last
-         * bone off empties the draft, and a button that disappears with the
-         * thing it would bring back is no use. It survives as long as there is
-         * something to take back.
-         */}
-        {history.length > 0 && (
-          <button
-            type="button"
-            onClick={undo}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
-          >
-            <Undo2 className="size-3.5 rtl:-scale-x-100" aria-hidden />
-            {t("bodyMap3d.undo")}
-          </button>
-        )}
 
         {/* The mark being made. Directly under the tools, where it is seen the
             moment it exists — it used to sit below a five-line instruction and
