@@ -54,13 +54,30 @@ function ResetForm() {
     void (async () => {
       const url = new URL(window.location.href)
       const code = url.searchParams.get("code")
+      /*
+       * A recovery token verified here rather than by Supabase's own redirect.
+       * That redirect only honours addresses on the project's allow list and
+       * otherwise silently falls back to the Site URL, which sends the
+       * practitioner somewhere that is not this app; verifying the token
+       * ourselves takes the redirect out of the path entirely.
+       */
+      const tokenHash = url.searchParams.get("token_hash")
       // The fragment never reaches the server, which is why this runs here and
       // not in a route handler.
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""))
       const accessToken = hash.get("access_token")
       const refreshToken = hash.get("refresh_token")
 
-      if (code) {
+      if (tokenHash) {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash: tokenHash,
+        })
+        if (otpError) {
+          setError(t("reset.error.link"))
+          return
+        }
+      } else if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
         if (exchangeError) {
           setError(t("reset.error.link"))
