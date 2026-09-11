@@ -18,6 +18,34 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  /**
+   * Send a recovery link to the address in the form.
+   *
+   * The address is not checked against the user list first, on purpose: an
+   * answer that differs for a real and a made-up address tells a stranger which
+   * of the two they typed. Either way this reports that a link was sent.
+   */
+  async function handleForgot() {
+    setError(null)
+    const supabase = createSupabaseBrowserClient()
+    if (!supabase) {
+      setError(t("login.error.notConfigured"))
+      return
+    }
+    const address = email.trim()
+    if (!address) {
+      setError(t("login.forgot.needEmail"))
+      return
+    }
+    setBusy(true)
+    await supabase.auth.resetPasswordForEmail(address, {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    })
+    setBusy(false)
+    setSent(true)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -124,6 +152,23 @@ function LoginForm() {
           </div>
         </div>
       </div>
+
+      <div className="mt-2.5 flex justify-end">
+        <button
+          type="button"
+          onClick={handleForgot}
+          disabled={busy}
+          className="text-xs font-medium text-slate-500 transition-colors hover:text-sky-700 disabled:opacity-50"
+        >
+          {t("login.forgot")}
+        </button>
+      </div>
+
+      {sent && (
+        <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-center text-sm text-sky-700">
+          {t("login.forgot.sent")}
+        </p>
+      )}
 
       {error && (
         <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-center text-sm text-rose-600">
