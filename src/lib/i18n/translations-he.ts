@@ -161,6 +161,19 @@ export const HE_MESSAGES: Record<string, string> = {
   "header.openDiary": "פתיחת היומן של היום",
 
   // מפת גוף תלת־ממדית (אב־טיפוס, /lab)
+  "bodyMap3d.selectArea": "בחירת אזור בגוף",
+  "bodyMap3d.clearArea": "חזרה לכל הגוף",
+  "bodyMap3d.tone.pain": "כאב",
+  "bodyMap3d.tone.nerve": "כאב עצבי",
+  "bodyMap3d.tone.unclassified": "לא מסווג",
+  "bodyMap3d.undo": "ביטול",
+  "bodyMap3d.removeBone": "הסרת {bone}",
+  "bodyMap3d.confirm.clearTitle": "לנקות את הסימון?",
+  "bodyMap3d.confirm.clearBody":
+    "הציור, העצמות וההערה שבעבודה יוסרו יחד.",
+  "bodyMap3d.confirm.deleteTitle": "למחוק את הסימון?",
+  "bodyMap3d.confirm.deleteBody":
+    "הוא יוסר מהרשומה של המטופל, על העצמות, הציור וההערה שלו.",
   "bodyMap3d.marked": "מסומן",
   "bodyMap3d.underCursor": "מתחת לסמן",
   "bodyMap3d.mode.pen": "עט",

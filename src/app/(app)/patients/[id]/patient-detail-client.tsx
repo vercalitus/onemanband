@@ -106,6 +106,7 @@ export function PatientDetailClient() {
     bodyMarks3d,
     addBodyMark3d,
     updateBodyMark3dNote,
+    updateBodyMark3dTone,
     removeBodyMark3d,
   } = usePatientCockpit(id)
 
@@ -234,6 +235,7 @@ export function PatientDetailClient() {
             bodyMarks3d={bodyMarks3d}
             onAddBodyMark3d={addBodyMark3d}
             onUpdateBodyMark3dNote={updateBodyMark3dNote}
+            onUpdateBodyMark3dTone={updateBodyMark3dTone}
             onRemoveBodyMark3d={removeBodyMark3d}
           />
 

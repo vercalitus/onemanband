@@ -20,6 +20,7 @@ import type {
   FinanceRecord,
   PatientStatus,
   BodyMark3d,
+  BodyMarkTone,
 } from "@/types/domain"
 import {
   renderStrokesToBlob,
@@ -397,6 +398,13 @@ export function usePatientCockpit(patientId: string) {
       persistMarks3d(
         bodyMarks3d.map((m) => (m.id === id ? { ...m, note: note || undefined } : m)),
       )
+    },
+    [bodyMarks3d, persistMarks3d],
+  )
+
+  const updateBodyMark3dTone = useCallback(
+    (id: string, tone: BodyMarkTone) => {
+      persistMarks3d(bodyMarks3d.map((m) => (m.id === id ? { ...m, tone } : m)))
     },
     [bodyMarks3d, persistMarks3d],
   )
@@ -817,6 +825,7 @@ export function usePatientCockpit(patientId: string) {
     bodyMarks3d,
     addBodyMark3d,
     updateBodyMark3dNote,
+    updateBodyMark3dTone,
     removeBodyMark3d,
   }
 }

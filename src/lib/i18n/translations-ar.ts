@@ -175,6 +175,19 @@ export const AR_MESSAGES: Record<string, string> = {
   "header.openDiary": "فتح مفكرة اليوم",
 
   // خريطة الجسم ثلاثية الأبعاد (نموذج أولي، ‏/lab)
+  "bodyMap3d.selectArea": "اختر منطقة من الجسم",
+  "bodyMap3d.clearArea": "العودة إلى الجسم كاملاً",
+  "bodyMap3d.tone.pain": "ألم",
+  "bodyMap3d.tone.nerve": "ألم عصبي",
+  "bodyMap3d.tone.unclassified": "غير مصنّف",
+  "bodyMap3d.undo": "تراجع",
+  "bodyMap3d.removeBone": "إزالة {bone}",
+  "bodyMap3d.confirm.clearTitle": "مسح هذه العلامة؟",
+  "bodyMap3d.confirm.clearBody":
+    "تُزال معاً الرسمة والعظام والملاحظة قيد العمل.",
+  "bodyMap3d.confirm.deleteTitle": "حذف هذه العلامة؟",
+  "bodyMap3d.confirm.deleteBody":
+    "تُزال من ملف المريض، مع عظامها ورسمتها وملاحظتها.",
   "bodyMap3d.marked": "مُعلَّم",
   "bodyMap3d.underCursor": "تحت المؤشر",
   "bodyMap3d.mode.pen": "قلم",

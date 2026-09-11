@@ -777,6 +777,19 @@ export const EN_MESSAGES: Record<string, string> = {
   "header.openDiary": "Open today's diary",
 
   // 3D body map (prototype, /lab)
+  "bodyMap3d.selectArea": "Select body area",
+  "bodyMap3d.clearArea": "Back to the whole body",
+  "bodyMap3d.tone.pain": "Pain",
+  "bodyMap3d.tone.nerve": "Nerve pain",
+  "bodyMap3d.tone.unclassified": "Unclassified",
+  "bodyMap3d.undo": "Undo",
+  "bodyMap3d.removeBone": "Remove {bone}",
+  "bodyMap3d.confirm.clearTitle": "Clear this mark?",
+  "bodyMap3d.confirm.clearBody":
+    "The drawing, the bones and the note you are working on are removed together.",
+  "bodyMap3d.confirm.deleteTitle": "Delete this mark?",
+  "bodyMap3d.confirm.deleteBody":
+    "It is removed from the patient's record, with its bones, its drawing and its note.",
   "bodyMap3d.marked": "Marked",
   "bodyMap3d.underCursor": "Under the cursor",
   "bodyMap3d.mode.pen": "Pen",

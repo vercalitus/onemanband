@@ -2,13 +2,21 @@
 
 import { Canvas, useThree } from "@react-three/fiber"
 import { Line, OrbitControls } from "@react-three/drei"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Undo2, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 
 import { buildSkeleton, type SkeletonPart } from "../lib/skeleton-parts"
 import { useLocale } from "@/components/providers/locale-provider"
-import type { BodyMark3d, BoneStroke } from "@/types/domain"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import type { BodyMark3d, BodyMarkTone, BoneStroke } from "@/types/domain"
 
 /**
  * One skeleton, turned to any angle, marked on the bone itself.
@@ -43,9 +51,38 @@ const GROUP_COLOR: Record<SkeletonPart["group"], string> = {
   pelvis: "#e6ecf3",
 }
 
+/**
+ * The colour a marked bone takes, and the one the pen writes in.
+ *
+ * The bone carries the finding's colour; the ink never does. A red line on a
+ * red bone is an invisible line — so the pen writes in near-black, which reads
+ * over red, over yellow and over bare bone alike, and the two say different
+ * things without competing: the colour is *what kind*, the ink is *where
+ * exactly*.
+ */
+const TONE_COLOR: Record<BodyMarkTone, string> = {
+  pain: "#dc2626",
+  nerve: "#eab308",
+}
+/** Marks made before a finding had a kind. Shown as itself, never guessed at. */
+const UNCLASSIFIED_COLOR = "#94a3b8"
+const INK = "#111827"
+const INK_OTHER = "#64748b"
+
+const toneColor = (tone?: BodyMarkTone) => (tone ? TONE_COLOR[tone] : UNCLASSIFIED_COLOR)
+
 /** Lift off the surface, in centimetres. Enough to clear the bone, small
  *  enough that the line still reads as being on it. */
 const INK_LIFT = 0.45
+
+/** What Undo restores. A snapshot rather than a list of reversible operations:
+ *  the draft is a handful of arrays, and "put it back exactly" cannot be got
+ *  subtly wrong the way "undo a tap that a stroke had already added" can. */
+interface Draft {
+  bones: string[]
+  strokes: BoneStroke[]
+  note: string
+}
 
 /**
  * The bones, and the object the raycaster is aimed at.
@@ -58,10 +95,12 @@ const INK_LIFT = 0.45
 function SkeletonMeshes({
   parts,
   highlighted,
+  color,
   groupRef,
 }: {
   parts: SkeletonPart[]
   highlighted: Set<string>
+  color: string
   groupRef: React.RefObject<THREE.Group | null>
 }) {
   return (
@@ -75,11 +114,11 @@ function SkeletonMeshes({
           quaternion={part.quaternion}
         >
           <meshStandardMaterial
-            color={highlighted.has(part.name) ? "#0284c7" : GROUP_COLOR[part.group]}
+            color={highlighted.has(part.name) ? color : GROUP_COLOR[part.group]}
             roughness={0.72}
             metalness={0.04}
-            emissive={highlighted.has(part.name) ? "#0369a1" : "#000000"}
-            emissiveIntensity={highlighted.has(part.name) ? 0.4 : 0}
+            emissive={highlighted.has(part.name) ? color : "#000000"}
+            emissiveIntensity={highlighted.has(part.name) ? 0.32 : 0}
           />
         </mesh>
       ))}
@@ -128,28 +167,40 @@ const REGIONS: { key: string; y: number; distance: number; from: [number, number
   { key: "bodyMap3d.region.legs", y: 45, distance: 180, from: [0.25, 0.06, 1] },
 ]
 
+const TONES: BodyMarkTone[] = ["pain", "nerve"]
+
+/** What a confirmation is being asked about. Null when nothing is. */
+type Pending = { kind: "clear" } | { kind: "delete"; id: string } | null
+
 export function SkeletonViewer({
   annotations,
   onSave,
   onDelete,
   onUpdateNote,
+  onUpdateTone,
 }: {
   annotations: BodyMark3d[]
   onSave: (annotation: Omit<BodyMark3d, "id" | "createdAt">) => void
   onDelete: (id: string) => void
   onUpdateNote: (id: string, note: string) => void
+  onUpdateTone: (id: string, tone: BodyMarkTone) => void
 }) {
   const { t, localeTag } = useLocale()
   const parts = useMemo(() => buildSkeleton(), [])
   const [mode, setMode] = useState<Mode>("point")
+  const [tone, setTone] = useState<BodyMarkTone>("pain")
   const [hovered, setHovered] = useState<string | null>(null)
   const [strokes, setStrokes] = useState<BoneStroke[]>([])
   const [liveStroke, setLiveStroke] = useState<BoneStroke>([])
   const [bones, setBones] = useState<string[]>([])
   const [note, setNote] = useState("")
+  const [history, setHistory] = useState<Draft[]>([])
   /** The saved mark whose details are open, expanded in place in the list. */
   const [openId, setOpenId] = useState<string | null>(null)
   const [editNote, setEditNote] = useState("")
+  const [regionKey, setRegionKey] = useState<string | null>(null)
+  const [regionOpen, setRegionOpen] = useState(false)
+  const [pending, setPending] = useState<Pending>(null)
 
   const cameraRef = useRef<THREE.Camera | null>(null)
   const controlsRef = useRef<{
@@ -162,20 +213,36 @@ export function SkeletonViewer({
   /** Where a press started, so a drag that turns the model is not a choice. */
   const pressAt = useRef<{ x: number; y: number } | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const regionRef = useRef<HTMLDivElement>(null)
   const drawing = useRef(false)
   const activePointer = useRef<number | null>(null)
   const penSeen = useRef(false)
   const current = useRef<BoneStroke>([])
 
-  const highlighted = useMemo(() => {
-    const open = annotations.find((a) => a.id === openId)
-    return new Set(open ? open.bones : bones)
-  }, [annotations, openId, bones])
+  const openMark = annotations.find((a) => a.id === openId) ?? null
+
+  const highlighted = useMemo(
+    () => new Set(openMark ? openMark.bones : bones),
+    [openMark, bones],
+  )
+  const highlightColor = openMark ? toneColor(openMark.tone) : TONE_COLOR[tone]
 
   const onCamera = useCallback((camera: THREE.Camera, controls: unknown) => {
     cameraRef.current = camera
     controlsRef.current = controls as typeof controlsRef.current
   }, [])
+
+  /** Remember the draft as it is now, so the next change can be taken back. */
+  const remember = () => setHistory((h) => [...h.slice(-49), { bones, strokes, note }])
+
+  const undo = () => {
+    if (!history.length) return
+    const previous = history[history.length - 1]
+    setBones(previous.bones)
+    setStrokes(previous.strokes)
+    setNote(previous.note)
+    setHistory(history.slice(0, -1))
+  }
 
   /**
    * Where on the skeleton a screen point lands: the bone, and a position just
@@ -209,10 +276,29 @@ export function SkeletonViewer({
     [],
   )
 
+  /** Bones collected while the pen is down. Not an undo step of their own —
+   *  the stroke and everything it touched come back together. */
   const addBone = useCallback((name: string | null | undefined) => {
     if (!name) return
     setBones((prev) => (prev.includes(name) ? prev : [...prev, name]))
   }, [])
+
+  /**
+   * A tap on a bone adds it; a tap on a bone already chosen takes it off again.
+   * Deliberately not a double-click: on a tablet held in one hand a double tap
+   * is unreliable to make and easy to make by accident, and the gesture that
+   * chose the bone is the obvious one for changing your mind about it.
+   */
+  const toggleBone = (name: string | null | undefined) => {
+    if (!name) return
+    remember()
+    setBones((prev) => (prev.includes(name) ? prev.filter((b) => b !== name) : [...prev, name]))
+  }
+
+  const removeBone = (name: string) => {
+    remember()
+    setBones((prev) => prev.filter((b) => b !== name))
+  }
 
   /** True when this press should draw rather than turn the model. */
   const isDrawPress = (e: React.PointerEvent) => {
@@ -237,6 +323,9 @@ export function SkeletonViewer({
     const hit = surfaceAt(e.clientX, e.clientY)
     if (!hit) return // nothing to draw on — let the model turn instead
 
+    // Once, before the stroke starts: the whole stroke and every bone it runs
+    // over are one thing to take back, not forty.
+    remember()
     if (controlsRef.current) controlsRef.current.enabled = false
     activePointer.current = e.pointerId
     try {
@@ -295,7 +384,7 @@ export function SkeletonViewer({
     const moved = Math.hypot(e.clientX - pressAt.current.x, e.clientY - pressAt.current.y)
     pressAt.current = null
     if (moved > 6) return
-    addBone(surfaceAt(e.clientX, e.clientY)?.bone)
+    toggleBone(surfaceAt(e.clientX, e.clientY)?.bone)
   }
 
   const clear = () => {
@@ -312,11 +401,13 @@ export function SkeletonViewer({
     onSave({
       bones,
       strokes,
+      tone,
       note: note.trim() || undefined,
       camera: [camera.position.x, camera.position.y, camera.position.z],
       target: [target.x, target.y, target.z],
     })
     clear()
+    setHistory([])
   }
 
   /** Open a saved mark: its own angle back, its note in place, in one tap. */
@@ -353,11 +444,46 @@ export function SkeletonViewer({
     controls.update()
   }
 
+  const chooseRegion = (region: (typeof REGIONS)[number], remember = true) => {
+    lookFrom(region.from, region.y, region.distance)
+    setRegionKey(remember ? region.key : null)
+    setRegionOpen(false)
+  }
+
+  // Close the region list the way every menu closes: a press anywhere else, or
+  // Escape. Without this it stays open over the model and swallows the first
+  // attempt to draw underneath it.
+  useEffect(() => {
+    if (!regionOpen) return
+    const away = (e: PointerEvent) => {
+      if (!regionRef.current?.contains(e.target as Node)) setRegionOpen(false)
+    }
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setRegionOpen(false)
+    document.addEventListener("pointerdown", away, true)
+    document.addEventListener("keydown", key)
+    return () => {
+      document.removeEventListener("pointerdown", away, true)
+      document.removeEventListener("keydown", key)
+    }
+  }, [regionOpen])
+
   const headline = bones.length
     ? bones.join(" · ")
-    : (annotations.find((a) => a.id === openId)?.bones.join(" · ") ?? hovered ?? "—")
+    : (openMark?.bones.join(" · ") ?? hovered ?? "—")
 
   const hasDraft = strokes.length > 0 || bones.length > 0
+
+  const confirmPending = () => {
+    if (!pending) return
+    if (pending.kind === "clear") {
+      remember()
+      clear()
+    } else {
+      onDelete(pending.id)
+      setOpenId(null)
+    }
+    setPending(null)
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
@@ -390,8 +516,8 @@ export function SkeletonViewer({
            *
            * The look-at point is 84, two below the body's own centre, and the
            * distance is set so the skeleton nearly fills the height: the head
-           * clears the region tags and the feet stand just above the hint line,
-           * rather than floating in the middle of an empty panel.
+           * clears the region control and the feet stand just above the hint
+           * line, rather than floating in the middle of an empty panel.
            */
           onCreated={({ camera }) => camera.lookAt(0, 84, 0)}
         >
@@ -400,7 +526,12 @@ export function SkeletonViewer({
           <directionalLight position={[60, 180, 120]} intensity={1.35} />
           <directionalLight position={[-80, 90, -140]} intensity={0.9} />
           <CameraProbe onReady={onCamera} />
-          <SkeletonMeshes parts={parts} highlighted={highlighted} groupRef={groupRef} />
+          <SkeletonMeshes
+            parts={parts}
+            highlighted={highlighted}
+            color={highlightColor}
+            groupRef={groupRef}
+          />
 
           {/* Every saved mark, on the body, all the time — the point of putting
               the ink in the scene. The one being read stands out; the rest stay
@@ -411,16 +542,16 @@ export function SkeletonViewer({
                 <Line
                   key={`${a.id}-${i}`}
                   points={s}
-                  color={a.id === openId ? "#0284c7" : "#94a3b8"}
+                  color={a.id === openId ? INK : INK_OTHER}
                   lineWidth={a.id === openId ? 3.5 : 2}
                 />
               ) : null,
             ),
           )}
           {strokes.map((s, i) =>
-            s.length > 1 ? <Line key={`draft-${i}`} points={s} color="#0ea5e9" lineWidth={3.5} /> : null,
+            s.length > 1 ? <Line key={`draft-${i}`} points={s} color={INK} lineWidth={3.5} /> : null,
           )}
-          {liveStroke.length > 1 && <Line points={liveStroke} color="#0ea5e9" lineWidth={3.5} />}
+          {liveStroke.length > 1 && <Line points={liveStroke} color={INK} lineWidth={3.5} />}
 
           <OrbitControls
             // Without this `useThree().controls` is null and a saved mark
@@ -456,19 +587,57 @@ export function SkeletonViewer({
           />
         </Canvas>
 
-        {/* One row, on the model rather than in the panel: it is about what you
-            are looking at, not about the mark you are making. */}
-        <div className="pointer-events-auto absolute inset-x-3 top-3 flex flex-wrap justify-center gap-1.5">
-          {REGIONS.map((r) => (
-            <button
-              key={r.key}
-              type="button"
-              onClick={() => lookFrom(r.from, r.y, r.distance)}
-              className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur transition-colors hover:border-sky-300 hover:text-sky-700"
-            >
-              {t(r.key)}
-            </button>
-          ))}
+        {/* One control, closed. Eight chips across the top were eight things to
+            read every time the panel opened, for a choice made occasionally. */}
+        <div ref={regionRef} className="absolute inset-x-3 top-3 z-10 flex justify-center">
+          <div className="relative">
+            <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white/95 px-1 py-1 shadow-sm backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setRegionOpen((v) => !v)}
+                aria-expanded={regionOpen}
+                aria-haspopup="menu"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:text-sky-700"
+              >
+                {regionKey ? t(regionKey) : t("bodyMap3d.selectArea")}
+                <ChevronDown
+                  className={`size-3.5 text-slate-400 transition-transform ${regionOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              {regionKey && (
+                <button
+                  type="button"
+                  onClick={() => chooseRegion(REGIONS[0], false)}
+                  aria-label={t("bodyMap3d.clearArea")}
+                  className="flex size-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="size-3.5" aria-hidden />
+                </button>
+              )}
+            </div>
+
+            {regionOpen && (
+              <div
+                role="menu"
+                className="absolute start-0 top-full z-20 mt-1.5 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+              >
+                {REGIONS.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => chooseRegion(r, r !== REGIONS[0])}
+                    className={`block w-full px-3 py-2 text-start text-sm transition-colors hover:bg-slate-50 ${
+                      regionKey === r.key ? "font-semibold text-sky-700" : "text-slate-700"
+                    }`}
+                  >
+                    {t(r.key)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[11px] font-medium text-slate-500">
@@ -483,7 +652,8 @@ export function SkeletonViewer({
             {hasDraft ? t("bodyMap3d.marked") : t("bodyMap3d.underCursor")}
           </p>
           <p
-            className="mt-1 break-words text-3xl font-bold leading-tight tracking-tight text-sky-700"
+            className="mt-1 break-words text-3xl font-bold leading-tight tracking-tight"
+            style={{ color: hasDraft || openMark ? highlightColor : "#0369a1" }}
             dir="ltr"
           >
             {headline}
@@ -503,7 +673,7 @@ export function SkeletonViewer({
               onClick={() => setMode(value)}
               className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
                 mode === value
-                  ? "bg-sky-600 text-white"
+                  ? "bg-slate-900 text-white"
                   : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
@@ -512,19 +682,78 @@ export function SkeletonViewer({
           ))}
         </div>
 
-        <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-          {t("bodyMap3d.intro")}
-          <br />
-          <span className="text-slate-500">{t("bodyMap3d.introDetail")}</span>
-        </p>
+        {/* The kind of finding, beside the tools: it is the other half of what
+            you are marking with, and it applies to both of them. */}
+        <div className="grid grid-cols-2 gap-2">
+          {TONES.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setTone(value)}
+              aria-pressed={tone === value}
+              className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                tone === value
+                  ? "border-slate-900 bg-white text-slate-900"
+                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              <span
+                className="size-3 shrink-0 rounded-full"
+                style={{ backgroundColor: TONE_COLOR[value] }}
+                aria-hidden
+              />
+              {t(`bodyMap3d.tone.${value}`)}
+            </button>
+          ))}
+        </div>
 
-        {/* The mark being made. Only while one is: an empty note box beside an
-            untouched model is a question nobody asked. */}
+        {/*
+         * Undo sits outside the draft, and that is the point: taking the last
+         * bone off empties the draft, and a button that disappears with the
+         * thing it would bring back is no use. It survives as long as there is
+         * something to take back.
+         */}
+        {history.length > 0 && (
+          <button
+            type="button"
+            onClick={undo}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          >
+            <Undo2 className="size-3.5 rtl:-scale-x-100" aria-hidden />
+            {t("bodyMap3d.undo")}
+          </button>
+        )}
+
+        {/* The mark being made. Directly under the tools, where it is seen the
+            moment it exists — it used to sit below a five-line instruction and
+            read as missing. */}
         {hasDraft && (
-          <div className="rounded-2xl border-2 border-sky-200 bg-sky-50/40 p-4">
+          <div className="rounded-2xl border-2 border-slate-300 bg-slate-50/60 p-4">
+            {bones.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {bones.map((bone) => (
+                  <span
+                    key={bone}
+                    className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 font-mono text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
+                    dir="ltr"
+                  >
+                    {bone}
+                    <button
+                      type="button"
+                      onClick={() => removeBone(bone)}
+                      aria-label={t("bodyMap3d.removeBone", { bone })}
+                      className="text-slate-400 transition-colors hover:text-rose-600"
+                    >
+                      <X className="size-3" aria-hidden />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
             <label
               htmlFor="mark-note"
-              className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700"
+              className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
             >
               {t("bodyMap3d.noteOnMark")}
             </label>
@@ -544,18 +773,9 @@ export function SkeletonViewer({
               >
                 {t("bodyMap3d.saveMark")}
               </button>
-              {strokes.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setStrokes((prev) => prev.slice(0, -1))}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
-                >
-                  {t("bodyMap3d.undoStroke")}
-                </button>
-              )}
               <button
                 type="button"
-                onClick={clear}
+                onClick={() => setPending({ kind: "clear" })}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
               >
                 {t("bodyMap3d.clear")}
@@ -576,7 +796,7 @@ export function SkeletonViewer({
                   <li
                     key={a.id}
                     className={`overflow-hidden rounded-xl border ${
-                      open ? "border-sky-200 bg-sky-50/40" : "border-slate-100"
+                      open ? "border-slate-300 bg-slate-50/60" : "border-slate-100"
                     }`}
                   >
                     {/* The row itself opens: one tap brings back the angle it
@@ -587,6 +807,11 @@ export function SkeletonViewer({
                       onClick={() => toggleOpen(a)}
                       className="flex w-full items-start gap-2 px-3 py-2 text-start"
                     >
+                      <span
+                        className="mt-1.5 size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: toneColor(a.tone) }}
+                        aria-hidden
+                      />
                       <span className="min-w-0 flex-1">
                         <span dir="ltr" className="block font-mono text-sm font-semibold text-slate-800">
                           {a.bones.join(" · ") || "—"}
@@ -595,6 +820,8 @@ export function SkeletonViewer({
                           <span className="mt-0.5 block truncate text-xs text-slate-600">{a.note}</span>
                         )}
                         <span className="mt-0.5 block text-[11px] text-slate-400">
+                          {t(a.tone ? `bodyMap3d.tone.${a.tone}` : "bodyMap3d.tone.unclassified")}
+                          {" · "}
                           {new Date(a.createdAt).toLocaleString(localeTag)}
                           {a.strokes.length
                             ? ` · ${
@@ -614,7 +841,32 @@ export function SkeletonViewer({
                     </button>
 
                     {open && (
-                      <div className="border-t border-sky-100 px-3 py-3">
+                      <div className="border-t border-slate-200 px-3 py-3">
+                        {/* A mark made before findings had a kind can be given
+                            one here. Nothing assigns it silently. */}
+                        <div className="mb-3 flex flex-wrap gap-1.5">
+                          {TONES.map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => onUpdateTone(a.id, value)}
+                              aria-pressed={a.tone === value}
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                a.tone === value
+                                  ? "border-slate-900 text-slate-900"
+                                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                              }`}
+                            >
+                              <span
+                                className="size-2.5 rounded-full"
+                                style={{ backgroundColor: TONE_COLOR[value] }}
+                                aria-hidden
+                              />
+                              {t(`bodyMap3d.tone.${value}`)}
+                            </button>
+                          ))}
+                        </div>
+
                         <label
                           htmlFor={`note-${a.id}`}
                           className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"
@@ -640,7 +892,7 @@ export function SkeletonViewer({
                           </button>
                           <button
                             type="button"
-                            onClick={() => onDelete(a.id)}
+                            onClick={() => setPending({ kind: "delete", id: a.id })}
                             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
                           >
                             {t("bodyMap3d.deleteMark")}
@@ -654,7 +906,42 @@ export function SkeletonViewer({
             </ul>
           </div>
         )}
+
+        {/* Last, not first: it is read once and then never again. */}
+        <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
+          {t("bodyMap3d.intro")}
+          <br />
+          <span className="text-slate-500">{t("bodyMap3d.introDetail")}</span>
+        </p>
       </div>
+
+      {/*
+       * Anything that loses work asks first. Removing one bone does not: it is
+       * a single tap to put back, and the Undo beside it restores the whole
+       * draft. These two are the ones you cannot simply do again — a saved mark
+       * is gone from the record, and Clear takes the drawing, the bones and the
+       * note together.
+       */}
+      <Dialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {t(pending?.kind === "delete" ? "bodyMap3d.confirm.deleteTitle" : "bodyMap3d.confirm.clearTitle")}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">
+            {t(pending?.kind === "delete" ? "bodyMap3d.confirm.deleteBody" : "bodyMap3d.confirm.clearBody")}
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPending(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmPending}>
+              {t(pending?.kind === "delete" ? "bodyMap3d.deleteMark" : "bodyMap3d.clear")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

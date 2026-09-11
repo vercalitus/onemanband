@@ -9,7 +9,7 @@ import { useLocale } from "@/components/providers/locale-provider"
 import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-badge"
 import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
 import { cn } from "@/lib/utils"
-import type { BodyMark3d, PatientSummary } from "@/types/domain"
+import type { BodyMark3d, BodyMarkTone, PatientSummary } from "@/types/domain"
 import type { ClinicalStatus, PatientContactOverrides } from "../lib/use-patient-cockpit"
 /**
  * three.js is ~170 KB and the chart is opened many times a day for things that
@@ -47,6 +47,7 @@ interface Props {
   bodyMarks3d: BodyMark3d[]
   onAddBodyMark3d: (mark: Omit<BodyMark3d, "id" | "createdAt">) => void
   onUpdateBodyMark3dNote: (id: string, note: string) => void
+  onUpdateBodyMark3dTone: (id: string, tone: BodyMarkTone) => void
   onRemoveBodyMark3d: (id: string) => void
 }
 
@@ -67,6 +68,7 @@ export function PatientSmartHeader({
   bodyMarks3d,
   onAddBodyMark3d,
   onUpdateBodyMark3dNote,
+  onUpdateBodyMark3dTone,
   onRemoveBodyMark3d,
 }: Props) {
   const { t, localeTag } = useLocale()
@@ -434,6 +436,7 @@ export function PatientSmartHeader({
                 onSave={onAddBodyMark3d}
                 onDelete={onRemoveBodyMark3d}
                 onUpdateNote={onUpdateBodyMark3dNote}
+                onUpdateTone={onUpdateBodyMark3dTone}
               />
             )}
 

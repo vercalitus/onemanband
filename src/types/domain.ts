@@ -207,6 +207,17 @@ export interface TreatmentRecord {
 export type BoneStroke = [number, number, number][]
 
 /**
+ * What kind of finding a mark records.
+ *
+ * Stored as the finding rather than as the colour it is drawn in. Red and
+ * yellow are how this looks today; `nerve` is what a practitioner meant, and it
+ * still reads that way after a redesign, in an export, or to whoever inherits
+ * these records. Absent on marks made before this existed — those are shown as
+ * unclassified rather than guessed at.
+ */
+export type BodyMarkTone = "pain" | "nerve"
+
+/**
  * A mark on the rotatable skeleton.
  *
  * The record is `bones` — names like `T5`, `Scapula L` — because that is what
@@ -219,6 +230,7 @@ export interface BodyMark3d {
   id: string
   bones: string[]
   strokes: BoneStroke[]
+  tone?: BodyMarkTone
   note?: string
   camera: [number, number, number]
   target: [number, number, number]
