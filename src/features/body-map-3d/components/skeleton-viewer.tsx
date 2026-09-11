@@ -118,7 +118,7 @@ function CameraProbe({
  * skeleton reads as a flat drawing.
  */
 const REGIONS: { key: string; y: number; distance: number; from: [number, number, number] }[] = [
-  { key: "bodyMap3d.region.all", y: 86, distance: 340, from: [0.4, 0.14, -1] },
+  { key: "bodyMap3d.region.all", y: 84, distance: 305, from: [0.4, 0.14, -1] },
   { key: "bodyMap3d.region.headNeck", y: 152, distance: 118, from: [0.3, 0.14, -1] },
   { key: "bodyMap3d.region.shoulders", y: 134, distance: 150, from: [0.22, 0.16, -1] },
   { key: "bodyMap3d.region.chest", y: 126, distance: 150, from: [0.2, 0.08, 1] },
@@ -308,7 +308,7 @@ export function SkeletonViewer({
   const save = () => {
     const camera = cameraRef.current
     if (!camera || (!strokes.length && !bones.length)) return
-    const target = controlsRef.current?.target ?? new THREE.Vector3(0, 86, 0)
+    const target = controlsRef.current?.target ?? new THREE.Vector3(0, 84, 0)
     onSave({
       bones,
       strokes,
@@ -373,7 +373,7 @@ export function SkeletonViewer({
         onPointerLeave={() => setHovered(null)}
       >
         <Canvas
-          camera={{ position: [150, 112, -300], fov: 35 }}
+          camera={{ position: [112, 123, -281], fov: 35 }}
           dpr={[1, 2]}
           /*
            * react-three-fiber sets `touch-action: auto` on the canvas itself,
@@ -387,8 +387,13 @@ export function SkeletonViewer({
            * an effect, one frame too late: until then the camera looks at the
            * origin — the floor between the feet — and the body sits above the
            * picture, which reads as a model that failed to load.
+           *
+           * The look-at point is 84, two below the body's own centre, and the
+           * distance is set so the skeleton nearly fills the height: the head
+           * clears the region tags and the feet stand just above the hint line,
+           * rather than floating in the middle of an empty panel.
            */
-          onCreated={({ camera }) => camera.lookAt(0, 86, 0)}
+          onCreated={({ camera }) => camera.lookAt(0, 84, 0)}
         >
           <color attach="background" args={["#f8fafc"]} />
           <ambientLight intensity={0.8} />
@@ -439,9 +444,15 @@ export function SkeletonViewer({
               MIDDLE: THREE.MOUSE.DOLLY,
               RIGHT: THREE.MOUSE.PAN,
             }}
-            target={[0, 86, 0]}
+            target={[0, 84, 0]}
             minDistance={40}
-            maxDistance={480}
+            /*
+             * Far enough out to see the whole body and no further. It was 480,
+             * which let a scroll shrink the skeleton to a figure in the middle
+             * of a large empty panel — nothing useful is visible from there,
+             * and getting back was a guess.
+             */
+            maxDistance={360}
           />
         </Canvas>
 
