@@ -305,10 +305,14 @@ export function usePatientCockpit(patientId: string) {
     [isLive, livePatient, savePatientFields],
   )
 
+  // Both of these are the session draft, and only their own editor reads them
+  // back — so they are written without the store's broadcast. With it, a stroke
+  // of the pen re-rendered everything on the chart, the skeleton viewer
+  // included, and the ink stuttered at the end of every letter.
   const setSessionNotes = useCallback(
     (value: string) => {
       setSessionNotesRaw(value)
-      writeField(patientId, "sessionNotes", value)
+      writeField(patientId, "sessionNotes", value, { notify: false })
     },
     [patientId],
   )
@@ -316,7 +320,7 @@ export function usePatientCockpit(patientId: string) {
   const setCanvasStrokes = useCallback(
     (value: Stroke[]) => {
       setCanvasStrokesRaw(value)
-      writeField(patientId, "canvasStrokes", value)
+      writeField(patientId, "canvasStrokes", value, { notify: false })
     },
     [patientId],
   )

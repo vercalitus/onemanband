@@ -15,9 +15,18 @@ export interface StrokePoint {
 
 export type Stroke = StrokePoint[]
 
-/** Internal canvas resolution — stroke coordinates live in this space. */
+/**
+ * Internal canvas resolution — stroke coordinates live in this space.
+ *
+ * The **displayed** canvas must keep this aspect ratio, and the writing surface
+ * is sized from it rather than the other way round. It used to be a fixed pixel
+ * height with a full-width canvas, so x and y were scaled by different amounts:
+ * what was written looked right under the pen and was stretched by half again
+ * horizontally in the saved image — which is also the image the transcription
+ * reads.
+ */
 export const CANVAS_WIDTH = 1200
-export const CANVAS_HEIGHT = 480
+export const CANVAS_HEIGHT = 700
 
 const GRID_GAP = 24
 
@@ -35,24 +44,76 @@ export function drawDotGrid(ctx: CanvasRenderingContext2D, width: number, height
   ctx.restore()
 }
 
+/**
+ * A usable pressure for one sample.
+ *
+ * Not every digitiser reports one: a pen without a pressure sensor, and every
+ * finger on Android, report exactly 0 while the contact is down. `p || 0.5`
+ * looks like it handles that and does — but `p ?? 0.5` did not, and a stylus
+ * that reported 0 drew a hairline that faded in and out mid-word. Anything
+ * outside (0,1] is not a reading, it is a device with nothing to say.
+ */
+export function inkPressure(pressure: number | undefined): number {
+  return pressure !== undefined && pressure > 0 && pressure <= 1 ? pressure : 0.5
+}
+
+const inkWidth = (pressure: number) => 1.5 + pressure * 2.5
+const inkColor = (pressure: number) => `rgba(15,23,42,${0.72 + pressure * 0.2})`
+
+const midpoint = (a: StrokePoint, b: StrokePoint): StrokePoint => ({
+  x: (a.x + b.x) / 2,
+  y: (a.y + b.y) / 2,
+  pressure: (a.pressure + b.pressure) / 2,
+})
+
+/**
+ * Draw the piece of a stroke that bends around point `i`.
+ *
+ * A pen samples faster than a hand moves, so joining the samples with straight
+ * lines shows every one of them: handwriting came out faceted, and the faster
+ * the pen the worse it looked. Each segment is a quadratic through the sample,
+ * starting and ending at the midpoints of its neighbours — the standard way to
+ * get a curve that passes smoothly through a sampled path.
+ *
+ * It is exported because the live canvas draws a stroke as it arrives and the
+ * full redraw draws it again afterwards. Both go through here, so committing a
+ * stroke cannot make the ink shift under the pen.
+ */
+export function drawStrokeSegment(
+  ctx: CanvasRenderingContext2D,
+  stroke: Stroke,
+  i: number,
+) {
+  const curr = stroke[i]
+  const from = i === 1 ? stroke[0] : midpoint(stroke[i - 1], curr)
+  const to = i === stroke.length - 1 ? curr : midpoint(curr, stroke[i + 1])
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.quadraticCurveTo(curr.x, curr.y, to.x, to.y)
+  ctx.lineWidth = inkWidth(curr.pressure)
+  ctx.strokeStyle = inkColor(curr.pressure)
+  ctx.stroke()
+}
+
+/** A stroke that never moved — a full stop, the dot of an i. */
+export function drawStrokeDot(ctx: CanvasRenderingContext2D, point: StrokePoint) {
+  ctx.beginPath()
+  ctx.arc(point.x, point.y, inkWidth(point.pressure) / 2, 0, Math.PI * 2)
+  ctx.fillStyle = inkColor(point.pressure)
+  ctx.fill()
+}
+
 /** Pressure-aware ink pass shared by the live canvas and the rasterizer. */
 export function drawStrokes(ctx: CanvasRenderingContext2D, strokes: Stroke[]) {
   ctx.save()
   ctx.lineCap = "round"
   ctx.lineJoin = "round"
   for (const stroke of strokes) {
-    if (stroke.length < 2) continue
-    ctx.beginPath()
-    ctx.moveTo(stroke[0].x, stroke[0].y)
-    for (let i = 1; i < stroke.length; i++) {
-      const pressure = stroke[i].pressure || 0.5
-      ctx.lineWidth = 1.5 + pressure * 2.5
-      ctx.strokeStyle = `rgba(15,23,42,${0.72 + pressure * 0.2})`
-      ctx.lineTo(stroke[i].x, stroke[i].y)
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.moveTo(stroke[i].x, stroke[i].y)
+    if (stroke.length === 1) {
+      drawStrokeDot(ctx, stroke[0])
+      continue
     }
+    for (let i = 1; i < stroke.length; i++) drawStrokeSegment(ctx, stroke, i)
   }
   ctx.restore()
 }
@@ -91,7 +152,7 @@ function renderStrokes(
   height: number,
 ): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null
-  if (!strokes.some((s) => s.length >= 2)) return null
+  if (!strokes.some((s) => s.length >= 1)) return null
 
   const canvas = document.createElement("canvas")
   canvas.width = width

@@ -29,11 +29,27 @@ export function readField<T>(patientId: string, field: string, fallback: T): T {
   }
 }
 
-export function writeField(patientId: string, field: string, value: unknown): void {
+/**
+ * Write one overlay field.
+ *
+ * The broadcast tells open views that something they display has changed, and
+ * it costs a re-read of storage plus a re-render of the chart. A session draft
+ * — the strokes on the canvas, the note being typed — is nobody else's
+ * business: it was announced on every pen stroke and every keypress, and the
+ * chart, timeline and three-dimensional skeleton re-rendered each time under a
+ * hand that was in the middle of writing. Pass `notify: false` for anything
+ * only its own editor reads.
+ */
+export function writeField(
+  patientId: string,
+  field: string,
+  value: unknown,
+  options: { notify?: boolean } = {},
+): void {
   if (typeof window === "undefined") return
   try {
     window.localStorage.setItem(storageKey(patientId, field), JSON.stringify(value))
-    window.dispatchEvent(new Event(PATIENT_EXTRAS_EVENT))
+    if (options.notify !== false) window.dispatchEvent(new Event(PATIENT_EXTRAS_EVENT))
   } catch {
     /* quota / private mode */
   }
