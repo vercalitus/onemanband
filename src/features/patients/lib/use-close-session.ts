@@ -70,6 +70,8 @@ export interface CloseSessionOutcome {
   billingFailed?: boolean
   /** True when an invitation to book was queued. */
   invitedToBook: boolean
+  /** True when the visit was left owing and the reminder ladder was queued. */
+  chargeLeftOpen: boolean
 }
 
 /** A visit that is neither cancelled nor already history. */
@@ -119,6 +121,10 @@ export function useSessionClosing(patientId: string) {
             isLive(a) &&
             a.status !== "completed" &&
             a.status !== "no_show" &&
+            // Never the visit being closed. A patient seen ahead of their slot
+            // leaves that slot in the future by the clock, and the sheet would
+            // have offered it as the next visit — the one just finished.
+            a.id !== todaysAppointment?.id &&
             (a.date > today || (a.date === today && minutesFromHHMM(a.start) > nowMinutes)),
         )
         .sort((a, b) =>
@@ -127,7 +133,7 @@ export function useSessionClosing(patientId: string) {
             : a.date.localeCompare(b.date),
         )[0] ?? null
     )
-  }, [appointments, patientId, today])
+  }, [appointments, patientId, today, todaysAppointment])
 
   const closeSession = useCallback(
     async (input: CloseSessionInput): Promise<CloseSessionOutcome> => {
@@ -215,7 +221,12 @@ export function useSessionClosing(patientId: string) {
           )
         }
 
-        return { billingMessage, billingFailed, invitedToBook }
+        return {
+          billingMessage,
+          billingFailed,
+          invitedToBook,
+          chargeLeftOpen: !input.paid && issued.ok,
+        }
       } finally {
         setClosing(false)
       }

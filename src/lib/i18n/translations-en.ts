@@ -782,6 +782,7 @@ export const EN_MESSAGES: Record<string, string> = {
   "patientChart.close.unpaidHint": "Leaves the charge open and starts payment reminders.",
   "patientChart.close.confirm": "Close session",
   "patientChart.close.invited": "A link to book the next visit was queued.",
+  "patientChart.close.chargeOpen": "{amount} left open — payment reminders queued.",
   "patientChart.close.billingUnavailable":
     "The charge could not be written, so nothing was billed for this visit.",
   "patientChart.timeline.voidAria": "Saved in error",

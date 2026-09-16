@@ -166,6 +166,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "patientChart.close.unpaidHint": "משאיר את החיוב פתוח ומתחיל תזכורות תשלום.",
   "patientChart.close.confirm": "סגור טיפול",
   "patientChart.close.invited": "קישור לקביעת התור הבא נכנס לתור השליחה.",
+  "patientChart.close.chargeOpen": "{amount} נשארו פתוחים — תזכורות תשלום נכנסו לתור.",
   "patientChart.close.billingUnavailable":
     "לא ניתן היה לרשום את החיוב, ולכן לא חויב דבר על הביקור הזה.",
   "patientChart.timeline.voidAria": "נשמר בטעות",

@@ -318,10 +318,21 @@ export function planMessages(event: AutomationEvent, ctx: PlanContext): OutboxMe
         // scheduled to fire immediately are exempt.
         if (step.schedule.mode !== "immediate" && at.getTime() < now.getTime()) continue
 
+        /**
+         * What `{date}` means in this message.
+         *
+         * The visit, whenever the event knows it. A payment reminder carries no
+         * appointment, only the day the charge was raised — and falling through
+         * to `at` made it print *the reminder's own send date*: "a reminder that
+         * ₪150 for your session on Sep 17 is still open", sent on Sep 17 about a
+         * visit on Sep 16. Midday, so no timezone rounding can move the day.
+         */
         const display = formatClinicDateTime(
           event.appointmentDate && event.appointmentStart
             ? clinicDateTimeToUtc(timezone, event.appointmentDate, event.appointmentStart)
-            : at,
+            : event.invoiceIssuedDate
+              ? clinicDateTimeToUtc(timezone, event.invoiceIssuedDate, "12:00")
+              : at,
           timezone,
           locale,
         )

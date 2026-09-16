@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, CalendarClock, CalendarPlus, Check, Loader2 } from "lucide-react"
+import { AlertTriangle, CalendarClock, CalendarPlus, Check, Loader2, Receipt } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -144,6 +144,16 @@ export function SessionCloseDialog({
                   <Check className="mt-px size-3.5 shrink-0" aria-hidden />
                 )}
                 {outcome.billingMessage}
+              </p>
+            )}
+            {/* A visit left owing has to say so. Without this the sheet closed
+                on an empty panel, which reads as "nothing happened" — for the
+                one outcome where something is owed and someone will be
+                chased. */}
+            {outcome.chargeLeftOpen && (
+              <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                <Receipt className="mt-px size-3.5 shrink-0" aria-hidden />
+                {t("patientChart.close.chargeOpen", { amount: formatMoney(parsed) })}
               </p>
             )}
             {outcome.invitedToBook && (

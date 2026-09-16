@@ -180,6 +180,7 @@ export const AR_MESSAGES: Record<string, string> = {
   "patientChart.close.unpaidHint": "يُبقي الرسوم مفتوحة ويبدأ تذكيرات الدفع.",
   "patientChart.close.confirm": "إغلاق الجلسة",
   "patientChart.close.invited": "أُدرج رابط حجز الموعد القادم في قائمة الإرسال.",
+  "patientChart.close.chargeOpen": "{amount} بقيت مفتوحة — أُدرجت تذكيرات الدفع في قائمة الإرسال.",
   "patientChart.close.billingUnavailable":
     "تعذّر تسجيل الرسوم، لذلك لم تُفوتَر هذه الزيارة.",
   "patientChart.timeline.voidAria": "حُفظ بالخطأ",
