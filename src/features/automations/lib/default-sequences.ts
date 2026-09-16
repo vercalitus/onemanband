@@ -201,7 +201,36 @@ export function defaultSequences(): AutomationSequence[] {
     },
 
     /* ---------------------------------------------------------------- */
-    /* 6 — Periodic progress questionnaire                               */
+    /* 6 — Left without a next visit booked                              */
+    /* ---------------------------------------------------------------- */
+    {
+      id: "seq-rebooking",
+      trigger: "rebooking.needed",
+      name: "Book the next visit",
+      enabled: true,
+      steps: [
+        {
+          id: "step-rebooking-invite",
+          enabled: true,
+          // Only ever planned when the session closed with nothing in the
+          // diary for this patient — the practitioner's own screen decides
+          // that, from the diary, and a patient who booked at the desk is
+          // never sent this.
+          name: "When the session closes with nothing booked",
+          schedule: { mode: "immediate" },
+          channels: ["whatsapp"],
+          actions: ["reschedule"],
+          template: {
+            body:
+              "Thanks for coming in today, {patient_name}. Pick a time for your next session " +
+              "here whenever suits you: {link}",
+          },
+        },
+      ],
+    },
+
+    /* ---------------------------------------------------------------- */
+    /* 7 — Periodic progress questionnaire                               */
     /* ---------------------------------------------------------------- */
     {
       id: "seq-progress",

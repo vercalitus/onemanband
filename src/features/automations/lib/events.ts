@@ -187,6 +187,25 @@ export function onTreatmentCompleted(
 }
 
 /**
+ * The session is closed and this patient has nothing in the diary.
+ *
+ * Deliberately not part of `onTreatmentCompleted`: most visits end with the
+ * next one booked at the desk, and those patients must not be invited to book
+ * a time they already have. The caller is the screen that just closed the
+ * session, which is the only place that knows.
+ *
+ * The invitation carries no appointment id — there is no appointment yet. That
+ * is also what makes the link a booking link rather than a reschedule of the
+ * visit that has just ended.
+ */
+export function onRebookingNeeded(
+  input: Omit<AppointmentEventInput, "appointmentId" | "appointmentDate" | "appointmentStart" | "appointmentEnd">,
+  ctx: PlanContext,
+): OutboxMessage[] {
+  return emit({ ...input, trigger: "rebooking.needed" }, ctx)
+}
+
+/**
  * The patient never turned up and never said so. Called after
  * `noShowGraceMinutes` has elapsed past the slot end.
  */

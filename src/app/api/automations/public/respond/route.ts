@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic"
 
 const bodySchema = z.object({
   token: z.string().min(1),
-  kind: z.enum(["confirmed", "cancelled", "rescheduled", "payment_claimed"]),
+  kind: z.enum(["confirmed", "cancelled", "rescheduled", "booked", "payment_claimed"]),
   /** Display name, carried from the token snapshot the message was built with. */
   patientName: z.string().max(200).optional(),
   newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

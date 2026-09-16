@@ -83,6 +83,25 @@ export function readAddedFinances(patientId: string): FinanceRecord[] {
   return readField<FinanceRecord[]>(patientId, ADDED_FINANCES, [])
 }
 
+/**
+ * Change a row that is already there — a visit that has since been paid for.
+ * Demo-mode only, like everything else in this file: a real clinic's ledger is
+ * a table, and the row on the chart is read from it.
+ */
+export function updateFinanceRecord(
+  patientId: string,
+  id: string,
+  patch: Partial<FinanceRecord>,
+): void {
+  const existing = readAddedFinances(patientId)
+  if (!existing.some((r) => r.id === id)) return
+  writeField(
+    patientId,
+    ADDED_FINANCES,
+    existing.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+  )
+}
+
 export function addFinanceRecord(patientId: string, record: FinanceRecord): boolean {
   const existing = readAddedFinances(patientId)
   if (existing.some((r) => r.id === record.id)) return false

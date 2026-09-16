@@ -123,7 +123,15 @@ export interface IntakeReview {
 export type TodoAction =
   | { kind: "link"; labelKey: string; href: string }
   | { kind: "confirm"; labelKey: string; appointmentId: string }
-  | { kind: "schedule"; labelKey: string; patientId: string; patientName: string }
+  | {
+      kind: "schedule"
+      labelKey: string
+      patientId: string
+      patientName: string
+      /** A slot the patient already picked, so the dialog opens on it. */
+      date?: string
+      start?: string
+    }
   /**
    * Open the new-patient form with what the patient wrote — and the slot they
    * asked for and the files they attached — then close the intake once the

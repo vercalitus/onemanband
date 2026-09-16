@@ -240,6 +240,33 @@ itself. Two things are deliberately not:
   new entry saying so. It also means a patient with clinical history cannot be
   deleted — the cascade hits the same trigger.
 
+#### Closing a session is four things, not one
+
+`useSessionClosing` (`features/patients/lib/use-close-session.ts`) owns the lot,
+and the order is load-bearing:
+
+1. The `treatments` row. Nothing else happens if it fails — a charge for a visit
+   with no record behind it is a debt nobody can explain later.
+2. **The charge**, at the amount confirmed while closing rather than the price
+   list. It is raised *before* the visit is marked completed on purpose: the
+   automation that bills a completed visit finds this invoice already there and
+   leaves it alone, which is how the practitioner's number survives.
+3. **Paid** → `settleVisit` records the money and files the חשבונית מס קבלה,
+   which also cancels any chasing. **Not paid** → the debt stays open and
+   `onInvoiceIssued` starts the reminder ladder.
+4. The diary, through `commitAppointment` like every other booking change — and
+   an invitation to book (`rebooking.needed`) **only** when the patient has
+   nothing upcoming.
+
+Two things it deliberately does not do: ask whether a next visit is booked (the
+diary knows; a checkbox would let someone tick a time that does not exist), and
+collect earlier debt (a receipt belongs to one invoice — three unpaid visits are
+three documents, settled on the Finances page with them all in view).
+
+`settleVisit` is the single path to the bookkeeping provider, shared with the
+Finances page. Two copies of it would be two ways to talk to a real accounting
+account, and only one of them would stay right.
+
 **The status line carries its origin and its date.** It shipped as a hard-coded
 sentence, so all 1,178 patients displayed the same "clinical finding" about
 themselves. It is a column now; left empty the chart falls back to the last

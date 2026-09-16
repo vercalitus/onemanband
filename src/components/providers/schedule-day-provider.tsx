@@ -69,7 +69,7 @@ type ScheduleDayContextValue = {
   openCreateAppointment: (
     defaultDate?: string,
     patient?: { id: string; name: string },
-    defaults?: { appointmentType?: AppointmentType; treatment?: string },
+    defaults?: { appointmentType?: AppointmentType; treatment?: string; start?: string },
   ) => void
   /**
    * Mark a booking confirmed, from wherever the practitioner happens to be.
@@ -184,15 +184,20 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
     (
       defaultDate?: string,
       patient?: { id: string; name: string },
-      defaults?: { appointmentType?: AppointmentType; treatment?: string },
+      defaults?: { appointmentType?: AppointmentType; treatment?: string; start?: string },
     ) => {
       const now = new Date()
       const currentMinutes = now.getHours() * 60 + now.getMinutes()
       const dayStartMin = CALENDAR_HOUR_START * 60
       const dayEndMin = CALENDAR_HOUR_END * 60
       const defaultDuration = 15
-      let snapped = snapMinutesToSlotNearest(currentMinutes)
-      if (currentMinutes < dayStartMin || currentMinutes >= dayEndMin) {
+      // A time the caller already knows — the slot a patient picked for
+      // themselves — opens on that slot. Retyping it from a dashboard row is
+      // the whole of the work the row was meant to save.
+      let snapped = snapMinutesToSlotNearest(
+        defaults?.start ? minutesFromHHMM(defaults.start) : currentMinutes,
+      )
+      if (!defaults?.start && (currentMinutes < dayStartMin || currentMinutes >= dayEndMin)) {
         snapped = dayStartMin + 60
       }
       const clamped = clampStartForDuration(snapped, defaultDuration)

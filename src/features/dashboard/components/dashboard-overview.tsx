@@ -225,10 +225,11 @@ function TodoRow({
                 },
               })
             else
-              openCreateAppointment(undefined, {
-                id: action.patientId,
-                name: action.patientName,
-              })
+              openCreateAppointment(
+                action.date,
+                { id: action.patientId, name: action.patientName },
+                action.start ? { start: action.start } : undefined,
+              )
           }}
           className={cn(
             "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors",

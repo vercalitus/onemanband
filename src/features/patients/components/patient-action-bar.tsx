@@ -1,7 +1,6 @@
 "use client"
 
 import { Calendar, CheckCircle2, Receipt } from "lucide-react"
-import { useEffect, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
@@ -42,30 +41,16 @@ export function PatientActionBar({
   const { openCreateAppointment } = useScheduleDay()
 
   /**
-   * Closing a session is two taps, four seconds apart at most.
+   * One tap, and what it opens is the confirmation.
    *
-   * It was one, and a session closed halfway through by a hand brushing the
-   * bar became a permanent record — the schema refuses to unwrite it — and a
-   * second closing at the real end made two sessions of one visit. The draft
-   * saves itself continuously; there is nothing to lose by not tapping this.
+   * This used to be two taps four seconds apart, because a session closed by a
+   * hand brushing the bar became a permanent record the schema refuses to
+   * unwrite. The sheet that now opens does that job better: it cannot be
+   * triggered by accident, and it is where the visit's charge, its payment and
+   * the next booking are settled — none of which a second tap could ask.
    */
-  const [confirmingComplete, setConfirmingComplete] = useState(false)
-  useEffect(() => {
-    if (!confirmingComplete) return
-    const timer = window.setTimeout(() => setConfirmingComplete(false), 4000)
-    return () => window.clearTimeout(timer)
-  }, [confirmingComplete])
-  const completeLabel = confirmingComplete
-    ? t("patientChart.completeSessionConfirm", { n: nextSessionNumber ?? "" })
-    : t("patientChart.completeSession")
-  const handleComplete = () => {
-    if (!confirmingComplete) {
-      setConfirmingComplete(true)
-      return
-    }
-    setConfirmingComplete(false)
-    onCompleteSession()
-  }
+  const completeLabel = t("patientChart.completeSession")
+  const handleComplete = () => onCompleteSession()
 
   /**
    * Booking goes through the shared scheduler, not a dialog of this page's own.
@@ -113,12 +98,7 @@ export function PatientActionBar({
         <button
           type="button"
           onClick={handleComplete}
-          className={cn(
-            BTN_BASE,
-            confirmingComplete
-              ? "bg-emerald-700 text-white ring-2 ring-emerald-300 hover:bg-emerald-800"
-              : "bg-slate-900 text-white hover:bg-slate-800",
-          )}
+          className={cn(BTN_BASE, "bg-slate-900 text-white hover:bg-slate-800")}
           aria-label={t("patientChart.completeSessionAria")}
         >
           <CheckCircle2 className="size-5 shrink-0" aria-hidden />
@@ -173,12 +153,7 @@ export function PatientActionBar({
             <button
               type="button"
               onClick={handleComplete}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold text-white transition-colors active:scale-[0.98]",
-                confirmingComplete
-                  ? "bg-emerald-700 ring-2 ring-emerald-300 hover:bg-emerald-800"
-                  : "bg-slate-900 hover:bg-slate-800",
-              )}
+              className="flex w-full items-center gap-2 rounded-xl bg-slate-900 px-3 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 active:scale-[0.98]"
             >
               <CheckCircle2 className="size-4 shrink-0" aria-hidden />
               {completeLabel}

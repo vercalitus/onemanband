@@ -17,8 +17,8 @@ import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import type { AccessTokenContext } from "@/types/automation"
 import type { ClinicSettings } from "@/types/clinic-settings"
 
-type View = "loading" | "invalid" | "choose" | "reschedule" | "payment" | "done"
-type Outcome = "confirmed" | "cancelled" | "rescheduled" | "payment_claimed"
+type View = "loading" | "invalid" | "choose" | "reschedule" | "book" | "payment" | "done"
+type Outcome = "confirmed" | "cancelled" | "rescheduled" | "booked" | "payment_claimed"
 
 /**
  * Landing page for the action buttons in a reminder.
@@ -27,6 +27,12 @@ type Outcome = "confirmed" | "cancelled" | "rescheduled" | "payment_claimed"
  * one tap and ends the visit here; cancelling is destructive so it asks once;
  * rescheduling opens the slot picker, which only ever offers windows the
  * practitioner marked as giveable.
+ *
+ * One link arrives with no appointment behind it at all: the invitation sent
+ * when a session closes with nothing booked. There is nothing to confirm or
+ * cancel, so that link opens on the slot picker and what comes back is a
+ * booking rather than a move — the visit it followed has already happened, and
+ * treating the pick as a reschedule would have dragged it into next week.
  */
 export function RespondPageClient({ token }: { token: string }) {
   const { t, localeTag } = useLocale()
@@ -67,8 +73,11 @@ export function RespondPageClient({ token }: { token: string }) {
       // The page renders from the token's own snapshot, never from clinic records.
       setContext(token.context ?? null)
       // An invoice token is a payment notice, not an appointment reminder —
-      // same route, different question to ask.
-      setView(token.kind === "invoice" ? "payment" : "choose")
+      // same route, different question to ask. And a reminder token with no
+      // appointment on it is the booking invitation: straight to the slots.
+      setView(
+        token.kind === "invoice" ? "payment" : token.appointmentId ? "choose" : "book",
+      )
     }
 
     const local = resolveToken(token)
@@ -110,9 +119,11 @@ export function RespondPageClient({ token }: { token: string }) {
   const slots = useMemo<FreeSlot[]>(() => {
     // Nothing offered until the clinic's real diary has been read: a time drawn
     // as free and then withdrawn is a time somebody has already tapped.
-    if (!settings || view !== "reschedule" || busySlots === null) return []
+    if (!settings || (view !== "reschedule" && view !== "book") || busySlots === null) return []
     // Duration falls back to the appointment's own length when the token
     // recorded it, so a 45-minute first visit isn't offered a 30-minute slot.
+    // For a booking invitation that length is the visit that just ended, which
+    // is the best guess anyone has about the next one.
     const recorded =
       context?.appointmentStart && context?.appointmentEnd
         ? minutesFromHHMM(context.appointmentEnd) - minutesFromHHMM(context.appointmentStart)
@@ -241,6 +252,22 @@ export function RespondPageClient({ token }: { token: string }) {
         <p className="mt-4 text-xs leading-relaxed text-slate-500">
           {t("public.payment.footnote")}
         </p>
+      </PublicShell>
+    )
+  }
+
+  if (view === "book") {
+    return (
+      <PublicShell
+        clinicName={clinicName}
+        title={t("public.respond.bookTitle")}
+        subtitle={t("public.respond.bookSubtitle")}
+      >
+        <SlotPicker
+          slots={slots}
+          onPick={(slot) => finish("booked", slot)}
+          emptyLabel={t("public.slots.none")}
+        />
       </PublicShell>
     )
   }

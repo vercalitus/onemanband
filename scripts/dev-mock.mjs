@@ -14,6 +14,14 @@
  * loads `.env.local`, so an empty value is what stops the real credentials
  * being read at all. `unset()` in src/lib/env.ts then reads "" as absent.
  *
+ * The bookkeeping credentials are blanked for the same reason and a sharper
+ * one: a *draft* document is not a dry run. It is a real call against the
+ * clinic's real SUMIT account, which creates customer cards and sends mail
+ * from the clinic's own name — and `.env.local` holds the live key. With
+ * `SUMIT_*` absent the simulated provider answers instead, which is the state
+ * this app is meant to be demonstrable in and the only state in which closing
+ * a session can be exercised end to end without anyone's bookkeeping moving.
+ *
  * Use it to look at UI. It cannot tell you anything about production data,
  * because it is not connected to any.
  */
@@ -35,6 +43,9 @@ const child = spawn(
       NEXT_PUBLIC_SUPABASE_URL: "",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
       SUPABASE_SERVICE_ROLE_KEY: "",
+      SUMIT_COMPANY_ID: "",
+      SUMIT_API_KEY: "",
+      SUMIT_LIVE_DOCUMENTS: "",
     },
   },
 )

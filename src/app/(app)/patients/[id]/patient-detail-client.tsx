@@ -6,6 +6,9 @@ import { AlertTriangle, Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } f
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
+import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
+import { toISODate } from "@/lib/date-helpers"
+import type { PaymentMethod } from "@/types/domain"
 import {
   useMergedPatients,
   usePatientExtras,
@@ -19,7 +22,9 @@ import { buildPatientBundle, patientColumns } from "@/features/exports/lib/build
 import { loadPatientExportSource } from "@/features/exports/lib/export-source"
 import { datedFilename, downloadCsv, downloadJson } from "@/lib/file-export"
 import { SessionCanvas } from "@/features/patients/components/session-canvas"
+import { SessionCloseDialog } from "@/features/patients/components/session-close-dialog"
 import { SessionAudio } from "@/features/patients/components/session-audio"
+import { useSessionClosing } from "@/features/patients/lib/use-close-session"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
 import { PatientActionBar } from "@/features/patients/components/patient-action-bar"
 import { PatientLibrary } from "@/features/patients/components/patient-library"
@@ -32,7 +37,8 @@ export function PatientDetailClient() {
   const id =
     typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
-  const { appointments } = useScheduleDay()
+  const { appointments, openCreateAppointment } = useScheduleDay()
+  const { todaysAppointment, nextAppointment, closeSession } = useSessionClosing(id)
   const merged = useMergedPatients()
   const {
     loading: patientsLoading,
@@ -112,6 +118,7 @@ export function PatientDetailClient() {
 
   const [notesOpen, setNotesOpen] = useState(true)
   const [exportOpen, setExportOpen] = useState(false)
+  const [closeOpen, setCloseOpen] = useState(false)
   const [toast, setToast] = useState<{ open: boolean; message: string }>({
     open: false,
     message: "",
@@ -132,12 +139,53 @@ export function PatientDetailClient() {
     return lastAppointmentType
   })()
 
-  const handleCompleteSession = async () => {
+  /** Book the next visit from inside the closing sheet, a week out by default. */
+  const openScheduleNext = () => {
+    const nextWeek = new Date()
+    nextWeek.setDate(nextWeek.getDate() + 7)
+    openCreateAppointment(
+      toISODate(nextWeek),
+      { id, name: displayPatient?.fullName ?? "" },
+      { appointmentType: patientLastAppointmentType },
+    )
+  }
+
+  /**
+   * Close the session: the record first, then everything that follows from it.
+   *
+   * The record is the anchor and nothing else happens without it. A charge
+   * raised for a visit that was never written down would be a debt with no
+   * treatment behind it — which is exactly the kind of row nobody can explain
+   * three months later.
+   */
+  const handleCloseSession = async ({
+    amount,
+    paid,
+    method,
+  }: {
+    amount: number
+    paid: boolean
+    method: PaymentMethod
+  }) => {
+    // The type of visit being closed is today's booking, falling back to the
+    // last one recorded for a session with nothing in the diary.
+    const type = todaysAppointment?.appointmentType ?? patientLastAppointmentType
     // Only claim the session was recorded once it was. The old code toasted
     // unconditionally, which was harmless while the write went to localStorage
     // and cannot stay that way now that it can fail.
-    const saved = await completeSession(patientLastAppointmentType)
-    if (saved) showToast(t("patientChart.toast.sessionDone", { n: totalSessionsDone + 1 }))
+    const saved = await completeSession(type)
+    if (!saved) return null
+
+    const outcome = await closeSession({
+      patientId: id,
+      patientName: patient?.fullName ?? "",
+      appointmentType: type,
+      amount,
+      paid,
+      method,
+    })
+    showToast(t("patientChart.toast.sessionDone", { n: totalSessionsDone + 1 }))
+    return outcome
   }
 
   /**
@@ -364,7 +412,7 @@ export function PatientDetailClient() {
         <div id="patient-actions" className="scroll-mt-24">
           <PatientActionBar
             outstandingDebt={outstandingDebt ?? 0}
-            onCompleteSession={handleCompleteSession}
+            onCompleteSession={() => setCloseOpen(true)}
             onIssueInvoice={handleIssueInvoice}
             patientId={id}
             patientName={displayPatient.fullName}
@@ -376,6 +424,27 @@ export function PatientDetailClient() {
           />
         </div>
       </div>
+
+      <SessionCloseDialog
+        open={closeOpen}
+        onOpenChange={setCloseOpen}
+        sessionNumber={totalSessionsDone + 1}
+        nextAppointment={nextAppointment}
+        defaultAmount={
+          getTreatmentPriceIls(
+            todaysAppointment?.appointmentType ?? patientLastAppointmentType,
+          ) ?? 0
+        }
+        outstandingDebt={outstandingDebt ?? 0}
+        onScheduleNext={() => {
+          // Booking instead of sending a link closes this sheet: the diary is
+          // about to change, and the sheet's answer to "is anything booked"
+          // was read before it did.
+          setCloseOpen(false)
+          openScheduleNext()
+        }}
+        onConfirm={handleCloseSession}
+      />
 
       <BillingToast
         open={toast.open}

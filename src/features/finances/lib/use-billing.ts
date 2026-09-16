@@ -3,19 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { createTranslator } from "@/lib/i18n/dictionary"
 import { BILLING_STORE_EVENT } from "@/features/automations/lib/billing-bridge"
-import { onInvoicePaid } from "@/features/automations/lib/events"
-import { clearRemoteClaim } from "@/features/automations/lib/remote-responses"
 import {
   createInvoice,
   fetchInvoices,
   fetchUninvoicedVisits,
-  settleInvoiceRow,
 } from "@/features/finances/lib/finance-repository"
-import { clinicHasPatients, linkSumitCustomer } from "@/features/patients/lib/patient-repository"
-import { planPaidVisitDocument } from "@/features/finances/lib/plan-tax-document"
-import { fileTaxDocument } from "@/features/finances/lib/tax-documents"
+import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
+import { settleMessage, settleVisit } from "@/features/finances/lib/settle-visit"
 import {
   seedIntegration,
   seedInvoices,
@@ -33,13 +28,6 @@ import type {
 const STORAGE_KEY_INVOICES = "billing.invoices.v1"
 const STORAGE_KEY_VISITS = "billing.uninvoiced.v1"
 const STORAGE_KEY_INTEGRATION = "billing.integration.v1"
-
-/**
- * Translator pinned to Hebrew, for text that ends up on a tax document rather
- * than on the practitioner's screen. See `DOCUMENT_LANGUAGE` in
- * `plan-tax-document.ts` for why the document never follows the UI locale.
- */
-const he = createTranslator("he")
 
 /**
  * Centralised billing store for the Financial OS page. State is hydrated
@@ -262,15 +250,11 @@ export function useBilling() {
   /**
    * Settle an invoice: record how the patient paid, then file the tax document.
    *
-   * These are one action because they are one event. A single-practitioner
-   * clinic bills on a cash basis, so the document is a חשבונית מס קבלה —
-   * invoice and receipt together — and it only comes into existence once the
-   * money has actually arrived. Marking paid without filing would leave income
-   * undocumented; filing without payment would invent a tax event.
-   *
-   * The invoice is marked paid whatever the filing does. A failed filing is a
-   * bookkeeping problem to retry, not a reason to pretend the patient did not
-   * pay — `syncStatus` carries that separately.
+   * The work itself is in `settleVisit`, which the patient chart calls too —
+   * closing a session with "paid" ticked is the same event as this, and one
+   * path to the bookkeeping account is the only way both stay right. What
+   * belongs here is this page's own state and the sentence the practitioner
+   * reads.
    */
   const settleInvoice = useCallback(
     async (
@@ -280,112 +264,20 @@ export function useBilling() {
       const invoice = invoices.find((inv) => inv.id === invoiceId)
       if (!invoice) return { ok: false, message: t("billing.payment.error.missing") }
 
-      const patient = patients.find((p) => p.id === invoice.patientId)
-      const request = planPaidVisitDocument({
+      const result = await settleVisit({
         invoice,
-        // Deliberately not `t()` — that follows the practitioner's UI language
-        // and would print an English line item on a Hebrew tax document.
-        treatmentLabel: he(`billing.treatment.${invoice.treatmentType}`),
-        patient: {
-          id: invoice.patientId,
-          fullName: patient?.fullName ?? invoice.patientName,
-          email: patient?.email,
-          phone: patient?.phone,
-          address: patient?.address,
-          sumitCustomerId: patient?.sumitCustomerId,
-        },
+        patient: patients.find((p) => p.id === invoice.patientId),
         payment,
-        // Overridden server-side; the deploy decides, not the browser.
-        draft: true,
+        live,
+        formatMoney,
       })
 
-      const outcome = await fileTaxDocument(request, { invoiceId })
+      setInvoices((prev) =>
+        prev.map((inv) => (inv.id === invoiceId ? { ...inv, ...result.patch } : inv)),
+      )
+      setIntegration((prev) => ({ ...prev, lastSyncAt: new Date().toISOString() }))
 
-      // A patient with no card had one made for them just now. Remember which,
-      // so the next document names it instead of searching — and so the link
-      // is ours, not only SUMIT's.
-      if (
-        outcome.status === "filed" &&
-        !patient?.sumitCustomerId &&
-        outcome.document.customerId
-      ) {
-        const customerId = Number(outcome.document.customerId)
-        if (Number.isFinite(customerId)) {
-          void linkSumitCustomer(invoice.patientId, customerId)
-        }
-      }
-
-      const settled = (patch: Partial<BillingInvoice>) => {
-        setInvoices((prev) =>
-          prev.map((inv) =>
-            inv.id === invoiceId
-              ? {
-                  ...inv,
-                  status: "paid",
-                  paymentStatus: "paid",
-                  paidAt: payment.date,
-                  amount: payment.amount,
-                  displayAmount: formatMoney(payment.amount),
-                  paymentMethod: payment.method,
-                  ...patch,
-                }
-              : inv,
-          ),
-        )
-        // The patient has paid — stop chasing them, whatever the filing did.
-        onInvoicePaid(invoiceId)
-        // And close the claim where it actually lives. The patient tapped
-        // "I've already paid" on their own phone, so the open row is in the
-        // database, not in this browser.
-        clearRemoteClaim(invoiceId)
-        setIntegration((prev) => ({ ...prev, lastSyncAt: new Date().toISOString() }))
-        // Write the settlement down. The filing outcome goes with it, whatever
-        // it was: an invoice can be paid and its document missing, and that
-        // pair has to survive a refresh or the money is recorded with no
-        // receipt and no trace of why.
-        if (live) {
-          void settleInvoiceRow(
-            {
-              id: invoiceId,
-              amount: payment.amount,
-              method: payment.method,
-              paidAt: payment.date,
-              syncStatus: (patch.syncStatus as BillingInvoice["syncStatus"]) ?? "pending",
-              taxDocument: patch.taxDocument,
-              syncError: patch.syncError,
-            },
-            formatMoney,
-          )
-        }
-      }
-
-      if (outcome.status === "filed") {
-        settled({
-          syncStatus: outcome.document.provider === "simulated" ? "simulated" : "synced",
-          taxDocument: outcome.document,
-          syncError: undefined,
-        })
-        if (outcome.document.provider === "simulated") {
-          return { ok: true, message: t("billing.payment.result.simulated") }
-        }
-        if (outcome.document.draft) {
-          return { ok: true, message: t("billing.payment.result.draft") }
-        }
-        return {
-          ok: true,
-          message: t("billing.payment.result.filed", {
-            number: String(outcome.document.documentNumber ?? "—"),
-          }),
-        }
-      }
-
-      if (outcome.status === "blocked") {
-        settled({ syncStatus: "failed", syncError: outcome.message })
-        return { ok: false, blocked: true, message: t("billing.payment.result.blocked") }
-      }
-
-      settled({ syncStatus: "failed", syncError: outcome.message })
-      return { ok: false, message: t("billing.payment.result.failed", { reason: outcome.message }) }
+      return settleMessage(result, t)
     },
     [invoices, t, formatMoney, live, patients],
   )

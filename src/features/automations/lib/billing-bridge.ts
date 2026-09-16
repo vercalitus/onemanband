@@ -3,7 +3,7 @@ import {
   findInvoiceByAppointment,
   findManualInvoiceOn,
 } from "@/features/finances/lib/finance-repository"
-import { addFinanceRecord } from "@/features/patients/lib/patient-extras-store"
+import { addFinanceRecord, updateFinanceRecord } from "@/features/patients/lib/patient-extras-store"
 import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
 import { formatIls } from "@/lib/format-ils"
 import type {
@@ -139,6 +139,29 @@ function writeInvoices(next: BillingInvoice[]): void {
   } catch {
     /* quota / private mode */
   }
+}
+
+/**
+ * Mark a demo invoice paid where the demo keeps it.
+ *
+ * A live clinic's settlement is a write to the ledger (`settleInvoiceRow`) and
+ * nothing here applies. The demo's ledger is this browser key, and without
+ * this a visit closed as paid still read as owing on the Finances page and on
+ * the patient's own chart — the one screen the demo exists to show.
+ */
+export function settleLocalInvoice(invoiceId: string, patch: Partial<BillingInvoice>): void {
+  const next = readInvoices().map((invoice) =>
+    invoice.id === invoiceId ? { ...invoice, ...patch } : invoice,
+  )
+  writeInvoices(next)
+
+  const settled = next.find((invoice) => invoice.id === invoiceId)
+  if (!settled) return
+  updateFinanceRecord(settled.patientId, invoiceId, {
+    invoiceStatus: settled.status,
+    paymentStatus: settled.paymentStatus,
+    amount: settled.displayAmount,
+  })
 }
 
 function issueLocal(input: IssueInvoiceInput): IssuedInvoice {

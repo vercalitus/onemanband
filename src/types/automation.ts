@@ -21,6 +21,13 @@ export type AutomationTrigger =
   | "appointment.no_show"
   | "invoice.unpaid"
   | "progress.checkpoint"
+  /**
+   * The session closed and this patient has nothing booked. Deliberately its
+   * own trigger rather than a condition on `treatment.completed`: a step
+   * carries no conditions, and the one thing that knows whether the diary is
+   * empty for this person is the screen that just closed the session.
+   */
+  | "rebooking.needed"
 
 /** What a schedule rule counts from. */
 export type ScheduleAnchor =
@@ -312,6 +319,16 @@ export type PatientResponseKind =
    * until a person has read it — never categorised, never auto-answered.
    */
   | "message"
+  /**
+   * The patient picked a time for a visit that does not exist yet — the answer
+   * to "book your next session". Distinct from `rescheduled`, which moves a
+   * booking that is already in the diary; there is nothing to move here, and
+   * treating it as a move would have rewritten the visit that just ended.
+   *
+   * Like every slot a patient picks, it is a request until the practitioner
+   * puts it in the diary.
+   */
+  | "booked"
 
 /**
  * A patient action that came back through a link or a WhatsApp button. The

@@ -149,6 +149,38 @@ export function deriveAutomationTodos(
       })
     }
 
+    /**
+     * A patient picked a time for a visit that is not in the diary yet — they
+     * answered "book your next session". Nothing was booked by that tap, and
+     * the row says so by handing over the booking dialog already filled in:
+     * the practitioner is the one who rules on whether the slot works.
+     */
+    if (response.kind === "booked") {
+      items.push({
+        id: `rx-patientbook-${response.id}`,
+        kind: "reactive",
+        priority: "high",
+        titleKey: "signal.patientPickedSlot",
+        dueKey: "signal.due.newSlot",
+        params: {
+          patient: response.patientName,
+          date: response.newDate ?? "",
+          time: response.newStart ?? "",
+        },
+        title: `Patient picked a time — ${response.patientName}`,
+        due: `${response.newDate ?? ""} ${response.newStart ?? ""}`.trim(),
+        completed: false,
+        action: {
+          kind: "schedule",
+          labelKey: "signal.action.book",
+          patientId: response.patientId,
+          patientName: response.patientName,
+          date: response.newDate,
+          start: response.newStart,
+        },
+      })
+    }
+
     if (response.kind === "questionnaire") {
       items.push({
         id: `rx-questionnaire-${response.id}`,

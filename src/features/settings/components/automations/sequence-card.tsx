@@ -45,6 +45,9 @@ const ACTIONS_FOR_TRIGGER: Record<AutomationTrigger, AutomationAction[]> = {
   "appointment.no_show": ["open_invoice", "reschedule", "reply_free_text"],
   "invoice.unpaid": ["open_invoice", "reply_free_text"],
   "progress.checkpoint": ["open_questionnaire", "reply_free_text"],
+  // Nothing is booked yet, so there is nothing to confirm or cancel: the whole
+  // message is an invitation to pick a time.
+  "rebooking.needed": ["reschedule", "reply_free_text"],
 }
 
 const DEFAULTS = defaultSequences()
