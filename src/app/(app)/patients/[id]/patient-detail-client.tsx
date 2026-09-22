@@ -464,9 +464,19 @@ export function PatientDetailClient() {
           className="fixed bottom-6 end-6 z-[100] flex max-w-sm items-start gap-2.5 rounded-xl border border-rose-200/80 bg-white px-4 py-3 shadow-lg ring-1 ring-slate-100"
         >
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-600" aria-hidden />
-          <p className="text-sm font-medium leading-snug text-slate-800">
-            {t("patientChart.saveFailed")}
-          </p>
+          <div className="min-w-0">
+            <p className="text-sm font-medium leading-snug text-slate-800">
+              {t("patientChart.saveFailed")}
+            </p>
+            {/* What the database actually said. Without it, "check your
+                connection" was the only clue anyone had for twelve days while
+                the real answer — an ambiguous relationship — was in the
+                response all along. It is jargon, and it is meant to be
+                repeated verbatim to whoever fixes it. */}
+            <p className="mt-1 break-words font-mono text-[11px] leading-snug text-slate-500">
+              {saveError}
+            </p>
+          </div>
           <button
             type="button"
             onClick={clearSaveError}
