@@ -1,5 +1,6 @@
 "use client"
 
+import { invoiceReference } from "@/features/finances/lib/invoice-reference"
 import { AlertTriangle, Loader2, RefreshCcw } from "lucide-react"
 
 import { PatientNameLink } from "@/features/finances/components/patient-name-link"
@@ -30,22 +31,36 @@ export function IntegrationStatus({
             </p>
             <p className="mt-1 truncate text-base font-bold text-slate-900">{integration.provider}</p>
           </div>
+          {/* Three states, not two. "Drafts only" is a real connection that
+              files real calls and produces no numbered document — reading
+              "Connected" there is how a practitioner takes payment believing a
+              receipt exists. */}
           <span
             className={cn(
               "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
               integration.connected
                 ? "bg-emerald-50 text-emerald-700"
-                : "bg-rose-50 text-rose-700",
+                : integration.draftsOnly
+                  ? "bg-amber-50 text-amber-700"
+                  : "bg-rose-50 text-rose-700",
             )}
           >
             <span
               className={cn(
                 "size-1.5 rounded-full",
-                integration.connected ? "bg-emerald-500" : "bg-rose-500",
+                integration.connected
+                  ? "bg-emerald-500"
+                  : integration.draftsOnly
+                    ? "bg-amber-500"
+                    : "bg-rose-500",
               )}
               aria-hidden
             />
-            {integration.connected ? "Connected" : "Disconnected"}
+            {integration.connected
+              ? "Connected"
+              : integration.draftsOnly
+                ? "Drafts only"
+                : "Disconnected"}
           </span>
         </div>
       </div>
@@ -75,10 +90,16 @@ export function IntegrationStatus({
                 className="flex items-center justify-between gap-2 rounded-lg bg-white/70 px-2.5 py-1.5"
               >
                 <div className="min-w-0 truncate text-xs">
-                  <span className="font-mono font-semibold tabular-nums text-slate-900">{inv.id}</span>
-                  <span className="mx-1.5 text-slate-300" aria-hidden>
-                    ·
-                  </span>
+                  {invoiceReference(inv) && (
+                    <>
+                      <span className="font-mono font-semibold tabular-nums text-slate-900">
+                        {invoiceReference(inv)}
+                      </span>
+                      <span className="mx-1.5 text-slate-300" aria-hidden>
+                        ·
+                      </span>
+                    </>
+                  )}
                   <span className="text-slate-600">
                     <PatientNameLink patientId={inv.patientId} className="font-medium no-underline hover:underline">
                       {inv.patientName}

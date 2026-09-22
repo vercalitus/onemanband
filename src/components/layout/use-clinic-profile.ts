@@ -1,7 +1,8 @@
 "use client"
 
-import { useSyncExternalStore } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 
+import { fetchClinicName } from "@/lib/clinic-repository"
 import { createDefaultClinicSettings } from "@/lib/clinic-settings-defaults"
 import { CLINIC_SETTINGS_KEY, readClinicSettings } from "@/lib/clinic-settings-storage"
 import type { ClinicProfile } from "@/types/clinic-settings"
@@ -49,7 +50,26 @@ function getServerSnapshot(): ClinicProfile {
   return SERVER_PROFILE_SNAPSHOT
 }
 
-/** Live clinic name + logo for the sidebar from persisted settings. */
+/**
+ * Live clinic name + logo for the sidebar.
+ *
+ * The logo and any name the practitioner typed come from settings; a clinic
+ * that has never been named falls back to its own row in the database, which
+ * is where its name actually lives.
+ */
 export function useClinicProfile() {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const [liveName, setLiveName] = useState<string | null>(null)
+  useEffect(() => {
+    if (stored.clinicName) return
+    let cancelled = false
+    void fetchClinicName().then((name) => {
+      if (!cancelled) setLiveName(name)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [stored.clinicName])
+
+  return stored.clinicName || !liveName ? stored : { ...stored, clinicName: liveName }
 }

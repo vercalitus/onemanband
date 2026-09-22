@@ -1,5 +1,6 @@
 "use client"
 
+import { invoiceReference, joinSubtitle } from "@/features/finances/lib/invoice-reference"
 import { CheckCircle2, Slash } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -67,7 +68,7 @@ export function HistoryRow({
           <BalanceBadge balance={patientBalance} />
         </div>
         <p className="mt-0.5 truncate text-xs text-slate-500">
-          {invoice.id} · {treatmentLabel} · {meta}
+          {joinSubtitle([invoiceReference(invoice), treatmentLabel, meta])}
         </p>
       </div>
 

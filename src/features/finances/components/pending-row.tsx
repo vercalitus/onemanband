@@ -1,5 +1,6 @@
 "use client"
 
+import { invoiceReference, joinSubtitle } from "@/features/finances/lib/invoice-reference"
 import { AlertTriangle, BellRing, FilePlus, RefreshCcw } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -75,7 +76,11 @@ export function PendingInvoiceRow({
       tone={overdue ? "warning" : "neutral"}
       patientId={invoice.patientId}
       patientName={invoice.patientName}
-      subtitle={`${invoice.id} · ${treatmentLabel} · ${t("finances.pending.issued")} ${formatRelative(toIso(invoice.issuedAt))}`}
+      subtitle={joinSubtitle([
+        invoiceReference(invoice),
+        treatmentLabel,
+        `${t("finances.pending.issued")} ${formatRelative(toIso(invoice.issuedAt))}`,
+      ])}
       amountLabel={overdue ? t("finances.pending.overdueLabel") : t("finances.pending.pendingLabel")}
       amount={invoice.displayAmount}
       balance={patientBalance}

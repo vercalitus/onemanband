@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { Menu, Stethoscope } from "lucide-react"
 
 import { SidebarNavList } from "@/components/layout/sidebar-nav-list"
+import { useClinicProfile } from "@/components/layout/use-clinic-profile"
 import { Button } from "@/components/ui/button"
 import { useLocale } from "@/components/providers/locale-provider"
 
@@ -17,6 +18,7 @@ import { useLocale } from "@/components/providers/locale-provider"
  */
 export function MobileNav() {
   const { t } = useLocale()
+  const profile = useClinicProfile()
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -61,7 +63,12 @@ export function MobileNav() {
             <Stethoscope className="size-4.5" />
           </div>
           <div>
-            <p className="text-sm font-semibold tracking-[0.01em] text-white">{t("mobile.clinicName")}</p>
+            {/* The clinic's own name, like the desktop sidebar. This was a
+                translation string, so a real practice's phone menu carried the
+                demo clinic's name in whatever language it was opened in. */}
+            <p className="text-sm font-semibold tracking-[0.01em] text-white">
+              {profile.clinicName || t("mobile.menuTitle")}
+            </p>
             <p className="text-xs text-sky-300/90">{t("mobile.clinicSubtitle")}</p>
           </div>
         </div>

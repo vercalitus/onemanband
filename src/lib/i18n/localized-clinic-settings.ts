@@ -84,7 +84,10 @@ function applyOverlay(
     }
     return wd
   })
-  if (next.profile.clinicName === EN.profile.clinicName) {
+  // Only a name the demo put there is translated. An unnamed clinic stays
+  // unnamed — otherwise switching to Hebrew handed a real practice the demo's
+  // name in Hebrew.
+  if (EN.profile.clinicName && next.profile.clinicName === EN.profile.clinicName) {
     next.profile.clinicName = clinicName
   }
   return next
@@ -120,7 +123,7 @@ function invertOverlay(
     }
     return wd
   })
-  if (next.profile.clinicName === clinicName) {
+  if (clinicName && next.profile.clinicName === clinicName) {
     next.profile.clinicName = EN.profile.clinicName
   }
   return next

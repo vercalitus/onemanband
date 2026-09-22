@@ -49,7 +49,10 @@ export function defaultProfile(): ClinicProfile {
     practitionerName: "",
     phone: "",
     email: "",
-    clinicName: "Serene Spine Clinic",
+    // Empty on purpose: the clinic's name is a row in `clinics`, read by
+    // `fetchClinicName()`. A demo name here was shown in a real practice's
+    // sidebar, and on the booking page a patient sees.
+    clinicName: "",
     address: "",
     logoDataUrl: null,
   }

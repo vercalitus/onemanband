@@ -407,6 +407,12 @@ export interface UninvoicedVisit {
 export interface ProviderIntegration {
   provider: InvoiceProvider
   connected: boolean
+  /**
+   * Connected, but every document it files is a draft: no number, no tax
+   * event, nothing a patient can be given. "Connected" alone said the
+   * opposite of what was happening.
+   */
+  draftsOnly?: boolean
   /** ISO timestamp of the most recent successful sync. */
   lastSyncAt: string
   autoSyncMinutes: number

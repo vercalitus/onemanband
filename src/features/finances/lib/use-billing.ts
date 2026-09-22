@@ -17,9 +17,10 @@ import {
   seedUninvoicedVisits,
 } from "@/lib/mock-finances"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
-import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
+import { getTreatmentPriceIls, readClinicSettings } from "@/lib/clinic-settings-storage"
 import type {
   BillingInvoice,
+  InvoiceProvider,
   PaymentMethod,
   ProviderIntegration,
   UninvoicedVisit,
@@ -158,6 +159,36 @@ export function useBilling() {
       window.localStorage.setItem(STORAGE_KEY_INTEGRATION, JSON.stringify(integration))
     } catch {}
   }, [integration, hydrated])
+
+  /**
+   * What the bookkeeping provider actually is, asked rather than assumed.
+   *
+   * This card read a seeded value: "Morning — Connected", on a clinic billing
+   * through SUMIT in drafts-only mode. The dashboard had already learned to
+   * ask; a page about money cannot be the one saying something else.
+   */
+  useEffect(() => {
+    let cancelled = false
+    void fetch("/api/billing/ping")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((ping: { ok?: boolean; provider?: string; draftsOnly?: boolean } | null) => {
+        // A failed ask is not a disconnection, and says nothing new.
+        if (cancelled || !ping) return
+        const configured = readClinicSettings().integrations.billingProvider
+        const provider = (
+          !ping.provider || ping.provider === "simulated" ? configured : ping.provider
+        ) as InvoiceProvider
+        setIntegration((prev) => ({
+          ...prev,
+          provider,
+          connected: !!ping.ok && ping.provider !== "simulated" && !ping.draftsOnly,
+          draftsOnly: !!ping.draftsOnly,
+        }))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const syncVisitPricesFromSettings = useCallback(() => {
     setUninvoicedVisits((prev) =>

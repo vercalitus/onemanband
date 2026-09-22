@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { fetchClinicName } from "@/lib/clinic-repository"
 import { createDefaultClinicSettings } from "@/lib/clinic-settings-defaults"
 import {
   applyLocaleClinicOverlay,
@@ -27,6 +28,24 @@ export function useClinicSettings() {
     setSettings(view)
     setBaseline(view)
     setHydrated(true)
+
+    // A clinic that has never been named here shows the name on its own
+    // record, so the field reads what the sidebar and the patient pages read.
+    // Into the baseline too: a name nobody typed is not an unsaved change.
+    if (view.profile.clinicName) return
+    let cancelled = false
+    void fetchClinicName().then((name) => {
+      if (cancelled || !name) return
+      const withName = (s: ClinicSettings) => ({
+        ...s,
+        profile: { ...s.profile, clinicName: name },
+      })
+      setSettings((s) => (s.profile.clinicName ? s : withName(s)))
+      setBaseline((s) => (s && !s.profile.clinicName ? withName(s) : s))
+    })
+    return () => {
+      cancelled = true
+    }
   }, [locale])
 
   const isDirty = useMemo(() => {
