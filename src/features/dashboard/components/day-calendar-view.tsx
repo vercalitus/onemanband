@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { FolderOpen, Plus } from "lucide-react"
-import { type ReactNode, useCallback, useMemo, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
@@ -109,9 +109,31 @@ export function DayCalendarView({
     return sortByStart(list)
   }, [localized, effectiveISO, showCanceled])
 
-  const now = new Date()
-  const currentMinutes = now.getHours() * 60 + now.getMinutes()
-  const showNowLine = isViewingToday && currentMinutes >= DAY_START_MIN && currentMinutes < DAY_END_MIN
+  /**
+   * Minutes into the day, on the clock of whoever is looking.
+   *
+   * Read after mount, never during render: the server's clock is UTC and the
+   * clinic's is three hours ahead, so the "now" line was drawn in two places
+   * at once and React failed hydration on the dashboard every single load.
+   * Null until then, which simply means the line is not drawn yet. It ticks
+   * once a minute so it keeps up with the day.
+   */
+  const [currentMinutes, setCurrentMinutes] = useState<number | null>(null)
+  useEffect(() => {
+    const read = () => {
+      const now = new Date()
+      setCurrentMinutes(now.getHours() * 60 + now.getMinutes())
+    }
+    read()
+    const timer = window.setInterval(read, 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const showNowLine =
+    isViewingToday &&
+    currentMinutes !== null &&
+    currentMinutes >= DAY_START_MIN &&
+    currentMinutes < DAY_END_MIN
 
   const resolveCanonical = useCallback(
     (row: ScheduleItem) => appointments.find((a) => a.id === row.id) ?? row,
@@ -139,7 +161,10 @@ export function DayCalendarView({
 
   const openCreateDefault = () => {
     const defaultDuration = 15
-    const baseMinutes = isViewingToday ? currentMinutes : DAY_START_MIN + 60
+    // Before the clock has been read, a new booking starts where it does on
+    // any other day rather than at minute zero.
+    const baseMinutes =
+      isViewingToday && currentMinutes !== null ? currentMinutes : DAY_START_MIN + 60
     const snapped = snapMinutesToSlotNearest(baseMinutes)
     const clamped = clampStartForDuration(snapped, defaultDuration)
     setDialogMode("create")
@@ -163,13 +188,19 @@ export function DayCalendarView({
 
       if (showNowLine && !markerPlaced) {
         const gapStart = prevEnd ?? DAY_START_MIN
-        if (currentMinutes >= gapStart && currentMinutes < startMin) {
+        if (currentMinutes !== null && currentMinutes >= gapStart && currentMinutes < startMin) {
           nodes.push(<NowDivider key={`now-gap-${apt.id}`} label={nowLabel} aria={nowLabel} />)
           markerPlaced = true
         }
       }
 
-      if (showNowLine && !markerPlaced && currentMinutes >= startMin && currentMinutes < endMin) {
+      if (
+        showNowLine &&
+        !markerPlaced &&
+        currentMinutes !== null &&
+        currentMinutes >= startMin &&
+        currentMinutes < endMin
+      ) {
         nodes.push(<NowDivider key={`now-in-${apt.id}`} label={nowLabel} aria={nowLabel} />)
         markerPlaced = true
       }
@@ -259,7 +290,13 @@ export function DayCalendarView({
       prevHour = startHour
     })
 
-    if (showNowLine && !markerPlaced && currentMinutes >= (prevEnd ?? DAY_START_MIN) && currentMinutes < DAY_END_MIN) {
+    if (
+      showNowLine &&
+      !markerPlaced &&
+      currentMinutes !== null &&
+      currentMinutes >= (prevEnd ?? DAY_START_MIN) &&
+      currentMinutes < DAY_END_MIN
+    ) {
       nodes.push(<NowDivider key="now-trailing" label={nowLabel} aria={nowLabel} />)
     }
 
