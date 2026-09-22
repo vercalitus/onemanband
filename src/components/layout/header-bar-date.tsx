@@ -38,7 +38,16 @@ export function HeaderBarDate() {
       className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-md transition-colors hover:text-sky-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
       title={t("header.openDiary")}
     >
-      <time dateTime={isoDate} className="text-base font-semibold tracking-tight text-sky-700">
+      {/* The server renders this date in UTC and the browser in the clinic's
+          own timezone, so the two disagree — by the formatting always, and by
+          a whole day every evening. React reported it as a hydration failure
+          on every page. The client's answer is the right one; this says so
+          rather than leaving the mismatch to be discovered again. */}
+      <time
+        dateTime={isoDate}
+        suppressHydrationWarning
+        className="text-base font-semibold tracking-tight text-sky-700"
+      >
         {fullDate}
       </time>
       <span className="select-none text-sm font-semibold text-sky-400" aria-hidden>
