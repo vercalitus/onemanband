@@ -63,13 +63,43 @@ function parseBalance(value: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
-function statusBadgeClasses(status: PatientSummary["status"]) {
-  return cn(
-    "border-slate-200 bg-slate-50 text-slate-600",
-    status === "active" && "border-emerald-200 bg-emerald-50 text-emerald-700",
-    status === "frozen" && "border-sky-200 bg-sky-50 text-sky-700",
-    status === "past" && "border-slate-200 bg-slate-50 text-slate-500",
-  )
+/**
+ * What the badge says about a patient, in the same words the filters use.
+ *
+ * `status` is a stored field and every one of the 1,178 imported patients
+ * carries "active", so the column read "Active" for people last seen a year
+ * ago — while the filter beside it defines Active as "has a future visit".
+ * The column answered a different question from the one above it.
+ *
+ * Frozen and past are decisions somebody made and stay as they are. For an
+ * active patient the badge now says which of the two things they are: booked
+ * in, or merely still recent. A patient who is neither gets no badge, because
+ * there is nothing true and short to say about them.
+ */
+function statusBadge(
+  status: PatientSummary["status"],
+  hasFuture: boolean,
+  isRelevant: boolean,
+): { key: string; className: string } | null {
+  if (status === "frozen") {
+    return { key: "status.patient.frozen", className: "border-sky-200 bg-sky-50 text-sky-700" }
+  }
+  if (status === "past") {
+    return { key: "status.patient.past", className: "border-slate-200 bg-slate-50 text-slate-500" }
+  }
+  if (hasFuture) {
+    return {
+      key: "status.patient.active",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    }
+  }
+  if (isRelevant) {
+    return {
+      key: "patients.filter.relevant",
+      className: "border-slate-200 bg-slate-50 text-slate-600",
+    }
+  }
+  return null
 }
 
 function relativeVisitLabel(
@@ -239,8 +269,10 @@ export default function PatientsPage() {
     patient,
     days,
     balance,
+    badge,
   }: {
     patient: PatientSummary
+    badge: ReturnType<typeof statusBadge>
     days: number | null
     balance: number
   }) {
@@ -255,9 +287,11 @@ export default function PatientsPage() {
           >
             {patient.fullName}
           </Link>
-          <Badge variant="outline" className={cn("shrink-0", statusBadgeClasses(patient.status))}>
-            {t(`status.patient.${patient.status}`)}
-          </Badge>
+          {badge && (
+            <Badge variant="outline" className={cn("shrink-0", badge.className)}>
+              {t(badge.key)}
+            </Badge>
+          )}
         </div>
         <p className="mt-3 font-mono text-xs tabular-nums text-slate-700">
           {formatVisitDate(patient.lastVisit)}{" "}
@@ -343,8 +377,14 @@ export default function PatientsPage() {
                 {t(listPending ? "patients.loading" : "patients.empty.filters")}
               </p>
             ) : (
-              shown.map(({ patient, days, balance }) => (
-                <PatientMobileCardInline key={patient.id} patient={patient} days={days} balance={balance} />
+              shown.map(({ patient, days, balance, hasFuture, isRelevant }) => (
+                <PatientMobileCardInline
+                  key={patient.id}
+                  patient={patient}
+                  days={days}
+                  balance={balance}
+                  badge={statusBadge(patient.status, hasFuture, isRelevant)}
+                />
               ))
             )}
           </div>
@@ -368,7 +408,8 @@ export default function PatientsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  shown.map(({ patient, days, balance }) => {
+                  shown.map(({ patient, days, balance, hasFuture, isRelevant }) => {
+                    const badge = statusBadge(patient.status, hasFuture, isRelevant)
                     const isSettled = balance === 0
                     const claimed = paymentClaims.patients.has(patient.id)
                     return (
@@ -386,9 +427,11 @@ export default function PatientsPage() {
                         </TableCell>
 
                         <TableCell className="py-5 align-middle">
-                          <Badge variant="outline" className={statusBadgeClasses(patient.status)}>
-                            {t(`status.patient.${patient.status}`)}
-                          </Badge>
+                          {badge && (
+                            <Badge variant="outline" className={badge.className}>
+                              {t(badge.key)}
+                            </Badge>
+                          )}
                         </TableCell>
 
                         <TableCell className="py-5 align-middle">
