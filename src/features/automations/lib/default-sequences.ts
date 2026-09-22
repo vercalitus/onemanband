@@ -143,8 +143,8 @@ export function defaultSequences(): AutomationSequence[] {
           id: "step-no-show-notice",
           enabled: true,
           name: "After the grace period",
-          // Fires off the moment the visit is marked no-show; the waiting is
-          // done by `noShowGraceMinutes` before the mark, not here.
+          // Fires off the moment the practitioner marks the visit a no-show.
+          // `noShowGraceMinutes` only decides when the board starts asking.
           schedule: { mode: "offset", anchor: "no_show_marked", minutes: 0 },
           channels: ["whatsapp", "email"],
           // Rebooking only. There is no document to attach: a missed visit was

@@ -77,7 +77,15 @@ export interface CloseSessionOutcome {
 /** A visit that is neither cancelled nor already history. */
 const isLive = (a: ScheduleItem) => a.status !== "cancelled"
 
-export function useSessionClosing(patientId: string) {
+export function useSessionClosing(
+  patientId: string,
+  /**
+   * A particular visit to close — the dashboard's "visit not closed" row hands
+   * one over, and it is usually not today's. Ignored unless it is this
+   * patient's and still open.
+   */
+  visitId?: string | null,
+) {
   const { t, localeTag, formatMoney } = useLocale()
   const { appointments, commitAppointment } = useScheduleDay()
   const patients = useMergedPatients()
@@ -94,14 +102,25 @@ export function useSessionClosing(patientId: string) {
    * diary, which is allowed — the session still closes and the charge is raised
    * against the day instead.
    */
-  const todaysAppointment = useMemo(
-    () =>
+  const todaysAppointment = useMemo(() => {
+    const named = visitId
+      ? appointments.find(
+          (a) =>
+            a.id === visitId &&
+            a.patientId === patientId &&
+            isLive(a) &&
+            a.status !== "completed" &&
+            a.status !== "no_show",
+        )
+      : undefined
+    if (named) return named
+    return (
       appointments
         .filter((a) => a.patientId === patientId && a.date === today && isLive(a))
         .sort((a, b) => minutesFromHHMM(a.start) - minutesFromHHMM(b.start))
-        .find((a) => a.status !== "completed") ?? null,
-    [appointments, patientId, today],
-  )
+        .find((a) => a.status !== "completed") ?? null
+    )
+  }, [appointments, patientId, today, visitId])
 
   /**
    * The next visit they have, if any. Anything still to come counts — later

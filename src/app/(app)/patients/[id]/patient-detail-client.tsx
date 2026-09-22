@@ -1,6 +1,6 @@
 "use client"
 
-import { notFound, useParams, useRouter } from "next/navigation"
+import { notFound, useParams, useRouter, useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo } from "react"
 import { AlertTriangle, Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
 
@@ -38,7 +38,9 @@ export function PatientDetailClient() {
     typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
   const { appointments, openCreateAppointment } = useScheduleDay()
-  const { todaysAppointment, nextAppointment, closeSession } = useSessionClosing(id)
+  // Set when the dashboard sends a visit that ended without being closed.
+  const visitId = useSearchParams().get("visit")
+  const { todaysAppointment, nextAppointment, closeSession } = useSessionClosing(id, visitId)
   const merged = useMergedPatients()
   const {
     loading: patientsLoading,

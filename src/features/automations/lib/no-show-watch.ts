@@ -3,24 +3,21 @@ import type { ClinicAutomations } from "@/types/automation"
 import type { AppointmentStatus, ScheduleItem } from "@/types/domain"
 
 /**
- * Detects visits the patient silently missed.
+ * Visits that are over and that nobody has accounted for.
  *
- * The spec asks the system to *wait a defined time and then* message the
- * patient — meaning the clinic should not have to notice the no-show at all.
- * Without this the `noShowGraceMinutes` setting is decorative: the sequence
- * only fires when a human marks the status by hand, which is exactly the work
- * the automation exists to remove.
+ * This fed a timer that marked them no-shows, charged them and messaged the
+ * patient, on the theory that the clinic should not have to notice a no-show
+ * at all. It cannot tell a patient who did not come from a session that was
+ * treated and not closed — the second is the common case whenever saving fails
+ * or the practitioner closes from another screen — and the timer billed both.
+ * It now only finds them; the dashboard asks the practitioner what happened.
  */
 
 /**
- * Statuses that can still decay into a no-show.
- *
- * `confirmed` is included deliberately — a patient confirming and then not
- * turning up is the common case, not the rare one. `completed`, `cancelled`
- * and `no_show` are already resolved; `uncertain` means the clinician is
- * actively unsure and should not be overridden by a timer.
+ * Statuses that still say "coming". `completed`, `cancelled` and `no_show`
+ * are answers; `uncertain` is the practitioner already holding the question.
  */
-const DECAYABLE: AppointmentStatus[] = ["scheduled", "confirmed"]
+const UNRESOLVED: AppointmentStatus[] = ["scheduled", "confirmed"]
 
 /**
  * Appointments whose slot ended more than `noShowGraceMinutes` ago and were
@@ -28,12 +25,12 @@ const DECAYABLE: AppointmentStatus[] = ["scheduled", "confirmed"]
  */
 export function findMissedAppointments(
   appointments: ScheduleItem[],
-  automations: ClinicAutomations,
+  automations: Pick<ClinicAutomations, "noShowGraceMinutes" | "timezone">,
   now: Date = new Date(),
 ): ScheduleItem[] {
   const cutoff = now.getTime() - automations.noShowGraceMinutes * 60_000
   return appointments.filter((appointment) => {
-    if (!DECAYABLE.includes(appointment.status)) return false
+    if (!UNRESOLVED.includes(appointment.status)) return false
     const endedAt = clinicDateTimeToUtc(
       automations.timezone,
       appointment.date,

@@ -19,7 +19,6 @@ import {
   applyAppointmentOverlay,
 } from "@/features/automations/lib/appointment-overlay"
 import { useAppointmentAutomations } from "@/features/automations/lib/use-appointment-automations"
-import { useNoShowWatcher } from "@/features/automations/lib/use-no-show-watcher"
 import {
   APPOINTMENTS_CHANGED_EVENT,
   fetchAppointments,
@@ -79,6 +78,12 @@ type ScheduleDayContextValue = {
    * change one status is most of the work and all of the friction.
    */
   confirmAppointment: (id: string) => void
+  /**
+   * Mark a visit that is over as missed — the practitioner's answer, never a
+   * timer's. Through `commitAppointment`, so the row is written and the
+   * no-show sequence and its charge follow from what the database holds.
+   */
+  markNoShow: (id: string) => void
   /**
    * Why the last booking did not stick, when the database refused it — an
    * overlap, or a duration off the five-minute grid. Null when all is well.
@@ -165,7 +170,6 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(APPOINTMENT_OVERLAY_EVENT, sync)
   }, [])
 
-  useNoShowWatcher(appointments, setAppointments)
   useQuestionnaireFiling()
   const syncAutomations = useAppointmentAutomations()
   // Read through a ref: a commit needs the list as it is at that moment, not
@@ -295,6 +299,15 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
     [commitAppointment],
   )
 
+  const markNoShow = useCallback(
+    (id: string) => {
+      const current = latest.current.find((a) => a.id === id)
+      if (!current || current.status === "no_show") return
+      commitAppointment({ ...current, status: "no_show" }, { isNew: false })
+    },
+    [commitAppointment],
+  )
+
   const value = useMemo(
     () => ({
       appointments,
@@ -302,10 +315,11 @@ export function ScheduleDayProvider({ children }: { children: ReactNode }) {
       openCreateAppointment,
       commitAppointment,
       confirmAppointment,
+      markNoShow,
       saveError,
       clearSaveError: () => setSaveError(null),
     }),
-    [appointments, openCreateAppointment, commitAppointment, confirmAppointment, saveError],
+    [appointments, openCreateAppointment, commitAppointment, confirmAppointment, markNoShow, saveError],
   )
 
   return (

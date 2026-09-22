@@ -206,8 +206,9 @@ export function onRebookingNeeded(
 }
 
 /**
- * The patient never turned up and never said so. Called after
- * `noShowGraceMinutes` has elapsed past the slot end.
+ * The patient never turned up and never said so. Called when the practitioner
+ * marks the visit a no-show — never by a timer, which cannot tell a missed
+ * visit from one that was treated and not closed.
  */
 export function onNoShow(
   input: AppointmentEventInput & {

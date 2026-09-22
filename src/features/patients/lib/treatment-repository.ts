@@ -37,8 +37,13 @@ interface TreatmentRow {
   profiles?: { full_name: string | null } | null
 }
 
+// The practitioner is named by foreign key, not by table. `voided_by` is a
+// second link from treatments to profiles, and from the day it was added a
+// bare `profiles(...)` was ambiguous: PostgREST refused every read and every
+// insert that asked for the row back, so no chart showed its history and no
+// session could be closed — for twelve days, on every patient.
 const SELECT =
-  "id, recorded_at, title, note, metadata, voided_at, void_reason, profiles(full_name)"
+  "id, recorded_at, title, note, metadata, voided_at, void_reason, profiles!treatments_provider_id_fkey(full_name)"
 
 function toRecord(row: TreatmentRow): TreatmentRecord {
   return {

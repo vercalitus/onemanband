@@ -21,6 +21,12 @@ import { useEffect, useMemo, useState } from "react"
 import { useLocale } from "@/components/providers/locale-provider"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useAddTask } from "@/components/providers/add-task-provider"
 import { useGlobalAddPatient } from "@/components/providers/global-add-patient-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
@@ -96,6 +102,37 @@ const metricAccent = {
 } as const
 
 /**
+ * The one button on "visit not closed", which asks its question.
+ *
+ * Two answers, and neither is taken for the practitioner. "Came" goes to the
+ * chart to close the session, because a visit that happened needs its record
+ * and its charge at the amount agreed, not a status flipped from here.
+ * "Didn't come" marks the no-show, which is what starts its message and charge.
+ */
+function VisitOutcomeMenu({
+  label,
+  onCame,
+  onMissed,
+}: {
+  label: string
+  onCame: () => void
+  onMissed: () => void
+}) {
+  const { t } = useLocale()
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="shrink-0 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800">
+        {label}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={6} className="min-w-[12rem] p-1.5">
+        <DropdownMenuItem onClick={onCame}>{t("signal.action.visitCame")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={onMissed}>{t("signal.action.visitMissed")}</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/**
  * One board row.
  *
  * Two shapes, because the halves of the board mean different things. An active
@@ -116,7 +153,8 @@ function TodoRow({
 }) {
   const { t } = useLocale()
   const router = useRouter()
-  const { openCreateAppointment, confirmAppointment, commitAppointment } = useScheduleDay()
+  const { openCreateAppointment, confirmAppointment, commitAppointment, markNoShow } =
+    useScheduleDay()
   const { openGlobalAddPatient } = useGlobalAddPatient()
   const done = Boolean(item.completed)
   // Reactive signals carry i18n keys + params; authored tasks carry plain strings.
@@ -178,7 +216,23 @@ function TodoRow({
         all of the friction. Confirming and booking happen here; everything else
         lands on the exact record, not on the page that contains it.
       */}
-      {item.action && !done && (
+      {item.action?.kind === "visitOutcome" && !done && (
+        <VisitOutcomeMenu
+          label={t(item.action.labelKey)}
+          onCame={() => {
+            if (item.action?.kind !== "visitOutcome") return
+            // The chart closes the session against this visit, not against
+            // whatever happens to be booked today.
+            router.push(
+              `/patients/${item.action.patientId}?visit=${item.action.appointmentId}#active-session`,
+            )
+          }}
+          onMissed={() => {
+            if (item.action?.kind === "visitOutcome") markNoShow(item.action.appointmentId)
+          }}
+        />
+      )}
+      {item.action && item.action.kind !== "visitOutcome" && !done && (
         <button
           type="button"
           onClick={() => {
@@ -224,7 +278,7 @@ function TodoRow({
                   )
                 },
               })
-            else
+            else if (action.kind === "schedule")
               openCreateAppointment(
                 action.date,
                 { id: action.patientId, name: action.patientName },

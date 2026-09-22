@@ -1,3 +1,5 @@
+import { findMissedAppointments } from "@/features/automations/lib/no-show-watch"
+import type { ClinicAutomations } from "@/types/automation"
 import type {
   BillingInvoice,
   PatientSummary,
@@ -95,6 +97,11 @@ export interface ClinicSignalInput {
   patients: PatientSummary[]
   /** Sessions recorded per patient, for care-plan progress. */
   treatmentCounts: Map<string, number>
+  /**
+   * When a visit counts as over and unaccounted for. Absent for the demo board,
+   * which has no clock of its own to measure the diary against.
+   */
+  visitClosing?: Pick<ClinicAutomations, "noShowGraceMinutes" | "timezone">
   /** Result of the last billing-provider check, when one has been made. */
   billing?: {
     ok: boolean
@@ -259,6 +266,39 @@ export function deriveReactiveTodos(input: ClinicSignalInput): TodoItem[] {
           kind: "link",
           labelKey: "signal.action.openChart",
           href: `/patients/${appt.patientId}`,
+        },
+      })
+    }
+  }
+
+  /*
+   * A visit is over and the diary still says it is coming.
+   *
+   * This used to be decided by a timer: twenty minutes after the slot, the
+   * visit was marked a no-show, charged, and the patient messaged and put on a
+   * daily payment ladder. It could not tell a patient who stayed home from one
+   * who was treated while saving the session failed — and in September it
+   * charged a patient with six sessions on record for a visit he attended. Only
+   * the practitioner knows which it was, so the board asks, and the row ends
+   * the moment the visit is closed or marked.
+   */
+  if (input.visitClosing) {
+    for (const appt of findMissedAppointments(appointments, input.visitClosing, now)) {
+      items.push({
+        id: `rx-unclosed-${appt.id}`,
+        kind: "reactive",
+        priority: "high",
+        titleKey: "signal.visitNotClosed",
+        dueKey: "signal.due.visitNotClosed",
+        params: { patient: appt.patientName, date: appt.date, time: appt.start },
+        title: `Visit not closed — ${appt.patientName}`,
+        due: `${appt.date} ${appt.start}`,
+        completed: false,
+        action: {
+          kind: "visitOutcome",
+          labelKey: "signal.action.visitOutcome",
+          appointmentId: appt.id,
+          patientId: appt.patientId,
         },
       })
     }

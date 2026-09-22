@@ -201,6 +201,7 @@ export function TodosProvider({ children }: { children: ReactNode }) {
         uninvoicedVisits: uninvoiced,
         patients: patientFetch.source === "live" ? patientFetch.patients : [],
         treatmentCounts: counts ?? new Map(),
+        visitClosing: settings.automations,
         /*
          * "Connected" means a payment recorded here produces a numbered tax
          * document at the bookkeeping provider. The ping answers ok for the

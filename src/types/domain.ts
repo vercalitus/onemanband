@@ -144,6 +144,18 @@ export type TodoAction =
       prefill: AddPatientPrefill
       review: IntakeReview
     }
+  /**
+   * A visit ended and nobody said what happened. One button, and it asks the
+   * question: came, and the session is closed on the chart; or did not come,
+   * and it is marked a no-show. Only the practitioner knows which, which is
+   * why a timer no longer decides it.
+   */
+  | {
+      kind: "visitOutcome"
+      labelKey: string
+      appointmentId: string
+      patientId: string
+    }
 
 export interface PulseMetric {
   id: string

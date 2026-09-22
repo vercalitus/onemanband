@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Eraser, RotateCcw, Save } from "lucide-react"
+import { Eraser, RotateCcw } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
@@ -50,8 +50,8 @@ function inkContext(canvas: HTMLCanvasElement | null): CanvasRenderingContext2D 
  * Finger/stylus-friendly drawing canvas. Strokes are kept as lightweight
  * vectors (not a PNG), so they persist across reloads and stay editable via
  * undo. Every committed change is pushed to the parent via onStrokesChange —
- * there is no "lose your work if you forget to save" trap. The Save button is
- * a reassurance flash only. Renders a nudge instead on very small screens.
+ * there is no "lose your work if you forget to save" trap, and so no Save
+ * button. Renders a nudge instead on very small screens.
  *
  * Three things about writing on a tablet, each learned from a practitioner
  * writing on one mid-treatment:
@@ -101,7 +101,6 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     undo: 0,
   })
   const [isMobileSmall, setIsMobileSmall] = useState(false)
-  const [saved, setSaved] = useState(false)
 
   /* ---------------------------------------------------------------- persist */
 
@@ -265,7 +264,6 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     } catch {
       /* no such pointer any more — the stroke still draws, it just is not captured */
     }
-    setSaved(false)
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -326,7 +324,6 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     undoRef.current = stack.slice(0, -1)
     commit(stack[stack.length - 1])
     redrawAll()
-    setSaved(false)
   }
 
   const handleClear = () => {
@@ -334,15 +331,6 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     undoRef.current = [...undoRef.current, strokesRef.current].slice(-MAX_UNDO_DEPTH)
     commit([])
     redrawAll()
-    setSaved(false)
-  }
-
-  /** Strokes already auto-persist; this settles the draft now and says so. */
-  const handleSave = () => {
-    pending.current = strokesRef.current
-    flush()
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2200)
   }
 
   if (isMobileSmall) {
@@ -383,21 +371,13 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
           <Eraser className="size-3.5" aria-hidden />
           {t("patientChart.canvas.clear")}
         </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className={cn(
-            "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors",
-            saved
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100",
-          )}
-          aria-label={t("patientChart.canvas.saveAria")}
-        >
-          <Save className="size-3.5" aria-hidden />
-          {saved ? t("patientChart.canvas.saved") : t("patientChart.canvas.save")}
-        </button>
       </div>
+
+      {/* There used to be a Save button here. It saved nothing the draft had
+          not already kept, and a practitioner pressed it expecting the session
+          to be recorded and closed — then found the pen still writing. The one
+          action that records a session is Complete Session; this says so. */}
+      <p className="text-[11px] text-slate-400">{t("patientChart.canvas.draftNote")}</p>
 
       {/* Canvas */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[inset_0_1px_4px_rgba(15,23,42,0.04)]">
