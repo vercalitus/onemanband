@@ -12,7 +12,7 @@ import { randomId, upsertIntake } from "@/features/automations/lib/automation-st
 import { findFreeSlots, type FreeSlot } from "@/features/automations/lib/availability"
 import { useBusySlots } from "@/features/automations/lib/use-busy-slots"
 import { markTokenUsed } from "@/features/automations/lib/automation-store"
-import { resolveToken } from "@/features/automations/lib/tokens"
+import { resolvePublicToken } from "@/features/automations/lib/public-token"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import { cn } from "@/lib/utils"
 import type { AppointmentType } from "@/types/domain"
@@ -50,19 +50,28 @@ export function BookPageClient({ token }: { token: string }) {
   const [error, setError] = useState("")
 
   useEffect(() => {
+    let cancelled = false
     const loaded = readClinicSettings()
     setSettings(loaded)
-    const resolution = resolveToken(token, "book")
-    if (!resolution.ok) {
-      setReason(resolution.reason)
-      setStage("invalid")
-      return
+    // The token is resolved against the server when this browser has never
+    // seen it — which is every patient, on their own phone. Looking only at
+    // the local store told each of them their registration link was invalid.
+    void resolvePublicToken(token, "book").then((resolution) => {
+      if (cancelled) return
+      if (!resolution.ok) {
+        setReason(resolution.reason)
+        setStage("invalid")
+        return
+      }
+      if (!loaded.automations.selfBooking.enabled) {
+        setStage("disabled")
+        return
+      }
+      setStage("details")
+    })
+    return () => {
+      cancelled = true
     }
-    if (!loaded.automations.selfBooking.enabled) {
-      setStage("disabled")
-      return
-    }
-    setStage("details")
   }, [token])
 
   const allowedTypes = useMemo(() => {
