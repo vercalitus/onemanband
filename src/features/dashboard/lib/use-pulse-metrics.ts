@@ -9,6 +9,7 @@ import { computePulseMetrics } from "@/features/dashboard/lib/pulse-metrics"
 import { fetchInvoices } from "@/features/finances/lib/finance-repository"
 import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
 import { useClinicSettings } from "@/features/settings/lib/use-clinic-settings"
+import { isSupabaseConfigured } from "@/lib/env"
 import { localizedPulseMetrics } from "@/lib/i18n/localized-seed"
 import { dashboardMetrics } from "@/lib/mock-data"
 import type { BillingInvoice, PulseMetric } from "@/types/domain"
@@ -24,6 +25,15 @@ import type { BillingInvoice, PulseMetric } from "@/types/domain"
  * the "Observations" card beside these is three paragraphs of written-in
  * analysis, true of nobody, and it has no place next to figures that are real.
  */
+/** The four tiles, with nothing in them, while the clinic's own figures load. */
+const PENDING_METRICS: PulseMetric[] = ["visits", "capacity", "revenue", "debt"].map((id) => ({
+  id,
+  label: id,
+  value: "—",
+  delta: "",
+  trend: "steady" as const,
+}))
+
 export function usePulseMetrics(): { metrics: PulseMetric[]; live: boolean } {
   const { t, locale, formatMoney } = useLocale()
   const { appointments } = useScheduleDay()
@@ -57,6 +67,13 @@ export function usePulseMetrics(): { metrics: PulseMetric[]; live: boolean } {
 
   return useMemo(() => {
     if (!live) {
+      // A configured deploy waits with empty figures rather than showing the
+      // demo's. For a second or two on every load, the place a practitioner
+      // reads the clinic's revenue said "₪74.2k" — a number belonging to
+      // nobody, in the one spot where an invented figure is indefensible.
+      if (isSupabaseConfigured()) {
+        return { metrics: PENDING_METRICS.map((m) => ({ ...m, label: t(`metric.${m.id}.label`) })), live: false }
+      }
       return { metrics: localizedPulseMetrics(dashboardMetrics, locale, (k) => t(k)), live: false }
     }
     const computed = computePulseMetrics(appointments, invoices, settings, formatMoney)

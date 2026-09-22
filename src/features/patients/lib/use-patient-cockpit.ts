@@ -138,6 +138,19 @@ const DEMO_STATUS_SENTENCES = [
  * deploy, a network fault, an empty result — and the session closes without a
  * transcription rather than without a record.
  */
+/**
+ * Whether a transcription says anything at all.
+ *
+ * The reader marks an illegible word `[?]`, so a drawing rather than writing
+ * comes back as a line of those and nothing else. Stored, it became a note
+ * reading "— Handwriting, transcribed automatically — [?]", which then became
+ * the patient's clinical status line at the top of their chart. A record that
+ * says nothing should say nothing.
+ */
+function hasReadableWords(text: string): boolean {
+  return /\p{L}|\p{N}/u.test(text.replace(/\[\?\]/g, ""))
+}
+
 async function transcribeHandwriting(canvas: Blob): Promise<string | null> {
   try {
     const bytes = new Uint8Array(await canvas.arrayBuffer())
@@ -153,7 +166,7 @@ async function transcribeHandwriting(canvas: Blob): Promise<string | null> {
     if (!res.ok) return null
     const body = (await res.json()) as { ok: boolean; text?: string }
     const text = body.ok ? (body.text ?? "").trim() : ""
-    return text || null
+    return text && hasReadableWords(text) ? text : null
   } catch {
     return null
   }
