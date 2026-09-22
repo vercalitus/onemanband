@@ -39,6 +39,8 @@ export function BookPageClient({ token }: { token: string }) {
   const [stage, setStage] = useState<Stage>("loading")
   const [reason, setReason] = useState("")
   const [settings, setSettings] = useState<ClinicSettings | null>(null)
+  /** Whose clinic this is, told by the server along with the token. */
+  const [clinicNameFromToken, setClinicNameFromToken] = useState<string | null>(null)
 
   const [fullName, setFullName] = useState("")
   const [phone, setPhone] = useState("")
@@ -63,6 +65,7 @@ export function BookPageClient({ token }: { token: string }) {
         setStage("invalid")
         return
       }
+      if (resolution.clinicName) setClinicNameFromToken(resolution.clinicName)
       if (!loaded.automations.selfBooking.enabled) {
         setStage("disabled")
         return
@@ -96,7 +99,7 @@ export function BookPageClient({ token }: { token: string }) {
     })
   }, [settings, stage, type, busySlots])
 
-  const clinicName = settings?.profile.clinicName ?? ""
+  const clinicName = settings?.profile.clinicName || clinicNameFromToken || ""
 
   const goToSlots = () => {
     if (!fullName.trim() || !phone.trim()) {

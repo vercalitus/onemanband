@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server"
 
-import { findTokenRow } from "@/features/automations/lib/server-store"
+import { findTokenRow, tokenClinicName } from "@/features/automations/lib/server-store"
 
 /**
  * Resolve a capability link for a patient-facing page.
  *
  * Public by necessity: the patient has no account, and the token in the URL is
  * the whole authorisation. So this answers only about the token it was handed,
- * and it answers narrowly — the ids the page needs to act, never a patient
- * record, never anything about the clinic. A guessed token learns nothing.
+ * and it answers narrowly — the ids the page needs to act, and the name of the
+ * clinic that sent the message, which the message itself already carried.
+ * Never a patient record, never anything else about the practice. A guessed
+ * token learns nothing but that it is not a link.
  *
  * The precise refusal reason is deliberate and is not a leak: "expired" and
  * "already used" are things the person holding the link needs to be told, and
@@ -36,6 +38,10 @@ export async function GET(
 
   return NextResponse.json({
     ok: true,
+    // Whose clinic this is. The public pages used to take it from the
+    // *patient's* browser settings, which have never been written to, so they
+    // showed the demo's name — or, once that was removed, nothing at all.
+    clinicName: await tokenClinicName(token.token),
     token: {
       token: token.token,
       kind: token.kind,

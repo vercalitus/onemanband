@@ -11,7 +11,7 @@ import { findFreeSlots, type FreeSlot } from "@/features/automations/lib/availab
 import { useBusySlots } from "@/features/automations/lib/use-busy-slots"
 import { recordPatientResponse } from "@/features/automations/lib/events"
 import { markTokenUsed } from "@/features/automations/lib/automation-store"
-import { resolveToken } from "@/features/automations/lib/tokens"
+import { resolvePublicToken } from "@/features/automations/lib/public-token"
 import { minutesFromHHMM } from "@/lib/appointment-time"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import type { AccessTokenContext } from "@/types/automation"
@@ -40,6 +40,8 @@ export function RespondPageClient({ token }: { token: string }) {
   const [reason, setReason] = useState<string>("")
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [settings, setSettings] = useState<ClinicSettings | null>(null)
+  /** Whose clinic this is, told by the server along with the token. */
+  const [clinicNameFromToken, setClinicNameFromToken] = useState<string | null>(null)
   const [context, setContext] = useState<AccessTokenContext | null>(null)
   const [appointmentId, setAppointmentId] = useState<string>("")
   const [patientId, setPatientId] = useState<string>("")
@@ -80,36 +82,18 @@ export function RespondPageClient({ token }: { token: string }) {
       )
     }
 
-    const local = resolveToken(token)
-    if (local.ok) {
-      apply(local.token)
-      return
-    }
-
-    void (async () => {
-      try {
-        const res = await fetch(`/api/automations/public/token/${encodeURIComponent(token)}`, {
-          cache: "no-store",
-        })
-        const body = (await res.json()) as
-          | { ok: true; token: Parameters<typeof apply>[0] }
-          | { ok: false; reason: string }
-        if (cancelled) return
-        if (!body.ok) {
-          setReason(body.reason)
-          setView("invalid")
-          return
-        }
-        apply(body.token)
-      } catch {
-        if (cancelled) return
-        // Unreachable rather than invalid: telling someone their link is dead
-        // when the network simply failed would send them to the clinic for
-        // nothing.
-        setReason("unreachable")
+    // Local first — the practitioner opening their own link — then the
+    // server, which is the only place a patient's phone can learn anything.
+    void resolvePublicToken(token).then((resolution) => {
+      if (cancelled) return
+      if (!resolution.ok) {
+        setReason(resolution.reason)
         setView("invalid")
+        return
       }
-    })()
+      if (resolution.clinicName) setClinicNameFromToken(resolution.clinicName)
+      apply(resolution.token)
+    })
 
     return () => {
       cancelled = true
@@ -174,7 +158,7 @@ export function RespondPageClient({ token }: { token: string }) {
     setBusy(false)
   }
 
-  const clinicName = settings?.profile.clinicName ?? ""
+  const clinicName = settings?.profile.clinicName || clinicNameFromToken || ""
 
   if (view === "loading") {
     return (

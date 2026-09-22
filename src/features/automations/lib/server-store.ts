@@ -101,6 +101,27 @@ export async function findTokenRow(value: string): Promise<AccessToken | null> {
   }
 }
 
+/**
+ * The name of the clinic a token belongs to.
+ *
+ * Read on the server because the patient's browser knows nothing about the
+ * practice: the public pages took the name from clinic settings, which on a
+ * patient's device are the defaults, so every one of them was headed with a
+ * clinic that does not exist.
+ */
+export async function tokenClinicName(value: string): Promise<string | null> {
+  const db = createSupabaseAdminClient()
+  if (!db) return null
+
+  const { data } = await db
+    .from("automation_access_tokens")
+    .select("clinics(name)")
+    .eq("token", value)
+    .maybeSingle()
+  const clinic = (data as { clinics?: { name?: string } | null } | null)?.clinics
+  return clinic?.name?.trim() || null
+}
+
 export async function markTokenUsedRow(value: string): Promise<void> {
   const db = createSupabaseAdminClient()
   if (!db) return

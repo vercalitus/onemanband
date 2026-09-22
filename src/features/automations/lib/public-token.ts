@@ -19,7 +19,8 @@ import type { AccessToken, AccessTokenKind } from "@/types/automation"
  * merely failed sends them to the clinic for nothing.
  */
 export type PublicTokenResult =
-  | { ok: true; token: AccessToken }
+  /** `clinicName` comes from the server — the patient's browser has no idea. */
+  | { ok: true; token: AccessToken; clinicName?: string | null }
   | { ok: false; reason: string }
 
 export async function resolvePublicToken(
@@ -34,11 +35,11 @@ export async function resolvePublicToken(
       cache: "no-store",
     })
     const body = (await res.json()) as
-      | { ok: true; token: AccessToken }
+      | { ok: true; token: AccessToken; clinicName?: string | null }
       | { ok: false; reason: string }
     if (!body.ok) return body
     if (kind && body.token.kind !== kind) return { ok: false, reason: "unknown" }
-    return { ok: true, token: body.token }
+    return { ok: true, token: body.token, clinicName: body.clinicName ?? null }
   } catch {
     return { ok: false, reason: "unreachable" }
   }
