@@ -1,5 +1,6 @@
 import "server-only"
 
+import { audienceAllows } from "@/features/automations/lib/audience"
 import { serverEnv } from "@/lib/env"
 import {
   SimulatedDispatcher,
@@ -167,6 +168,11 @@ class LiveDispatcher implements MessageDispatcher {
     if (!this.lanes[message.channel]) {
       return { ok: false, error: `no provider configured for ${message.channel}` }
     }
+
+    // Before any provider call, and before any charge: is this deploy allowed
+    // to write to this person at all? Closed by default — see `audience.ts`.
+    const audience = audienceAllows(message.to)
+    if (!audience.ok) return { ok: false, error: audience.reason }
 
     if (message.channel === "email") return resendSend(message)
 

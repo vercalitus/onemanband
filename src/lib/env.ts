@@ -22,6 +22,12 @@ const serverEnvSchema = clientEnvSchema.extend({
   // still a real API call against a real company account, and SUMIT mails the
   // address we hand it — so mock patients must never be a delivery target.
   BILLING_TEST_EMAIL: z.string().email().optional(),
+  // Who this deploy may message at all. Closed by default: with neither of
+  // these set, every live send is refused — a clinic of 1,181 records is one
+  // cron tick away from writing to all of them, and the guard must not depend
+  // on anybody remembering. See `automations/lib/audience.ts`.
+  MESSAGING_ALLOWLIST: z.string().optional(),
+  MESSAGING_AUDIENCE: z.enum(["all"]).optional(),
   // Twilio — WhatsApp and SMS delivery. Server-only: the secret can send in the
   // clinic's name and is billed per message. An API key pair is used rather
   // than the account's auth token so it can be revoked on its own.
@@ -67,6 +73,8 @@ export const serverEnv = serverEnvSchema.parse({
   SUMIT_API_KEY: unset(process.env.SUMIT_API_KEY),
   SUMIT_LIVE_DOCUMENTS: unset(process.env.SUMIT_LIVE_DOCUMENTS),
   BILLING_TEST_EMAIL: unset(process.env.BILLING_TEST_EMAIL),
+  MESSAGING_ALLOWLIST: unset(process.env.MESSAGING_ALLOWLIST),
+  MESSAGING_AUDIENCE: unset(process.env.MESSAGING_AUDIENCE),
   TWILIO_ACCOUNT_SID: unset(process.env.TWILIO_ACCOUNT_SID),
   TWILIO_API_KEY_SID: unset(process.env.TWILIO_API_KEY_SID),
   TWILIO_API_KEY_SECRET: unset(process.env.TWILIO_API_KEY_SECRET),
