@@ -29,6 +29,11 @@ const PUBLIC_PATHS = [
   "/api/automations/tick",
   "/api/automations/webhook",
   "/api/automations/public",
+  // The practitioner's phone-filling link. No session — he opens it from a
+  // message on his phone — so `PHONE_FILL_TOKEN` in the path is what stands in
+  // for one, and it expires on a date set beside it.
+  "/phones",
+  "/api/phones",
   // The calendar feed. Google polls it with no session; the secret in the path
   // is what stands in for one. Its own prefix on purpose — the route that hands
   // that secret out lives under `/api/calendar/` and must stay behind a login,
