@@ -107,7 +107,10 @@ export function PhonesClient({ token }: { token: string }) {
         <h1 style={S.h1}>Missing phone numbers</h1>
         <p style={S.lead}>
           These patients have no number on file, so no reminder can reach them.
-          Tap the right one, or type it in. Every answer saves on its own.
+          Where a name is marked <strong>Family</strong>, that person is already
+          in the system — tap their number if it is the same household and that
+          is how you would reach the patient. Otherwise type the number, or skip.
+          Every answer saves on its own.
         </p>
         <div style={S.progressRow}>
           <strong style={S.count}>{done} of {total}</strong>
