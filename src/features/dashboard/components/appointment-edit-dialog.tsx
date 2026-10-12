@@ -60,6 +60,10 @@ const HOUR_OPTIONS = Array.from(
 
 const DURATION_QUICK = [5, 10, 15, 30, 45, 60] as const
 
+/** How far around the chosen date the free-slot suggestions look. */
+const SUGGEST_DAYS_BEFORE = 3
+const SUGGEST_DAYS_AFTER = 7
+
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
 
 const CONTROL =
@@ -221,10 +225,28 @@ export function AppointmentEditDialog({
   const suggestions = useMemo<FreeSlot[]>(() => {
     if (!open || mode !== "create") return []
     const openDays = settings.weekdays.filter((w) => w.open)
+    /*
+     * Searched around the chosen day, not from today.
+     *
+     * The search walks forward in five-minute steps and stops at a limit, so
+     * starting from today it ran out after about six working days: a date
+     * picked two weeks ahead was never reached, and every suggestion came
+     * from this week. Three days either side of the chosen date — never
+     * earlier than now — is the window the practitioner is actually choosing in.
+     */
+    const realNow = new Date()
+    const windowStart = fromISODate(date)
+    windowStart.setDate(windowStart.getDate() - SUGGEST_DAYS_BEFORE)
+    const searchFrom = windowStart.getTime() > realNow.getTime() ? windowStart : realNow
     const slots = findFreeSlots({
+      now: searchFrom,
       automations: {
         ...settings.automations,
-        selfBooking: { ...settings.automations.selfBooking, leadTimeHours: 0, horizonDays: 21 },
+        selfBooking: {
+          ...settings.automations.selfBooking,
+          leadTimeHours: 0,
+          horizonDays: SUGGEST_DAYS_BEFORE + SUGGEST_DAYS_AFTER,
+        },
         futureAvailability: openDays.map((w) => ({
           id: `open-${w.weekdayIndex}`,
           weekdayIndex: w.weekdayIndex,
@@ -235,7 +257,7 @@ export function AppointmentEditDialog({
       weekdays: settings.weekdays,
       appointments: allAppointments,
       durationMinutes: durationMin,
-      limit: 600,
+      limit: 5000,
     })
     /*
      * Offered around the day and hour already chosen, not from today onwards.
@@ -249,32 +271,44 @@ export function AppointmentEditDialog({
     const dayDistance = (iso: string) =>
       Math.abs(Math.round((fromISODate(iso).getTime() - fromISODate(date).getTime()) / 86_400_000))
 
+    // Within this of the chosen hour counts as "about then": inside it a slot
+    // that touches another visit wins, outside it nearness to the hour does.
+    const NEAR_MINUTES = 120
+
     const ranked = slots
-      .map((slot) => ({
-        slot,
-        adjacent: adjacentSlots.has(`${slot.date}|${slot.start}`),
-        days: dayDistance(slot.date),
-        minutes: Math.abs(minutesFromHHMM(slot.start) - wanted),
-      }))
+      .map((slot) => {
+        const minutes = Math.abs(minutesFromHHMM(slot.start) - wanted)
+        return {
+          slot,
+          adjacent: adjacentSlots.has(`${slot.date}|${slot.start}`),
+          days: dayDistance(slot.date),
+          near: minutes <= NEAR_MINUTES,
+          minutes,
+        }
+      })
       .sort(
         (a, b) =>
           a.days - b.days ||
+          Number(b.near) - Number(a.near) ||
           Number(b.adjacent) - Number(a.adjacent) ||
           a.minutes - b.minutes,
       )
 
-    // Two per day, an hour apart at least: 12:00 and 12:05 are the same
-    // answer twice, and the strip is there to offer alternatives.
+    // The chosen day gets most of the strip; the days around it are the
+    // fallback. Spaced apart, because 12:00 and 12:05 are the same answer
+    // twice — except a slot touching a visit, which is worth its own chip.
     const lastPerDay = new Map<string, number[]>()
     const picked: FreeSlot[] = []
     for (const { slot, adjacent } of ranked) {
+      const chosenDay = slot.date === date
       const taken = lastPerDay.get(slot.date) ?? []
-      if (taken.length >= 2) continue
+      if (taken.length >= (chosenDay ? 4 : 2)) continue
       const start = minutesFromHHMM(slot.start)
-      if (!adjacent && taken.some((m) => Math.abs(m - start) < 60)) continue
+      const spacing = chosenDay ? 30 : 60
+      if (!adjacent && taken.some((m) => Math.abs(m - start) < spacing)) continue
       lastPerDay.set(slot.date, [...taken, start])
       picked.push(slot)
-      if (picked.length >= 6) break
+      if (picked.length >= 8) break
     }
     return picked
   }, [open, mode, settings, allAppointments, durationMin, date, startHour, startMinute, adjacentSlots])
@@ -701,6 +735,14 @@ export function AppointmentEditDialog({
                   ) : (
                     <p className="text-[11px] text-slate-400">{t("appointment.nextFree.none")}</p>
                   )}
+                  {/* Said in words on the page: the tooltip that used to
+                      explain the mark never appears on a tablet. */}
+                  {suggestions.some((slot) => adjacentSlots.has(`${slot.date}|${slot.start}`)) ? (
+                    <p className="flex items-center gap-1.5 text-[11px] text-emerald-700">
+                      <span aria-hidden>↔</span>
+                      {t("appointment.nextFree.adjacentLegend")}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 

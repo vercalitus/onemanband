@@ -175,7 +175,8 @@ export const HE_MESSAGES: Record<string, string> = {
   "appointment.plan.of": "{current} מתוך {total}",
   "appointment.plan.past": "טיפול {current}",
   "appointment.nextFree.title": "המועדים הפנויים הקרובים",
-  "appointment.nextFree.none": "אין מועד פנוי בשלושת השבועות הקרובים באורך הזה.",
+  "appointment.nextFree.none": "אין מועד פנוי סביב התאריך הזה באורך הזה.",
+  "appointment.nextFree.adjacentLegend": "צמוד לתור קיים",
   "appointment.nextFree.adjacent": "צמוד לתור קיים — בלי חור ביום",
   "header.openDiary": "פתיחת היומן של היום",
 

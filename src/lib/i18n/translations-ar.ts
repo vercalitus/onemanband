@@ -189,7 +189,8 @@ export const AR_MESSAGES: Record<string, string> = {
   "appointment.plan.of": "{current} من {total}",
   "appointment.plan.past": "زيارة {current}",
   "appointment.nextFree.title": "أقرب المواعيد المتاحة",
-  "appointment.nextFree.none": "لا يوجد موعد متاح خلال الأسابيع الثلاثة القادمة بهذه المدة.",
+  "appointment.nextFree.none": "لا يوجد موعد متاح حول هذا التاريخ بهذه المدة.",
+  "appointment.nextFree.adjacentLegend": "ملاصق لموعد قائم",
   "appointment.nextFree.adjacent": "ملاصق لموعد آخر — دون فجوة في اليوم",
   "header.openDiary": "فتح مفكرة اليوم",
 

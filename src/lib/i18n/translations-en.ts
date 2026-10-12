@@ -803,7 +803,8 @@ export const EN_MESSAGES: Record<string, string> = {
   "appointment.plan.of": "{current} of {total}",
   "appointment.plan.past": "Visit {current}",
   "appointment.nextFree.title": "Next free slots",
-  "appointment.nextFree.none": "Nothing free in the next three weeks for this length.",
+  "appointment.nextFree.none": "Nothing free around this date for this length.",
+  "appointment.nextFree.adjacentLegend": "Right next to an existing appointment",
   "appointment.nextFree.adjacent": "Right after another visit — no gap in the day",
   "header.openDiary": "Open today's diary",
 
