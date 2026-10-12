@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { CalendarDays, Clock3, XIcon } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -98,6 +99,19 @@ export function AppointmentEditDialog({
   }, [typeVisualBase, t])
   const [error, setError] = useState<string | null>(null)
   const [patientName, setPatientName] = useState("")
+  /**
+   * The patient this booking is for.
+   *
+   * A typed name used to become `pt-new-<random>`, which Postgres refuses —
+   * `patient_id` is a key into the patient list, not a label — so a visit
+   * booked from here was never saved at all. The name now searches the
+   * clinic's own patients and the chosen one is carried by id; a name nobody
+   * answers to is a new patient, and saying so is a deliberate second step.
+   */
+  const [patientId, setPatientId] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [allowNewPatient, setAllowNewPatient] = useState(false)
+  const patients = useMergedPatients()
   const [treatment, setTreatment] = useState("")
   const [startHour, setStartHour] = useState(CALENDAR_HOUR_START)
   const [startMinute, setStartMinute] = useState(0)
@@ -118,6 +132,8 @@ export function AppointmentEditDialog({
       setStartMinute(sm % 60)
       setDurationMin(em - sm)
       setPatientName(appointment.patientName)
+      setPatientId(appointment.patientId ?? null)
+      setAllowNewPatient(false)
       setTreatment(appointment.treatment)
       setStatus(appointment.status)
       setApptType(appointment.appointmentType)
@@ -140,6 +156,8 @@ export function AppointmentEditDialog({
       setStartMinute(clampedStart % 60)
       setDurationMin(dur)
       setPatientName(stub?.patientName ?? "")
+      setPatientId(stub?.patientId ?? null)
+      setAllowNewPatient(false)
       setTreatment(stub?.treatment ?? "")
       setStatus(stub?.status ?? "scheduled")
       setApptType(stub?.appointmentType ?? "adjustments")
@@ -183,6 +201,23 @@ export function AppointmentEditDialog({
    * quiet morning does not fill the strip with one date.
    */
   const { settings } = useClinicSettings()
+
+  /**
+   * Slots that begin where another visit ends, or end where one begins.
+   *
+   * Depends on the length being booked: a 20-minute visit is back to back with
+   * a 10:00 appointment only if it starts at 09:40.
+   */
+  const adjacentSlots = useMemo(() => {
+    const edges = new Set<string>()
+    for (const a of allAppointments) {
+      if (a.status === "cancelled") continue
+      edges.add(`${a.date}|${a.end}`)
+      edges.add(`${a.date}|${hhmmFromMinutes(minutesFromHHMM(a.start) - durationMin)}`)
+    }
+    return edges
+  }, [allAppointments, durationMin])
+
   const suggestions = useMemo<FreeSlot[]>(() => {
     if (!open || mode !== "create") return []
     const openDays = settings.weekdays.filter((w) => w.open)
@@ -202,24 +237,47 @@ export function AppointmentEditDialog({
       durationMinutes: durationMin,
       limit: 600,
     })
+    /*
+     * Offered around the day and hour already chosen, not from today onwards.
+     * The practitioner picks the date and time he has in mind first; what the
+     * strip is for is the nearest thing that is actually free to it. And a
+     * slot that touches an existing visit comes first, because a day packed
+     * back to back is the one he wants — a free hour between two patients is
+     * an hour he is at the clinic for nothing.
+     */
+    const wanted = startHour * 60 + startMinute
+    const dayDistance = (iso: string) =>
+      Math.abs(Math.round((fromISODate(iso).getTime() - fromISODate(date).getTime()) / 86_400_000))
+
+    const ranked = slots
+      .map((slot) => ({
+        slot,
+        adjacent: adjacentSlots.has(`${slot.date}|${slot.start}`),
+        days: dayDistance(slot.date),
+        minutes: Math.abs(minutesFromHHMM(slot.start) - wanted),
+      }))
+      .sort(
+        (a, b) =>
+          a.days - b.days ||
+          Number(b.adjacent) - Number(a.adjacent) ||
+          a.minutes - b.minutes,
+      )
+
     // Two per day, an hour apart at least: 12:00 and 12:05 are the same
     // answer twice, and the strip is there to offer alternatives.
-    const lastPerDay = new Map<string, number>()
-    const countPerDay = new Map<string, number>()
+    const lastPerDay = new Map<string, number[]>()
     const picked: FreeSlot[] = []
-    for (const slot of slots) {
-      const n = countPerDay.get(slot.date) ?? 0
-      if (n >= 2) continue
+    for (const { slot, adjacent } of ranked) {
+      const taken = lastPerDay.get(slot.date) ?? []
+      if (taken.length >= 2) continue
       const start = minutesFromHHMM(slot.start)
-      const last = lastPerDay.get(slot.date)
-      if (last !== undefined && start - last < 60) continue
-      countPerDay.set(slot.date, n + 1)
-      lastPerDay.set(slot.date, start)
+      if (!adjacent && taken.some((m) => Math.abs(m - start) < 60)) continue
+      lastPerDay.set(slot.date, [...taken, start])
       picked.push(slot)
       if (picked.length >= 6) break
     }
     return picked
-  }, [open, mode, settings, allAppointments, durationMin])
+  }, [open, mode, settings, allAppointments, durationMin, date, startHour, startMinute, adjacentSlots])
 
   const slotLabel = (slot: FreeSlot) => {
     try {
@@ -232,6 +290,32 @@ export function AppointmentEditDialog({
     } catch {
       return `${slot.date} · ${slot.start}`
     }
+  }
+
+  /** Patients whose name or number answers to what was typed. */
+  const matches = useMemo(() => {
+    const q = patientName.trim().toLowerCase()
+    if (!q) return []
+    const digits = q.replace(/\D/g, "")
+    return patients
+      .filter((p) => {
+        if (p.fullName.toLowerCase().includes(q)) return true
+        return digits.length >= 3 && (p.phone ?? "").replace(/\D/g, "").includes(digits)
+      })
+      .slice(0, 6)
+  }, [patientName, patients])
+
+  const chosen = useMemo(
+    () => (patientId ? patients.find((p) => p.id === patientId) ?? null : null),
+    [patientId, patients],
+  )
+
+  const choosePatient = (p: { id: string; fullName: string }) => {
+    setPatientId(p.id)
+    setPatientName(p.fullName)
+    setAllowNewPatient(false)
+    setPickerOpen(false)
+    setError(null)
   }
 
   const applySuggestion = (slot: FreeSlot) => {
@@ -275,6 +359,14 @@ export function AppointmentEditDialog({
     const name = patientName.trim()
     if (!name) {
       setError(t("appointment.error.name"))
+      return
+    }
+    // A booking has to belong to someone the clinic holds. Typing a name that
+    // matches nobody used to mint an id the database refuses, so the visit was
+    // silently lost; now it asks first.
+    if (mode === "create" && !patientId && !allowNewPatient) {
+      setPickerOpen(true)
+      setError(t("appointment.error.pickPatient"))
       return
     }
 
@@ -325,7 +417,7 @@ export function AppointmentEditDialog({
             id: crypto.randomUUID(),
             // Preserve the patient when a stub carried one (patient page / search),
             // otherwise treat it as a brand-new patient.
-            patientId: appointment?.patientId || `pt-new-${crypto.randomUUID().slice(0, 8)}`,
+            patientId: patientId || appointment?.patientId || `pt-new-${crypto.randomUUID().slice(0, 8)}`,
             patientName: name,
             date,
             dayLabel,
@@ -423,13 +515,66 @@ export function AppointmentEditDialog({
                 <label className={LABEL} htmlFor="appt-patient">
                   {t("appointment.field.patient")}
                 </label>
-                <Input
-                  id="appt-patient"
-                  value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
-                  placeholder={t("appointment.field.fullName")}
-                  className="h-11 rounded-xl border-slate-200 text-base"
-                />
+                <div className="relative">
+                  <Input
+                    id="appt-patient"
+                    value={patientName}
+                    onChange={(e) => {
+                      setPatientName(e.target.value)
+                      // Typing again means the chosen patient no longer matches
+                      // what is on screen, so the booking is unattached until a
+                      // name is picked from the list.
+                      setPatientId(null)
+                      setAllowNewPatient(false)
+                      setPickerOpen(true)
+                    }}
+                    onFocus={() => setPickerOpen(true)}
+                    placeholder={t("appointment.field.fullName")}
+                    autoComplete="off"
+                    className="h-11 rounded-xl border-slate-200 text-base"
+                  />
+                  {chosen ? (
+                    <p className="mt-1 text-[11px] font-medium text-emerald-700">
+                      {t("appointment.patient.linked", { name: chosen.fullName })}
+                    </p>
+                  ) : allowNewPatient ? (
+                    <p className="mt-1 text-[11px] font-medium text-amber-700">
+                      {t("appointment.patient.willCreate")}
+                    </p>
+                  ) : null}
+
+                  {pickerOpen && patientName.trim() && !chosen ? (
+                    <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                      {matches.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => choosePatient(p)}
+                          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-start text-sm hover:bg-sky-50"
+                        >
+                          <span className="truncate font-medium text-slate-800">{p.fullName}</span>
+                          <span className="shrink-0 font-mono text-[11px] text-slate-400">
+                            {p.phone || ""}
+                          </span>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAllowNewPatient(true)
+                          setPatientId(null)
+                          setPickerOpen(false)
+                          setError(null)
+                        }}
+                        className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2.5 text-start text-sm text-slate-500 hover:bg-slate-50"
+                      >
+                        {matches.length
+                          ? t("appointment.patient.newInstead")
+                          : t("appointment.patient.noneFound")}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div className="grid gap-1.5 sm:col-span-2">
                 <label className={LABEL} htmlFor="appt-notes">
@@ -470,20 +615,27 @@ export function AppointmentEditDialog({
                   {suggestions.length ? (
                     <div className="flex flex-wrap gap-1.5">
                       {suggestions.map((slot) => {
-                        const chosen =
+                        const isChosen =
                           slot.date === date && minutesFromHHMM(slot.start) === preview.startMin
+                        const backToBack = adjacentSlots.has(`${slot.date}|${slot.start}`)
                         return (
                           <button
                             key={`${slot.date}-${slot.start}`}
                             type="button"
                             onClick={() => applySuggestion(slot)}
+                            title={backToBack ? t("appointment.nextFree.adjacent") : undefined}
                             className={cn(
-                              "rounded-full border px-3 py-1.5 font-mono text-xs tabular-nums transition-colors",
-                              chosen
+                              "flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-xs tabular-nums transition-colors",
+                              isChosen
                                 ? "border-slate-900 bg-slate-900 text-white"
-                                : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50",
+                                : backToBack
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50",
                             )}
                           >
+                            {/* A slot that touches another visit keeps the day
+                                packed; it is worth seeing at a glance. */}
+                            {backToBack ? <span aria-hidden>↔</span> : null}
                             {slotLabel(slot)}
                           </button>
                         )

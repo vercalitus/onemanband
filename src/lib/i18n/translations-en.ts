@@ -343,6 +343,11 @@ export const EN_MESSAGES: Record<string, string> = {
 
   "appointment.error.hours": "Appointment must stay within clinic hours (08:00–19:00).",
   "appointment.error.name": "Patient name is required.",
+  "appointment.error.pickPatient": "Pick the patient from the list, or choose to add a new one.",
+  "appointment.patient.linked": "Booking for {name}",
+  "appointment.patient.willCreate": "A new patient will be created with this name",
+  "appointment.patient.newInstead": "None of these — add as a new patient",
+  "appointment.patient.noneFound": "No patient by that name — add as a new patient",
   "appointment.today": "Today",
   "appointment.treatmentFallback": "Visit",
   "appointment.create.subtitle": "Create a new appointment for today.",
@@ -793,6 +798,7 @@ export const EN_MESSAGES: Record<string, string> = {
   "patientChart.timeline.voided": "Saved in error",
   "appointment.nextFree.title": "Next free slots",
   "appointment.nextFree.none": "Nothing free in the next three weeks for this length.",
+  "appointment.nextFree.adjacent": "Right after another visit — no gap in the day",
   "header.openDiary": "Open today's diary",
 
   // 3D body map (prototype, /lab)

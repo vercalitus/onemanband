@@ -188,6 +188,7 @@ export const AR_MESSAGES: Record<string, string> = {
   "patientChart.timeline.voided": "حُفظ بالخطأ",
   "appointment.nextFree.title": "أقرب المواعيد المتاحة",
   "appointment.nextFree.none": "لا يوجد موعد متاح خلال الأسابيع الثلاثة القادمة بهذه المدة.",
+  "appointment.nextFree.adjacent": "ملاصق لموعد آخر — دون فجوة في اليوم",
   "header.openDiary": "فتح مفكرة اليوم",
 
   // خريطة الجسم ثلاثية الأبعاد (نموذج أولي، ‏/lab)
@@ -414,6 +415,11 @@ export const AR_MESSAGES: Record<string, string> = {
 
   "appointment.error.hours": "يجب أن يبقى الموعد ضمن ساعات عمل العيادة (08:00–19:00).",
   "appointment.error.name": "اسم المريض مطلوب.",
+  "appointment.error.pickPatient": "اختر المريض من القائمة، أو اختر إضافة مريض جديد.",
+  "appointment.patient.linked": "موعد لـ {name}",
+  "appointment.patient.willCreate": "سيُفتح مريض جديد بهذا الاسم",
+  "appointment.patient.newInstead": "لا أحد منهم — إضافة مريض جديد",
+  "appointment.patient.noneFound": "لا يوجد مريض بهذا الاسم — إضافة مريض جديد",
   "appointment.today": "اليوم",
   "appointment.treatmentFallback": "زيارة",
   "appointment.create.subtitle": "إنشاء موعد جديد لليوم.",

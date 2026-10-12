@@ -174,6 +174,7 @@ export const HE_MESSAGES: Record<string, string> = {
   "patientChart.timeline.voided": "נשמר בטעות",
   "appointment.nextFree.title": "המועדים הפנויים הקרובים",
   "appointment.nextFree.none": "אין מועד פנוי בשלושת השבועות הקרובים באורך הזה.",
+  "appointment.nextFree.adjacent": "צמוד לתור קיים — בלי חור ביום",
   "header.openDiary": "פתיחת היומן של היום",
 
   // מפת גוף תלת־ממדית (אב־טיפוס, /lab)
@@ -405,6 +406,11 @@ export const HE_MESSAGES: Record<string, string> = {
 
   "appointment.error.hours": "יש להישאר בין שעות הפעילות (08:00–19:00).",
   "appointment.error.name": "שם מטופל נדרש.",
+  "appointment.error.pickPatient": "בחרו מטופל מהרשימה, או סמנו שזהו מטופל חדש.",
+  "appointment.patient.linked": "תור עבור {name}",
+  "appointment.patient.willCreate": "ייפתח מטופל חדש בשם הזה",
+  "appointment.patient.newInstead": "אף אחד מאלה — פתיחת מטופל חדש",
+  "appointment.patient.noneFound": "אין מטופל בשם הזה — פתיחת מטופל חדש",
   "appointment.today": "היום",
   "appointment.treatmentFallback": "ביקור",
   "appointment.create.subtitle": "יצירת תור חדש להיום.",
