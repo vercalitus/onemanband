@@ -114,7 +114,7 @@ export function PatientDetailClient() {
     bodyMarks3d,
     addBodyMark3d,
     updateBodyMark3dNote,
-    updateBodyMark3dTone,
+    updateBodyMark3dTones,
     removeBodyMark3d,
   } = usePatientCockpit(id)
 
@@ -285,7 +285,7 @@ export function PatientDetailClient() {
             bodyMarks3d={bodyMarks3d}
             onAddBodyMark3d={addBodyMark3d}
             onUpdateBodyMark3dNote={updateBodyMark3dNote}
-            onUpdateBodyMark3dTone={updateBodyMark3dTone}
+            onUpdateBodyMark3dTones={updateBodyMark3dTones}
             onRemoveBodyMark3d={removeBodyMark3d}
           />
 
@@ -293,7 +293,19 @@ export function PatientDetailClient() {
             <ExportButton onClick={() => setExportOpen(true)} label={t("export.patientRecord")} />
           </div>
 
-          <section id="active-session" aria-labelledby="session-heading" className="scroll-mt-24">
+          {/*
+            Written on with a pen, on a tablet, with a hand resting on the card.
+            The canvas blocks the tablet's long-press menu itself, but a palm
+            landing an inch off it — on the heading, the progress counter, the
+            notes label — selected that text and raised "Look Up / Translate"
+            over the drawing. Selection is off for the whole card and switched
+            back on only in the notes field, where it is the point.
+          */}
+          <section
+            id="active-session"
+            aria-labelledby="session-heading"
+            className="scroll-mt-24 select-none [-webkit-touch-callout:none]"
+          >
             <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <h2
@@ -303,11 +315,21 @@ export function PatientDetailClient() {
                   {t("patientChart.activeSession")}
                 </h2>
                 <div className="flex items-center gap-2">
+                  {/*
+                    "Session 12 of 8" is not a sentence. Once the plan has been
+                    worked through, the honest thing to say is that it has — the
+                    count keeps running, the target stops pretending to bound it.
+                  */}
                   <span className="font-mono text-[10px] tabular-nums text-slate-400">
-                    {t("patientChart.sessionProgress", {
-                      current: totalSessionsDone + 1,
-                      total: planTarget,
-                    })}
+                    {totalSessionsDone >= planTarget
+                      ? t("patientChart.sessionPastPlan", {
+                          current: totalSessionsDone + 1,
+                          total: planTarget,
+                        })
+                      : t("patientChart.sessionProgress", {
+                          current: totalSessionsDone + 1,
+                          total: planTarget,
+                        })}
                   </span>
                   <span className="inline-flex h-5 items-center rounded-full bg-emerald-50 px-2 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
                     {t("patientChart.live")}
@@ -358,7 +380,7 @@ export function PatientDetailClient() {
                         onChange={(e) => setSessionNotes(e.target.value)}
                         placeholder={t("patientChart.sessionNotesPh")}
                         rows={5}
-                        className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 placeholder-slate-400 outline-none transition-[border-color,box-shadow] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
+                        className="w-full resize-none select-text rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 placeholder-slate-400 outline-none transition-[border-color,box-shadow] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 [-webkit-touch-callout:default]"
                       />
                     </div>
                   </div>

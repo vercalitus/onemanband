@@ -47,7 +47,7 @@ interface Props {
   bodyMarks3d: BodyMark3d[]
   onAddBodyMark3d: (mark: Omit<BodyMark3d, "id" | "createdAt">) => void
   onUpdateBodyMark3dNote: (id: string, note: string) => void
-  onUpdateBodyMark3dTone: (id: string, tone: BodyMarkTone) => void
+  onUpdateBodyMark3dTones: (id: string, tones: BodyMarkTone[]) => void
   onRemoveBodyMark3d: (id: string) => void
 }
 
@@ -68,7 +68,7 @@ export function PatientSmartHeader({
   bodyMarks3d,
   onAddBodyMark3d,
   onUpdateBodyMark3dNote,
-  onUpdateBodyMark3dTone,
+  onUpdateBodyMark3dTones,
   onRemoveBodyMark3d,
 }: Props) {
   const { t, localeTag } = useLocale()
@@ -164,22 +164,34 @@ export function PatientSmartHeader({
               {onStatusChange ? (
                 /* The badge is the control. A separate "edit status" affordance
                    would be one more thing on a crowded header for a change made
-                   a few times a year. */
-                <select
-                  value={patient.status}
-                  onChange={(e) => onStatusChange(e.target.value as PatientSummary["status"])}
-                  aria-label={t("patientChart.statusChangeAria")}
-                  className={cn(
-                    "cursor-pointer appearance-none rounded-md border px-2 py-0.5 text-[11px] font-semibold capitalize outline-none focus-visible:ring-2 focus-visible:ring-sky-100",
-                    STATUS_BADGE[patient.status],
-                  )}
-                >
-                  {(["active", "frozen", "past"] as const).map((status) => (
-                    <option key={status} value={status}>
-                      {t(`status.patient.${status}`)}
-                    </option>
-                  ))}
-                </select>
+                   a few times a year.
+
+                   It needed a chevron, though: stripped of the browser's own
+                   arrow it was indistinguishable from the read-only badge
+                   beside it, and the practitioner went looking through Settings
+                   for a way to freeze a patient. */
+                <span className="relative inline-flex items-center">
+                  <select
+                    value={patient.status}
+                    onChange={(e) => onStatusChange(e.target.value as PatientSummary["status"])}
+                    aria-label={t("patientChart.statusChangeAria")}
+                    title={t("patientChart.statusChangeAria")}
+                    className={cn(
+                      "cursor-pointer appearance-none rounded-md border px-2 pe-6 py-0.5 text-[11px] font-semibold capitalize outline-none focus-visible:ring-2 focus-visible:ring-sky-100",
+                      STATUS_BADGE[patient.status],
+                    )}
+                  >
+                    {(["active", "frozen", "past"] as const).map((status) => (
+                      <option key={status} value={status}>
+                        {t(`status.patient.${status}`)}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute end-1.5 size-3 opacity-70"
+                    aria-hidden
+                  />
+                </span>
               ) : (
                 <span
                   className={cn(
@@ -436,7 +448,7 @@ export function PatientSmartHeader({
                 onSave={onAddBodyMark3d}
                 onDelete={onRemoveBodyMark3d}
                 onUpdateNote={onUpdateBodyMark3dNote}
-                onUpdateTone={onUpdateBodyMark3dTone}
+                onUpdateTones={onUpdateBodyMark3dTones}
               />
             )}
 

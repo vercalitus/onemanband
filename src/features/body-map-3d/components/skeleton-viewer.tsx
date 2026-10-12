@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { markTones } from "@/types/domain"
 import type { BodyMark3d, BodyMarkTone, BoneStroke } from "@/types/domain"
 
 /**
@@ -64,12 +65,21 @@ const TONE_COLOR: Record<BodyMarkTone, string> = {
   pain: "#dc2626",
   nerve: "#eab308",
 }
+/**
+ * A spot that is both. One bone can only be one colour, so the pair gets its
+ * own — between the two it is made of, and not mistakable for either.
+ */
+const BOTH_COLOR = "#ea580c"
 /** Marks made before a finding had a kind. Shown as itself, never guessed at. */
 const UNCLASSIFIED_COLOR = "#94a3b8"
 const INK = "#111827"
 const INK_OTHER = "#64748b"
 
-const toneColor = (tone?: BodyMarkTone) => (tone ? TONE_COLOR[tone] : UNCLASSIFIED_COLOR)
+const toneColor = (tones: BodyMarkTone[]) => {
+  if (tones.length > 1) return BOTH_COLOR
+  if (tones.length === 1) return TONE_COLOR[tones[0]]
+  return UNCLASSIFIED_COLOR
+}
 
 /** Lift off the surface, in centimetres. Enough to clear the bone, small
  *  enough that the line still reads as being on it. */
@@ -177,18 +187,24 @@ export function SkeletonViewer({
   onSave,
   onDelete,
   onUpdateNote,
-  onUpdateTone,
+  onUpdateTones,
 }: {
   annotations: BodyMark3d[]
   onSave: (annotation: Omit<BodyMark3d, "id" | "createdAt">) => void
   onDelete: (id: string) => void
   onUpdateNote: (id: string, note: string) => void
-  onUpdateTone: (id: string, tone: BodyMarkTone) => void
+  onUpdateTones: (id: string, tones: BodyMarkTone[]) => void
 }) {
   const { t, localeTag } = useLocale()
   const parts = useMemo(() => buildSkeleton(), [])
   const [mode, setMode] = useState<Mode>("point")
-  const [tone, setTone] = useState<BodyMarkTone>("pain")
+  /** What the mark being made records. More than one is the normal case for a
+   *  spot that is tender and on a nerve both. */
+  const [tones, setTones] = useState<BodyMarkTone[]>(["pain"])
+  const toggleTone = (value: BodyMarkTone) =>
+    setTones((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+    )
   const [hovered, setHovered] = useState<string | null>(null)
   const [strokes, setStrokes] = useState<BoneStroke[]>([])
   const [liveStroke, setLiveStroke] = useState<BoneStroke>([])
@@ -225,7 +241,7 @@ export function SkeletonViewer({
     () => new Set(openMark ? openMark.bones : bones),
     [openMark, bones],
   )
-  const highlightColor = openMark ? toneColor(openMark.tone) : TONE_COLOR[tone]
+  const highlightColor = openMark ? toneColor(markTones(openMark)) : toneColor(tones)
 
   const onCamera = useCallback((camera: THREE.Camera, controls: unknown) => {
     cameraRef.current = camera
@@ -401,7 +417,7 @@ export function SkeletonViewer({
     onSave({
       bones,
       strokes,
-      tone,
+      tones: tones.length ? tones : undefined,
       note: note.trim() || undefined,
       camera: [camera.position.x, camera.position.y, camera.position.z],
       target: [target.x, target.y, target.z],
@@ -705,17 +721,19 @@ export function SkeletonViewer({
           ))}
         </div>
 
-        {/* The kind of finding, beside the tools: it is the other half of what
-            you are marking with, and it applies to both of them. */}
+        {/* The kinds of finding, beside the tools: the other half of what you
+            are marking with, and it applies to both of them. Either, both or
+            neither — these are not alternatives, they are two things that can
+            be true of the same spot. */}
         <div className="grid grid-cols-2 gap-2">
           {TONES.map((value) => (
             <button
               key={value}
               type="button"
-              onClick={() => setTone(value)}
-              aria-pressed={tone === value}
+              onClick={() => toggleTone(value)}
+              aria-pressed={tones.includes(value)}
               className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
-                tone === value
+                tones.includes(value)
                   ? "border-slate-900 bg-white text-slate-900"
                   : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
               }`}
@@ -815,7 +833,7 @@ export function SkeletonViewer({
                     >
                       <span
                         className="mt-1.5 size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: toneColor(a.tone) }}
+                        style={{ backgroundColor: toneColor(markTones(a)) }}
                         aria-hidden
                       />
                       <span className="min-w-0 flex-1">
@@ -826,7 +844,11 @@ export function SkeletonViewer({
                           <span className="mt-0.5 block truncate text-xs text-slate-600">{a.note}</span>
                         )}
                         <span className="mt-0.5 block text-[11px] text-slate-400">
-                          {t(a.tone ? `bodyMap3d.tone.${a.tone}` : "bodyMap3d.tone.unclassified")}
+                          {markTones(a).length
+                            ? markTones(a)
+                                .map((v) => t(`bodyMap3d.tone.${v}`))
+                                .join(" + ")
+                            : t("bodyMap3d.tone.unclassified")}
                           {" · "}
                           {new Date(a.createdAt).toLocaleString(localeTag)}
                           {a.strokes.length
@@ -849,16 +871,26 @@ export function SkeletonViewer({
                     {open && (
                       <div className="border-t border-slate-200 px-3 py-3">
                         {/* A mark made before findings had a kind can be given
-                            one here. Nothing assigns it silently. */}
+                            one here, and one that turns out to be both can be
+                            told so afterwards. Nothing assigns it silently. */}
                         <div className="mb-3 flex flex-wrap gap-1.5">
-                          {TONES.map((value) => (
+                          {TONES.map((value) => {
+                            const on = markTones(a).includes(value)
+                            return (
                             <button
                               key={value}
                               type="button"
-                              onClick={() => onUpdateTone(a.id, value)}
-                              aria-pressed={a.tone === value}
+                              onClick={() =>
+                                onUpdateTones(
+                                  a.id,
+                                  on
+                                    ? markTones(a).filter((v) => v !== value)
+                                    : [...markTones(a), value],
+                                )
+                              }
+                              aria-pressed={on}
                               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                a.tone === value
+                                on
                                   ? "border-slate-900 text-slate-900"
                                   : "border-slate-200 text-slate-500 hover:bg-slate-50"
                               }`}
@@ -870,7 +902,8 @@ export function SkeletonViewer({
                               />
                               {t(`bodyMap3d.tone.${value}`)}
                             </button>
-                          ))}
+                            )
+                          })}
                         </div>
 
                         <label

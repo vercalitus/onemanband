@@ -250,12 +250,34 @@ export interface BodyMark3d {
   id: string
   bones: string[]
   strokes: BoneStroke[]
+  /**
+   * What kinds of finding this mark records.
+   *
+   * A list, because one spot is often both: tender to the touch *and* on the
+   * path of a nerve. It used to be a single value, so a practitioner marking
+   * such a spot had to choose which half of the finding to write down — and
+   * the half he left out was simply not in the record.
+   */
+  tones?: BodyMarkTone[]
+  /**
+   * @deprecated Marks from when a finding had exactly one kind. Read once and
+   * folded into `tones`; never written again.
+   */
   tone?: BodyMarkTone
   note?: string
   camera: [number, number, number]
   target: [number, number, number]
   createdAt: string
 }
+
+/**
+ * The kinds on a mark, whatever shape it was stored in.
+ *
+ * Empty means unclassified — a mark made before findings had a kind — and is
+ * shown as itself rather than guessed at.
+ */
+export const markTones = (mark: Pick<BodyMark3d, "tones" | "tone">): BodyMarkTone[] =>
+  mark.tones?.length ? mark.tones : mark.tone ? [mark.tone] : []
 
 export interface DocumentRecord {
   id: string

@@ -419,9 +419,19 @@ export function usePatientCockpit(patientId: string) {
     [bodyMarks3d, persistMarks3d],
   )
 
-  const updateBodyMark3dTone = useCallback(
-    (id: string, tone: BodyMarkTone) => {
-      persistMarks3d(bodyMarks3d.map((m) => (m.id === id ? { ...m, tone } : m)))
+  /**
+   * Set which kinds of finding a mark records.
+   *
+   * Writing `tones` drops the old single `tone` from the row on the way past,
+   * so a mark is never stored saying one thing in two places.
+   */
+  const updateBodyMark3dTones = useCallback(
+    (id: string, tones: BodyMarkTone[]) => {
+      persistMarks3d(
+        bodyMarks3d.map((m) =>
+          m.id === id ? { ...m, tones: tones.length ? tones : undefined, tone: undefined } : m,
+        ),
+      )
     },
     [bodyMarks3d, persistMarks3d],
   )
@@ -842,7 +852,7 @@ export function usePatientCockpit(patientId: string) {
     bodyMarks3d,
     addBodyMark3d,
     updateBodyMark3dNote,
-    updateBodyMark3dTone,
+    updateBodyMark3dTones,
     removeBodyMark3d,
   }
 }

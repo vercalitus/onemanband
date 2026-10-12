@@ -12,6 +12,7 @@ import type { AppointmentStatus, AppointmentType, ScheduleItem } from "@/types/d
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
 import { useOutstandingBalances } from "@/features/calendar/lib/payment-status"
+import { usePlanProgress } from "@/features/calendar/lib/plan-progress"
 import {
   CALENDAR_HOUR_END,
   CALENDAR_HOUR_START,
@@ -71,6 +72,7 @@ export function DayCalendarView({
 }) {
   const { locale, t } = useLocale()
   const owing = useOutstandingBalances()
+  const planProgress = usePlanProgress()
   const typeVisualBase = useAppointmentTypeVisual()
 
   const typeVisual = useMemo(() => {
@@ -213,6 +215,18 @@ export function DayCalendarView({
       const typeStyle = typeVisual[apt.appointmentType]
       const isCancelled = apt.status === "cancelled"
       const debt = owing.has(apt.patientId)
+      /*
+       * Which visit of the plan this one is. A cancelled slot is not a visit,
+       * so it says nothing; and the plan is only quoted where it bounds the
+       * count — once it has been worked through, the card shows the visit
+       * number alone rather than "12 of 8".
+       */
+      const plan = isCancelled ? undefined : planProgress.get(apt.patientId)
+      const planLabel = plan
+        ? plan.done + 1 <= plan.target
+          ? t("appointment.plan.of", { current: plan.done + 1, total: plan.target })
+          : t("appointment.plan.past", { current: plan.done + 1 })
+        : null
 
       nodes.push(
         <div
@@ -264,7 +278,15 @@ export function DayCalendarView({
                   <span className={cn("size-1.5 rounded-full", status.dot)} aria-hidden />
                   {status.label}
                 </span>
-                <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", typeStyle.chip)}>
+                {/* The kind of visit, at a size it can be read at arm's length
+                    on a tablet — it was 10px and the practitioner could not
+                    tell the three types apart without leaning in. */}
+                <span
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-xs font-semibold",
+                    typeStyle.chip,
+                  )}
+                >
                   {typeStyle.label}
                 </span>
               </div>
@@ -280,6 +302,11 @@ export function DayCalendarView({
                 <FolderOpen className="size-4 stroke-[1.6]" aria-hidden />
                 <span className="sr-only">{t("dashboard.patient.openChart", { name: apt.patientName })}</span>
               </Link>
+              {planLabel && (
+                <span className="ms-auto shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-slate-600">
+                  {planLabel}
+                </span>
+              )}
             </div>
             <p className="line-clamp-2 text-xs leading-snug text-slate-600">{apt.treatment}</p>
           </div>
