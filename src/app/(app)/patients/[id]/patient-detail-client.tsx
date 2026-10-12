@@ -23,6 +23,7 @@ import { loadPatientExportSource } from "@/features/exports/lib/export-source"
 import { datedFilename, downloadCsv, downloadJson } from "@/lib/file-export"
 import { SessionCanvas } from "@/features/patients/components/session-canvas"
 import { SessionCloseDialog } from "@/features/patients/components/session-close-dialog"
+import { SKELETON_FLUSH_EVENT } from "@/features/body-map-3d/lib/flush-event"
 import { SessionAudio } from "@/features/patients/components/session-audio"
 import { useSessionClosing } from "@/features/patients/lib/use-close-session"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
@@ -172,6 +173,8 @@ export function PatientDetailClient() {
     // The type of visit being closed is today's booking, falling back to the
     // last one recorded for a session with nothing in the diary.
     const type = todaysAppointment?.appointmentType ?? patientLastAppointmentType
+    // A spot marked on the skeleton but never saved belongs to this session too.
+    window.dispatchEvent(new Event(SKELETON_FLUSH_EVENT))
     // Only claim the session was recorded once it was. The old code toasted
     // unconditionally, which was harmless while the write went to localStorage
     // and cannot stay that way now that it can fail.
@@ -468,6 +471,14 @@ export function PatientDetailClient() {
           openScheduleNext()
         }}
         onConfirm={handleCloseSession}
+        sessionIsEmpty={!sessionNotes.trim() && canvasStrokes.length === 0 && !sessionAudioUrl}
+        lastRecordedAt={
+          treatmentRecords
+            .filter((r) => !r.voidedAt)
+            .map((r) => r.recordedAt)
+            .sort()
+            .at(-1) ?? null
+        }
       />
 
       <BillingToast

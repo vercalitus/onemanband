@@ -609,44 +609,6 @@ export function AppointmentEditDialog({
                 </p>
               </div>
 
-              {mode === "create" ? (
-                <div className="grid gap-1.5">
-                  <p className={LABEL}>{t("appointment.nextFree.title")}</p>
-                  {suggestions.length ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {suggestions.map((slot) => {
-                        const isChosen =
-                          slot.date === date && minutesFromHHMM(slot.start) === preview.startMin
-                        const backToBack = adjacentSlots.has(`${slot.date}|${slot.start}`)
-                        return (
-                          <button
-                            key={`${slot.date}-${slot.start}`}
-                            type="button"
-                            onClick={() => applySuggestion(slot)}
-                            title={backToBack ? t("appointment.nextFree.adjacent") : undefined}
-                            className={cn(
-                              "flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-xs tabular-nums transition-colors",
-                              isChosen
-                                ? "border-slate-900 bg-slate-900 text-white"
-                                : backToBack
-                                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                                  : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50",
-                            )}
-                          >
-                            {/* A slot that touches another visit keeps the day
-                                packed; it is worth seeing at a glance. */}
-                            {backToBack ? <span aria-hidden>↔</span> : null}
-                            {slotLabel(slot)}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-slate-400">{t("appointment.nextFree.none")}</p>
-                  )}
-                </div>
-              ) : null}
-
               <div className="space-y-1.5">
                 <p className={LABEL}>{t("appointment.field.startTime")}</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -699,6 +661,48 @@ export function AppointmentEditDialog({
                   </div>
                 </div>
               </div>
+
+              {/* Below the date *and* the time, because it is offered around
+                  both: the practitioner sets the day and the hour he has in
+                  mind, then sees what is actually free near it. Between the
+                  two it read as an answer to the date alone. */}
+              {mode === "create" ? (
+                <div className="grid gap-1.5">
+                  <p className={LABEL}>{t("appointment.nextFree.title")}</p>
+                  {suggestions.length ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {suggestions.map((slot) => {
+                        const isChosen =
+                          slot.date === date && minutesFromHHMM(slot.start) === preview.startMin
+                        const backToBack = adjacentSlots.has(`${slot.date}|${slot.start}`)
+                        return (
+                          <button
+                            key={`${slot.date}-${slot.start}`}
+                            type="button"
+                            onClick={() => applySuggestion(slot)}
+                            title={backToBack ? t("appointment.nextFree.adjacent") : undefined}
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-xs tabular-nums transition-colors",
+                              isChosen
+                                ? "border-slate-900 bg-slate-900 text-white"
+                                : backToBack
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50",
+                            )}
+                          >
+                            {/* A slot that touches another visit keeps the day
+                                packed; it is worth seeing at a glance. */}
+                            {backToBack ? <span aria-hidden>↔</span> : null}
+                            {slotLabel(slot)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-400">{t("appointment.nextFree.none")}</p>
+                  )}
+                </div>
+              ) : null}
 
               <div className="grid gap-2">
                 <p className={LABEL}>{t("appointment.field.duration")}</p>

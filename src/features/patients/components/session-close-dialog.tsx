@@ -1,7 +1,7 @@
 "use client"
 
 import { AlertTriangle, CalendarClock, CalendarPlus, Check, Loader2, Receipt } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
@@ -41,6 +41,9 @@ import type { PaymentMethod, ScheduleItem } from "@/types/domain"
  *    a decision to make on the Finances page with them all in view.
  */
 
+/** Two sessions for one patient closer together than this are asked about. */
+const RECENT_SESSION_MINUTES = 30
+
 const METHODS: PaymentMethod[] = ["digital", "cash", "credit_card", "bank_transfer", "cheque"]
 
 export function SessionCloseDialog({
@@ -52,6 +55,8 @@ export function SessionCloseDialog({
   outstandingDebt,
   onScheduleNext,
   onConfirm,
+  sessionIsEmpty,
+  lastRecordedAt,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -63,6 +68,10 @@ export function SessionCloseDialog({
   /** Unpaid visits from before today. Shown; never settled from here. */
   outstandingDebt: number
   onScheduleNext: () => void
+  /** Nothing typed, drawn or recorded in the session being closed. */
+  sessionIsEmpty: boolean
+  /** When this patient's most recent session that counts was recorded. */
+  lastRecordedAt: string | null
   onConfirm: (input: {
     amount: number
     paid: boolean
@@ -75,6 +84,26 @@ export function SessionCloseDialog({
   const [method, setMethod] = useState<PaymentMethod>("digital")
   const [busy, setBusy] = useState(false)
   const [outcome, setOutcome] = useState<CloseSessionOutcome | null>(null)
+  /**
+   * A record is only made when there is a visit to record.
+   *
+   * Closing a session writes a treatment row that can never be deleted and
+   * counts against the care plan. It used to be written for every press of the
+   * button: after the first close the card was empty and the button still
+   * live, so each further press — to check it had saved, or because nothing
+   * seemed to happen — wrote another, empty, session. A patient on a plan of
+   * eight read eleven, five of them blank.
+   *
+   * Two cases now need saying so, out loud, before anything is written: a
+   * session with nothing in it, and a second session for the same patient
+   * within half an hour of the last one. Both can be real — a visit where
+   * nothing needed writing down, two treatments in a day — so they are asked,
+   * not refused.
+   */
+  const [minutesSinceLast, setMinutesSinceLast] = useState<number | null>(null)
+  const [acknowledged, setAcknowledged] = useState(false)
+  /** Taken synchronously, so a second tap in the same instant is not a second record. */
+  const inFlight = useRef(false)
 
   /**
    * Reset on opening, and only on opening.
@@ -91,18 +120,35 @@ export function SessionCloseDialog({
     setMethod("digital")
     setBusy(false)
     setOutcome(null)
+    setAcknowledged(false)
+    inFlight.current = false
+    setMinutesSinceLast(
+      lastRecordedAt
+        ? Math.floor((Date.now() - new Date(lastRecordedAt).getTime()) / 60_000)
+        : null,
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the amount is the seed at open, not a dependency
   }, [open])
 
   const parsed = Number(amount)
   const amountValid = Number.isFinite(parsed) && parsed >= 0
 
+  const recentlyRecorded =
+    minutesSinceLast !== null && minutesSinceLast >= 0 && minutesSinceLast < RECENT_SESSION_MINUTES
+  const needsAcknowledgement = sessionIsEmpty || recentlyRecorded
+
   const submit = async () => {
-    if (!amountValid || busy) return
+    if (!amountValid || busy || inFlight.current) return
+    if (needsAcknowledgement && !acknowledged) return
+    inFlight.current = true
     setBusy(true)
     const result = await onConfirm({ amount: parsed, paid, method })
     setBusy(false)
-    if (!result) return
+    if (!result) {
+      // Nothing was written: the practitioner may try again.
+      inFlight.current = false
+      return
+    }
     setOutcome(result)
     // Long enough to read what happened to the document and the booking link.
     window.setTimeout(() => onOpenChange(false), result.billingFailed ? 4000 : 2400)
@@ -165,6 +211,43 @@ export function SessionCloseDialog({
           </div>
         ) : (
           <div className="grid gap-4">
+            {needsAcknowledgement && (
+              <button
+                type="button"
+                onClick={() => setAcknowledged((v) => !v)}
+                aria-pressed={acknowledged}
+                className={cn(
+                  "flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-start transition-colors",
+                  acknowledged ? "border-amber-300 bg-amber-50" : "border-amber-200 bg-amber-50/60",
+                )}
+              >
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  {recentlyRecorded && (
+                    <span className="block text-xs font-semibold text-amber-900">
+                      {t("patientChart.close.recentWarning", { n: minutesSinceLast ?? 0 })}
+                    </span>
+                  )}
+                  {sessionIsEmpty && (
+                    <span className="block text-xs font-semibold text-amber-900">
+                      {t("patientChart.close.emptyWarning")}
+                    </span>
+                  )}
+                  <span className="mt-1.5 flex items-center gap-2 text-xs font-medium text-slate-700">
+                    <span
+                      className={cn(
+                        "flex size-4 shrink-0 items-center justify-center rounded border",
+                        acknowledged ? "border-amber-600 bg-amber-600" : "border-slate-300 bg-white",
+                      )}
+                    >
+                      {acknowledged && <Check className="size-3 text-white" aria-hidden />}
+                    </span>
+                    {t("patientChart.close.recordAnyway")}
+                  </span>
+                </span>
+              </button>
+            )}
+
             {/* What the diary already knows. Never a question. */}
             <div
               className={cn(
@@ -291,7 +374,11 @@ export function SessionCloseDialog({
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
               {t("common.cancel")}
             </Button>
-            <Button onClick={submit} disabled={!amountValid || busy} className="gap-2">
+            <Button
+              onClick={submit}
+              disabled={!amountValid || busy || (needsAcknowledgement && !acknowledged)}
+              className="gap-2"
+            >
               {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
               {t("patientChart.close.confirm")}
             </Button>

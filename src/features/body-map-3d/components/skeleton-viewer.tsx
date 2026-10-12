@@ -6,6 +6,7 @@ import { ChevronDown, Undo2, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 
+import { SKELETON_FLUSH_EVENT } from "../lib/flush-event"
 import { buildSkeleton, type SkeletonPart } from "../lib/skeleton-parts"
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
@@ -73,7 +74,9 @@ const BOTH_COLOR = "#ea580c"
 /** Marks made before a finding had a kind. Shown as itself, never guessed at. */
 const UNCLASSIFIED_COLOR = "#94a3b8"
 const INK = "#111827"
-const INK_OTHER = "#64748b"
+// Dark enough to read on bare bone and on a coloured one; the open mark is
+// told apart by weight, not by the others fading out.
+const INK_OTHER = "#334155"
 
 const toneColor = (tones: BodyMarkTone[]) => {
   if (tones.length > 1) return BOTH_COLOR
@@ -104,34 +107,39 @@ interface Draft {
  */
 function SkeletonMeshes({
   parts,
-  highlighted,
-  color,
+  boneColors,
+  emphasis,
   groupRef,
 }: {
   parts: SkeletonPart[]
-  highlighted: Set<string>
-  color: string
+  /** The colour each marked bone takes. A bone not in the map is bare bone. */
+  boneColors: Map<string, string>
+  /** Bones of the mark being made or read: these glow, the rest are just coloured. */
+  emphasis: Set<string>
   groupRef: React.RefObject<THREE.Group | null>
 }) {
   return (
     <group ref={groupRef}>
-      {parts.map((part, i) => (
-        <mesh
-          key={`${part.name}-${i}`}
-          name={part.name}
-          geometry={part.geometry}
-          position={part.position}
-          quaternion={part.quaternion}
-        >
-          <meshStandardMaterial
-            color={highlighted.has(part.name) ? color : GROUP_COLOR[part.group]}
-            roughness={0.72}
-            metalness={0.04}
-            emissive={highlighted.has(part.name) ? color : "#000000"}
-            emissiveIntensity={highlighted.has(part.name) ? 0.32 : 0}
-          />
-        </mesh>
-      ))}
+      {parts.map((part, i) => {
+        const color = boneColors.get(part.name)
+        return (
+          <mesh
+            key={`${part.name}-${i}`}
+            name={part.name}
+            geometry={part.geometry}
+            position={part.position}
+            quaternion={part.quaternion}
+          >
+            <meshStandardMaterial
+              color={color ?? GROUP_COLOR[part.group]}
+              roughness={0.72}
+              metalness={0.04}
+              emissive={color ?? "#000000"}
+              emissiveIntensity={color ? (emphasis.has(part.name) ? 0.32 : 0.14) : 0}
+            />
+          </mesh>
+        )
+      })}
     </group>
   )
 }
@@ -237,11 +245,34 @@ export function SkeletonViewer({
 
   const openMark = annotations.find((a) => a.id === openId) ?? null
 
-  const highlighted = useMemo(
-    () => new Set(openMark ? openMark.bones : bones),
-    [openMark, bones],
-  )
   const highlightColor = openMark ? toneColor(markTones(openMark)) : toneColor(tones)
+
+  /**
+   * Every saved finding, coloured on the body the moment the chart opens.
+   *
+   * Only the mark opened from the list used to be coloured, so a patient whose
+   * marks were all points — bones picked, nothing drawn — came back to a bare
+   * skeleton, and the practitioner concluded his marks had been lost. They
+   * were in the record the whole time; the body just did not say so. A bone
+   * marked as pain in one place and nerve in another takes the colour of both.
+   */
+  const { boneColors, emphasis } = useMemo(() => {
+    const tonesByBone = new Map<string, Set<BodyMarkTone>>()
+    for (const a of annotations) {
+      for (const bone of a.bones) {
+        const set = tonesByBone.get(bone) ?? new Set<BodyMarkTone>()
+        for (const v of markTones(a)) set.add(v)
+        tonesByBone.set(bone, set)
+      }
+    }
+    const colors = new Map<string, string>()
+    for (const [bone, set] of tonesByBone) colors.set(bone, toneColor([...set]))
+    // The mark being made, or the one being read, is drawn in its own colour
+    // over whatever else is on that bone.
+    const focus = openMark ? openMark.bones : bones
+    for (const bone of focus) colors.set(bone, highlightColor)
+    return { boneColors: colors, emphasis: new Set(focus) }
+  }, [annotations, openMark, bones, highlightColor])
 
   const onCamera = useCallback((camera: THREE.Camera, controls: unknown) => {
     cameraRef.current = camera
@@ -426,6 +457,31 @@ export function SkeletonViewer({
     setHistory([])
   }
 
+  /*
+   * A mark nobody pressed "save" on is still a finding.
+   *
+   * Everything else on the chart is kept as it is written; the skeleton alone
+   * asked for a separate save, and a practitioner who marked a spot, closed the
+   * session and moved to the next patient lost it without being told. The
+   * draft is now kept when the session closes, when the page is left, and when
+   * the tablet switches away — the three ways a chart is put down.
+   */
+  const saveRef = useRef(save)
+  saveRef.current = save
+  useEffect(() => {
+    const flush = () => saveRef.current()
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") flush()
+    }
+    window.addEventListener(SKELETON_FLUSH_EVENT, flush)
+    document.addEventListener("visibilitychange", onHidden)
+    return () => {
+      window.removeEventListener(SKELETON_FLUSH_EVENT, flush)
+      document.removeEventListener("visibilitychange", onHidden)
+      flush()
+    }
+  }, [])
+
   /** Open a saved mark: its own angle back, its note in place, in one tap. */
   const toggleOpen = (a: BodyMark3d) => {
     if (openId === a.id) {
@@ -544,8 +600,8 @@ export function SkeletonViewer({
           <CameraProbe onReady={onCamera} />
           <SkeletonMeshes
             parts={parts}
-            highlighted={highlighted}
-            color={highlightColor}
+            boneColors={boneColors}
+            emphasis={emphasis}
             groupRef={groupRef}
           />
 
@@ -559,7 +615,7 @@ export function SkeletonViewer({
                   key={`${a.id}-${i}`}
                   points={s}
                   color={a.id === openId ? INK : INK_OTHER}
-                  lineWidth={a.id === openId ? 3.5 : 2}
+                  lineWidth={a.id === openId ? 3.5 : 2.75}
                 />
               ) : null,
             ),
