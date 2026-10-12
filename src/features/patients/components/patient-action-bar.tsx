@@ -86,10 +86,14 @@ export function PatientActionBar({
 
   return (
     <>
-      {/* ── Mobile / tablet: sticky bottom bar ── */}
+      {/* ── Mobile / tablet: sticky bottom bar ──
+          It sits exactly where a writing hand rests on a tablet held upright,
+          so like the session card it carries no selectable text and no
+          long-press menu: a palm on "Complete Session" must not raise
+          "Look Up / Translate" over the page being written. */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2.5 border-t border-slate-200/80 bg-white/95 p-4 backdrop-blur-md sm:flex-row xl:hidden",
+          "fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2.5 border-t border-slate-200/80 bg-white/95 p-4 backdrop-blur-md select-none [-webkit-touch-callout:none] sm:flex-row xl:hidden",
           "shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.14)]",
         )}
         aria-label={t("patientChart.quickActionsAria")}

@@ -70,6 +70,9 @@ function inkContext(canvas: HTMLCanvasElement | null): CanvasRenderingContext2D 
  *    after each new one is quadratic, and a page of handwriting is thousands
  *    of segments. The ink that is already on the canvas stays on it.
  */
+/** Set by the first pen contact in this tab, so later charts start out knowing. */
+let penSeenInThisTab = false
+
 export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Props) {
   const { t } = useLocale()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -93,7 +96,12 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
    * has touched the canvas, fingers and palms are not strokes.
    */
   const activePointer = useRef<number | null>(null)
-  const penSeen = useRef(false)
+  /** Whether the contact drawing now is a finger or palm rather than a pen. */
+  const activeIsTouch = useRef(false)
+  // Remembered across charts in the same tab: a practitioner who wrote with a
+  // pen on the last patient is holding one now, and his palm should not get
+  // the first stroke on this one.
+  const penSeen = useRef(penSeenInThisTab)
 
   /** Only what the toolbar needs — this is the component's entire render input. */
   const [counts, setCounts] = useState({
@@ -247,9 +255,29 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   }
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.pointerType === "pen") penSeen.current = true
+    if (e.pointerType === "pen") {
+      penSeen.current = true
+      penSeenInThisTab = true
+      /*
+       * The pen wins over a palm that got there first.
+       *
+       * "Once a pen has been seen, ignore fingers" only works from the second
+       * stroke. On a freshly opened chart the hand lands before the pen does:
+       * the palm took the one drawing slot, was inked as a smear, and the pen
+       * was ignored until the palm lifted — which, for a hand resting on the
+       * glass, is never. The pen went dead on the first word of every session.
+       * A palm's "stroke" was never ink, so it is dropped and the canvas
+       * redrawn without it.
+       */
+      if (activePointer.current !== null && activeIsTouch.current) {
+        activePointer.current = null
+        currentStroke.current = []
+        redrawAll()
+      }
+    }
     if (e.pointerType === "touch" && penSeen.current) return
     if (activePointer.current !== null) return
+    activeIsTouch.current = e.pointerType === "touch"
     e.preventDefault()
     activePointer.current = e.pointerId
     rectRef.current = e.currentTarget.getBoundingClientRect()
