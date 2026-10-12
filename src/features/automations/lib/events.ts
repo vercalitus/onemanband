@@ -27,10 +27,21 @@ import type {
  * instead of smeared across the calendar, finances and patient screens.
  */
 
-/** Fold ClinicSettings into the shape the planner wants. */
+/**
+ * Fold ClinicSettings into the shape the planner wants.
+ *
+ * `clinicName` is passed in rather than read from the settings blob, because
+ * the settings blob lives in one browser's localStorage and the clinic's name
+ * lives in Postgres. Every `{clinic_name}` in every message was going out
+ * unresolved — the placeholder, literally, in the body — because the device
+ * the practitioner books from has never had a name typed into its settings.
+ * Callers hand over `fetchClinicName()`; the settings value is the fallback,
+ * and an empty one still leaves the placeholder visible, which is the one
+ * failure mode you can see.
+ */
 export function planContextFromSettings(
   settings: ClinicSettings,
-  options: { origin?: string; locale?: string; now?: Date } = {},
+  options: { origin?: string; locale?: string; now?: Date; clinicName?: string | null } = {},
 ): PlanContext {
   const { notifications } = settings
   const channelEnabled: Record<MessageChannel, boolean> = {
@@ -40,7 +51,7 @@ export function planContextFromSettings(
   }
   return {
     automations: settings.automations,
-    clinicName: settings.profile.clinicName,
+    clinicName: options.clinicName?.trim() || settings.profile.clinicName,
     practitionerName: settings.profile.practitionerName || undefined,
     channelEnabled,
     origin: options.origin,

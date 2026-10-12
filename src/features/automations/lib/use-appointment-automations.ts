@@ -14,6 +14,7 @@ import {
   planContextFromSettings,
 } from "@/features/automations/lib/events"
 import type { PlanContext } from "@/features/automations/lib/plan-messages"
+import { fetchClinicName } from "@/lib/clinic-repository"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
 import { todaySchedule, weeklySchedule } from "@/lib/mock-data"
@@ -60,6 +61,7 @@ export function useAppointmentAutomations() {
         const ctx = planContextFromSettings(settings, {
           origin: typeof window !== "undefined" ? window.location.origin : undefined,
           locale: localeTag,
+          clinicName: await fetchClinicName(),
         })
 
         const patient = patients.find((p) => p.id === next.patientId)

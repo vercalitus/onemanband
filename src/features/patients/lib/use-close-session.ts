@@ -15,6 +15,7 @@ import {
 import { settleMessage, settleVisit } from "@/features/finances/lib/settle-visit"
 import { clinicHasPatients } from "@/features/patients/lib/patient-repository"
 import { minutesFromHHMM } from "@/lib/appointment-time"
+import { fetchClinicName } from "@/lib/clinic-repository"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import type { AppointmentType, PaymentMethod, ScheduleItem } from "@/types/domain"
 
@@ -162,6 +163,7 @@ export function useSessionClosing(
         const ctx = planContextFromSettings(settings, {
           origin: typeof window !== "undefined" ? window.location.origin : undefined,
           locale: localeTag,
+          clinicName: await fetchClinicName(),
         })
         const patient = patients.find((p) => p.id === input.patientId)
         const visit = todaysAppointment

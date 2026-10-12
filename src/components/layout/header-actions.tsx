@@ -29,6 +29,7 @@ import { onInvoiceIssued, planContextFromSettings } from "@/features/automations
 import { fetchPatientsWithOpenInvoices } from "@/features/finances/lib/finance-repository"
 import { mintToken, tokenLink } from "@/features/automations/lib/tokens"
 import { readField, readOptOut, writeOptOut } from "@/features/patients/lib/patient-extras-store"
+import { fetchClinicName } from "@/lib/clinic-repository"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
 import { localizePatient } from "@/lib/i18n/localized-seed"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
@@ -485,6 +486,7 @@ function PatientActionSheet({ patient, onBack, onNavigate, onSchedule }: ActionS
         planContextFromSettings(readClinicSettings(), {
           origin: typeof window !== "undefined" ? window.location.origin : undefined,
           locale: localeTag,
+          clinicName: await fetchClinicName(),
         }),
       )
     }
