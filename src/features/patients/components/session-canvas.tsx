@@ -76,6 +76,22 @@ function inkContext(canvas: HTMLCanvasElement | null): CanvasRenderingContext2D 
  *    after each new one is quadratic, and a page of handwriting is thousands
  *    of segments. The ink that is already on the canvas stays on it.
  */
+/** TEMPORARY — see the pen diagnostic in the component. */
+interface PenLog {
+  t0: number
+  type: string
+  down: number[]
+  rect: number[]
+  scroll: number[]
+  vv: number[]
+  dpr: number
+  px: number[]
+  notes: string[]
+  moves: number[][]
+}
+const r1 = (n: number) => Math.round(n * 10) / 10
+const PEN_LOG_MAX_MOVES = 60
+
 /** Where this device remembers which hand writes on it. */
 const HAND_KEY = "ob:writingHand"
 type WritingHand = "left" | "right"
@@ -159,6 +175,22 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   const penSeen = useRef(penSeenInThisTab)
   /** Until when a hand touching the page counts as the writing hand. */
   const penWritingUntil = useRef(0)
+
+  /*
+   * TEMPORARY pen diagnostic (`?penlog=1`), to be removed with
+   * /api/debug/pen once the tablet ink is fixed. Records what the tablet
+   * reports for each stroke — positions, scroll, the drawing's size — and
+   * sends it to the server log. Coordinates only.
+   */
+  const penLogOn = useRef(false)
+  const penLog = useRef<PenLog | null>(null)
+  useEffect(() => {
+    try {
+      penLogOn.current = new URLSearchParams(window.location.search).has("penlog")
+    } catch {
+      penLogOn.current = false
+    }
+  }, [])
 
   /** Only what the toolbar needs — this is the component's entire render input. */
   const [counts, setCounts] = useState({
@@ -318,6 +350,9 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
       const width = Math.round(rect.width * dpr)
       const height = Math.round((width * CANVAS_HEIGHT) / CANVAS_WIDTH)
       if (canvas.width === width && canvas.height === height) return
+      penLog.current?.notes.push(
+        `resize ${canvas.width}x${canvas.height}->${width}x${height} rect ${r1(rect.left)},${r1(rect.top)},${r1(rect.width)},${r1(rect.height)}`,
+      )
       canvas.width = width
       canvas.height = height
       redrawAll()
@@ -381,6 +416,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
        * nothing to do with the pen.
        */
       if (activePointer.current !== null && activeIsTouch.current) {
+        penLog.current?.notes.push("palm-takeover")
         try {
           e.currentTarget.releasePointerCapture(activePointer.current)
         } catch {
@@ -409,6 +445,22 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     rectRef.current = e.currentTarget.getBoundingClientRect()
     currentStroke.current = [toPoint(e.clientX, e.clientY, e.pressure)]
     drawnUpTo.current = 0
+    if (penLogOn.current) {
+      const r = rectRef.current
+      const vv = window.visualViewport
+      penLog.current = {
+        t0: performance.now(),
+        type: e.pointerType,
+        down: [r1(e.clientX), r1(e.clientY), r1(e.pressure)],
+        rect: [r1(r.left), r1(r.top), r1(r.width), r1(r.height)],
+        scroll: [r1(window.scrollX), r1(window.scrollY)],
+        vv: vv ? [r1(vv.scale), r1(vv.offsetLeft), r1(vv.offsetTop), r1(vv.pageTop)] : [],
+        dpr: window.devicePixelRatio,
+        px: [e.currentTarget.width, e.currentTarget.height],
+        notes: [],
+        moves: [],
+      }
+    }
     // Last, and allowed to fail: capture throws if the contact is already gone
     // by the time this runs, and a throw here used to leave the stroke holding
     // the *previous* stroke's points — every sample after it landed in a stroke
@@ -433,6 +485,23 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     const coalesced =
       typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : []
     const samples = coalesced.length > 0 ? coalesced : [native]
+    const log = penLog.current
+    if (log && log.moves.length < PEN_LOG_MAX_MOVES) {
+      const first = samples[0]
+      const last = samples[samples.length - 1]
+      log.moves.push([
+        Math.round(performance.now() - log.t0),
+        r1(native.clientX),
+        r1(native.clientY),
+        coalesced.length,
+        r1(first.clientX),
+        r1(first.clientY),
+        r1(last.clientX),
+        r1(last.clientY),
+        r1(window.scrollY),
+        r1(e.currentTarget.getBoundingClientRect().top),
+      ])
+    }
     for (const sample of samples) {
       addPoint(toPoint(sample.clientX, sample.clientY, sample.pressure))
     }
@@ -456,6 +525,21 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
 
     const pts = currentStroke.current
     currentStroke.current = []
+    const log = penLog.current
+    penLog.current = null
+    if (log) {
+      log.notes.push(`end ${e?.type ?? "takeover"} pts ${pts.length}`)
+      try {
+        void fetch("/api/debug/pen", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ ua: navigator.userAgent, ...log }),
+          keepalive: true,
+        }).catch(() => {})
+      } catch {
+        /* diagnostics never get in the way of writing */
+      }
+    }
     // A cancelled pointer — the browser took the contact for a gesture —
     // still commits what was drawn. Losing half a word is worse than a
     // slightly short stroke.
