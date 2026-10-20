@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Eraser, RotateCcw } from "lucide-react"
+import { Eraser, Hand, RotateCcw } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
@@ -76,11 +76,60 @@ function inkContext(canvas: HTMLCanvasElement | null): CanvasRenderingContext2D 
  *    after each new one is quadratic, and a page of handwriting is thousands
  *    of segments. The ink that is already on the canvas stays on it.
  */
+/** Where this device remembers which hand writes on it. */
+const HAND_KEY = "ob:writingHand"
+type WritingHand = "left" | "right"
+
+/**
+ * While the drawing is on screen, nothing on the page can be selected.
+ *
+ * A writing wrist rests wherever the line happens to be, and below the
+ * drawing there is always something: the session notes, then the patient's
+ * timeline. On a tablet a hand at rest is a long press, so it selected the
+ * text under it — "PATIENT TIMELINE", for a practitioner who writes left-
+ * handed — and raised Look Up / Translate over the page. Protecting one area
+ * at a time only moved the problem to the next one down.
+ *
+ * So the page is in "writing mode" while at least this much of the drawing is
+ * visible, and normal otherwise: scroll down to read the history and its text
+ * can be selected and copied again. Only on touch screens (see globals.css);
+ * with a mouse, selection never gets in the way of anything.
+ */
+const WRITING_MODE_CLASS = "ob-writing"
+const WRITING_MODE_VISIBLE = 0.3
+
 /** Set by the first pen contact in this tab, so later charts start out knowing. */
 let penSeenInThisTab = false
 
 export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Props) {
-  const { t } = useLocale()
+  const { t, isRtl } = useLocale()
+
+  /**
+   * Which hand writes, so the toolbar sits on the far side of it.
+   *
+   * Per device rather than per clinic: it is a fact about the person holding
+   * this tablet. Read after mount, because the server has no storage to ask.
+   */
+  const [hand, setHand] = useState<WritingHand>("right")
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(HAND_KEY) === "left") setHand("left")
+    } catch {
+      /* storage unavailable: right-handed until told otherwise */
+    }
+  }, [])
+  const toggleHand = () => {
+    const next: WritingHand = hand === "left" ? "right" : "left"
+    setHand(next)
+    try {
+      window.localStorage.setItem(HAND_KEY, next)
+    } catch {
+      /* the choice still holds for this visit */
+    }
+  }
+  // Buttons on the physical side away from the writing hand. In a right-to-left
+  // layout the first item in a row is drawn on the right, hence the flip.
+  const toolsFirst = (hand === "right") !== isRtl
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   /** The strokes themselves — the truth, deliberately outside React. */
@@ -209,6 +258,21 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
       document.removeEventListener("touchstart", guard, { capture: true })
     }
   }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || typeof IntersectionObserver === "undefined") return
+    const root = document.documentElement
+    const observer = new IntersectionObserver(
+      ([entry]) => root.classList.toggle(WRITING_MODE_CLASS, entry.intersectionRatio >= WRITING_MODE_VISIBLE),
+      { threshold: [0, WRITING_MODE_VISIBLE, 1] },
+    )
+    observer.observe(canvas)
+    return () => {
+      observer.disconnect()
+      root.classList.remove(WRITING_MODE_CLASS)
+    }
+  }, [isMobileSmall])
 
   /* ----------------------------------------------------------------- render */
 
@@ -440,9 +504,25 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     <div className={cn("flex flex-col gap-2 select-none", className)}>
       {/* Toolbar */}
       <div className="flex items-center gap-2">
-        <p className="me-auto text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+        <p
+          className={cn(
+            "min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500",
+            toolsFirst ? "order-2 text-end" : "order-1",
+          )}
+        >
           {t("patientChart.canvas.toolbarTitle")}
         </p>
+        <div className={cn("flex items-center gap-2", toolsFirst ? "order-1" : "order-2")}>
+        <button
+          type="button"
+          onClick={toggleHand}
+          aria-pressed={hand === "left"}
+          title={t("patientChart.canvas.handHint")}
+          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+        >
+          <Hand className={cn("size-3.5", hand === "left" && "-scale-x-100")} aria-hidden />
+          {hand === "left" ? t("patientChart.canvas.handLeft") : t("patientChart.canvas.handRight")}
+        </button>
         <button
           type="button"
           onClick={handleUndo}
@@ -463,6 +543,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
           <Eraser className="size-3.5" aria-hidden />
           {t("patientChart.canvas.clear")}
         </button>
+        </div>
       </div>
 
       {/* There used to be a Save button here. It saved nothing the draft had

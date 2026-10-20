@@ -177,3 +177,23 @@
     background: color-mix(in oklab, var(--primary) 22%, white);
   }
 }
+
+/*
+ * Writing mode — set on <html> by the session canvas while the drawing is on
+ * screen. On a touch screen a resting wrist is a long press, and it selected
+ * whatever text lay under it and raised the system's Look Up menu over the
+ * handwriting. Fields that are typed into keep selection; with a mouse
+ * nothing changes. See session-canvas.tsx.
+ */
+@media (any-pointer: coarse) {
+  html.ob-writing body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  html.ob-writing :is(input, textarea, [contenteditable="true"]) {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+}
