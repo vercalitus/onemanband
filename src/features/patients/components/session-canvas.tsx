@@ -29,6 +29,12 @@ interface Props {
 const PERSIST_DELAY_MS = 600
 /** Samples closer than this in canvas units add nothing but weight. */
 const MIN_SAMPLE_DISTANCE = 0.75
+/**
+ * How long after the pen last moved a hand on the glass is taken for the hand
+ * holding it. Long enough to cover the pause between words, short enough that
+ * a deliberate tap a moment later still works.
+ */
+const WRIST_GUARD_MS = 1500
 const MAX_UNDO_DEPTH = 60
 
 /**
@@ -102,6 +108,8 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   // pen on the last patient is holding one now, and his palm should not get
   // the first stroke on this one.
   const penSeen = useRef(penSeenInThisTab)
+  /** Until when a hand touching the page counts as the writing hand. */
+  const penWritingUntil = useRef(0)
 
   /** Only what the toolbar needs — this is the component's entire render input. */
   const [counts, setCounts] = useState({
@@ -164,6 +172,43 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
       flush()
     }
   }, [flush])
+
+  /*
+   * While the pen is writing, the hand holding it presses nothing.
+   *
+   * On a tablet the wrist rests wherever the line being written happens to
+   * be, and below the drawing that was a button: the voice memo's Record
+   * (whose microphone prompt took the screen mid-word), and on a tablet held
+   * upright, Complete Session in the bar along the bottom. A touch that is
+   * not the pencil, landing anywhere on the page while the pen is in use or
+   * just lifted, has its tap cancelled. The pencil identifies itself as a
+   * stylus, so its own contacts are never touched; and a moment after the
+   * pen goes quiet every button works again as normal.
+   */
+  useEffect(() => {
+    // The browser announces each contact as a pointer — pen or touch — just
+    // before its touch event, so the last one seen is the contact the touch
+    // belongs to. Kept alongside `touchType` so a pencil tap on Undo is never
+    // mistaken for the wrist, even where a browser leaves `touchType` out.
+    let lastPointerType = ""
+    const note = (e: PointerEvent) => {
+      lastPointerType = e.pointerType
+    }
+    const guard = (e: TouchEvent) => {
+      if (performance.now() > penWritingUntil.current) return
+      if (lastPointerType === "pen") return
+      const fromHand = Array.from(e.changedTouches).some(
+        (touch) => (touch as Touch & { touchType?: string }).touchType !== "stylus",
+      )
+      if (fromHand && e.cancelable) e.preventDefault()
+    }
+    document.addEventListener("pointerdown", note, { capture: true })
+    document.addEventListener("touchstart", guard, { capture: true, passive: false })
+    return () => {
+      document.removeEventListener("pointerdown", note, { capture: true })
+      document.removeEventListener("touchstart", guard, { capture: true })
+    }
+  }, [])
 
   /* ----------------------------------------------------------------- render */
 
@@ -258,6 +303,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     if (e.pointerType === "pen") {
       penSeen.current = true
       penSeenInThisTab = true
+      penWritingUntil.current = performance.now() + WRIST_GUARD_MS
       /*
        * The pen wins over a palm that got there first.
        *
@@ -267,12 +313,28 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
        * was ignored until the palm lifted — which, for a hand resting on the
        * glass, is never. The pen went dead on the first word of every session.
        * A palm's "stroke" was never ink, so it is dropped and the canvas
-       * redrawn without it.
+       * redrawn without it, and its capture let go so its lifting later is
+       * nothing to do with the pen.
        */
       if (activePointer.current !== null && activeIsTouch.current) {
+        try {
+          e.currentTarget.releasePointerCapture(activePointer.current)
+        } catch {
+          /* the palm has already gone */
+        }
         activePointer.current = null
         currentStroke.current = []
         redrawAll()
+      } else if (activePointer.current !== null) {
+        /*
+         * A pen touching down while a pen stroke is still open means the last
+         * lift never arrived — a system dialog took the screen mid-letter (the
+         * microphone prompt does exactly that). There is one pencil, so that
+         * stroke is over: keep what it drew and start a new one. Ignoring this
+         * touch instead swallowed the next letter into the last, joined by a
+         * straight line.
+         */
+        finishStroke()
       }
     }
     if (e.pointerType === "touch" && penSeen.current) return
@@ -297,6 +359,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.pointerId !== activePointer.current) return
     e.preventDefault()
+    if (e.pointerType === "pen") penWritingUntil.current = performance.now() + WRIST_GUARD_MS
 
     // Everything the digitiser recorded since the last frame, not just the
     // sample that woke React. A pen reports several times faster than the
@@ -325,6 +388,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
     if (activePointer.current === null) return
     if (e && e.pointerId !== activePointer.current) return
     activePointer.current = null
+    if (!activeIsTouch.current) penWritingUntil.current = performance.now() + WRIST_GUARD_MS
 
     const pts = currentStroke.current
     currentStroke.current = []
@@ -415,7 +479,10 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
           onPointerMove={onPointerMove}
           onPointerUp={finishStroke}
           onPointerCancel={finishStroke}
-          onLostPointerCapture={() => finishStroke()}
+          // Only the contact that is drawing ends the stroke. This used to end
+          // it whichever contact lost capture, so a palm lifting mid-letter
+          // cut the pen off and the rest of the letter was never recorded.
+          onLostPointerCapture={finishStroke}
           onContextMenu={(e) => e.preventDefault()}
           // `-webkit-touch-callout` is the tablet's own long-press menu —
           // "Save image", "Copy" — offered over a session being written. There

@@ -341,16 +341,20 @@ export function PatientDetailClient() {
               </div>
 
               <div className="space-y-4 p-5">
-                <SessionCanvas
-                  key={id}
-                  initialStrokes={canvasStrokes}
-                  onStrokesChange={setCanvasStrokes}
-                />
-
+                {/* Above the drawing, not below it. Below, it sat exactly where
+                    a writing wrist rests on a tablet: the wrist pressed Record,
+                    the microphone prompt took the screen mid-word, and the
+                    letter being written was lost. */}
                 <SessionAudio
                   audioUrl={sessionAudioUrl}
                   onRecorded={saveSessionAudio}
                   onDelete={clearSessionAudio}
+                />
+
+                <SessionCanvas
+                  key={id}
+                  initialStrokes={canvasStrokes}
+                  onStrokesChange={setCanvasStrokes}
                 />
 
                 <div className="rounded-2xl border border-slate-100 bg-slate-50">
