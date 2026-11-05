@@ -194,7 +194,13 @@ export interface PatientSummary {
   clinicalStatus?: string
   /** When the status line was written. Shown with it; an undated status reads as current. */
   clinicalStatusUpdatedAt?: string
-  /** Where on the body this patient has been treated. */
+  /** Where on the body this patient has been treated, marked on the two figures. */
+  bodyMap?: BodyMark[]
+  /**
+   * Marks made on the rotatable skeleton that came before the figures. Read,
+   * never written: the skeleton is gone, and these are kept as the record of
+   * what was found then.
+   */
   bodyMap3d?: BodyMark3d[]
   /**
    * Sessions this patient's course of treatment runs to. Undefined means none
@@ -223,6 +229,39 @@ export interface TreatmentRecord {
   voidReason?: string
 }
 
+/** The two figures a mark can be drawn on. */
+export type BodyMapView = "front" | "back"
+
+/**
+ * A line drawn over one of the figures, as fractions of its width and height.
+ *
+ * A position in a picture, which is only safe because the picture never moves
+ * and the line is not the record: the areas it crossed are stored by name on
+ * the mark beside it.
+ */
+export interface FigureStroke {
+  view: BodyMapView
+  points: [number, number][]
+}
+
+/**
+ * A finding marked on the body map.
+ *
+ * The record is `regions` — `buttock:r`, `sacrum` — and `vertebrae` — `L4`,
+ * `L5` — because that is what a practitioner reads back years later, and what
+ * still means the same if the figures are ever replaced. The strokes are the
+ * drawing, kept so the mark looks the way it was made.
+ */
+export interface BodyMark {
+  id: string
+  regions: string[]
+  vertebrae: string[]
+  strokes: FigureStroke[]
+  tones?: BodyMarkTone[]
+  note?: string
+  createdAt: string
+}
+
 /** A stroke on the skeleton: positions on the bone surface, in scene units. */
 export type BoneStroke = [number, number, number][]
 
@@ -238,7 +277,8 @@ export type BoneStroke = [number, number, number][]
 export type BodyMarkTone = "pain" | "nerve"
 
 /**
- * A mark on the rotatable skeleton.
+ * A mark on the rotatable skeleton — the body map before the figures.
+ * Kept readable; nothing writes one any more.
  *
  * The record is `bones` — names like `T5`, `Scapula L` — because that is what
  * a practitioner reads back and what survives the model being redrawn. The
@@ -276,7 +316,7 @@ export interface BodyMark3d {
  * Empty means unclassified — a mark made before findings had a kind — and is
  * shown as itself rather than guessed at.
  */
-export const markTones = (mark: Pick<BodyMark3d, "tones" | "tone">): BodyMarkTone[] =>
+export const markTones = (mark: { tones?: BodyMarkTone[]; tone?: BodyMarkTone }): BodyMarkTone[] =>
   mark.tones?.length ? mark.tones : mark.tone ? [mark.tone] : []
 
 export interface DocumentRecord {

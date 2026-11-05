@@ -23,7 +23,7 @@ import { loadPatientExportSource } from "@/features/exports/lib/export-source"
 import { datedFilename, downloadCsv, downloadJson } from "@/lib/file-export"
 import { SessionCanvas } from "@/features/patients/components/session-canvas"
 import { SessionCloseDialog } from "@/features/patients/components/session-close-dialog"
-import { SKELETON_FLUSH_EVENT } from "@/features/body-map-3d/lib/flush-event"
+import { BODY_MAP_FLUSH_EVENT } from "@/features/body-map/lib/flush-event"
 import { SessionAudio } from "@/features/patients/components/session-audio"
 import { useSessionClosing } from "@/features/patients/lib/use-close-session"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
@@ -112,11 +112,12 @@ export function PatientDetailClient() {
     contactOverrides,
     saveContactOverrides,
     deleteDocumentRecord,
+    bodyMarks,
     bodyMarks3d,
-    addBodyMark3d,
-    updateBodyMark3dNote,
-    updateBodyMark3dTones,
-    removeBodyMark3d,
+    addBodyMark,
+    updateBodyMarkNote,
+    updateBodyMarkTones,
+    removeBodyMark,
   } = usePatientCockpit(id)
 
   const [notesOpen, setNotesOpen] = useState(true)
@@ -173,8 +174,8 @@ export function PatientDetailClient() {
     // The type of visit being closed is today's booking, falling back to the
     // last one recorded for a session with nothing in the diary.
     const type = todaysAppointment?.appointmentType ?? patientLastAppointmentType
-    // A spot marked on the skeleton but never saved belongs to this session too.
-    window.dispatchEvent(new Event(SKELETON_FLUSH_EVENT))
+    // A spot marked on the body map but never saved belongs to this session too.
+    window.dispatchEvent(new Event(BODY_MAP_FLUSH_EVENT))
     // Only claim the session was recorded once it was. The old code toasted
     // unconditionally, which was harmless while the write went to localStorage
     // and cannot stay that way now that it can fail.
@@ -285,11 +286,12 @@ export function PatientDetailClient() {
             onClinicalStatusChange={setClinicalStatus}
             onStatusChange={live ? setPatientStatus : undefined}
             onSaveOverrides={saveContactOverrides}
+            bodyMarks={bodyMarks}
             bodyMarks3d={bodyMarks3d}
-            onAddBodyMark3d={addBodyMark3d}
-            onUpdateBodyMark3dNote={updateBodyMark3dNote}
-            onUpdateBodyMark3dTones={updateBodyMark3dTones}
-            onRemoveBodyMark3d={removeBodyMark3d}
+            onAddBodyMark={addBodyMark}
+            onUpdateBodyMarkNote={updateBodyMarkNote}
+            onUpdateBodyMarkTones={updateBodyMarkTones}
+            onRemoveBodyMark={removeBodyMark}
           />
 
           <div className="flex justify-end">

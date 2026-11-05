@@ -19,6 +19,7 @@ import type {
   DocumentType,
   FinanceRecord,
   PatientStatus,
+  BodyMark,
   BodyMark3d,
   BodyMarkTone,
 } from "@/types/domain"
@@ -204,6 +205,8 @@ export function usePatientCockpit(patientId: string) {
   const [deletedDocumentIds, setDeletedDocumentIds] = useState<string[]>([])
   const [contactOverrides, setContactOverridesRaw] = useState<PatientContactOverrides>({})
   const [lastAppointmentType, setLastAppointmentTypeRaw] = useState<AppointmentType>("adjustments")
+  const [bodyMarks, setBodyMarksRaw] = useState<BodyMark[]>([])
+  // The skeleton's marks, from before the figures. Read only.
   const [bodyMarks3d, setBodyMarks3dRaw] = useState<BodyMark3d[]>([])
   const [hydrated, setHydrated] = useState(false)
   /** Why the last write did not stick. Silence here would be the old bug back. */
@@ -235,6 +238,7 @@ export function usePatientCockpit(patientId: string) {
         text: cleanStoredStatus(livePatient.clinicalStatus),
         at: livePatient.clinicalStatusUpdatedAt ?? null,
       })
+      setBodyMarksRaw(livePatient.bodyMap ?? [])
       setBodyMarks3dRaw(livePatient.bodyMap3d ?? [])
       // The row itself carries the contact details; an overlay on top of it
       // would be a second copy that can disagree with the record.
@@ -244,6 +248,7 @@ export function usePatientCockpit(patientId: string) {
         text: cleanStoredStatus(readField<string | null>(patientId, "clinicalStatus", null)),
         at: null,
       })
+      setBodyMarksRaw(readField<BodyMark[]>(patientId, "bodyMarks", []))
       setBodyMarks3dRaw(readField<BodyMark3d[]>(patientId, "bodyMarks3d", []))
       setContactOverridesRaw(readField(patientId, "contactOverrides", {}))
     }
@@ -385,62 +390,52 @@ export function usePatientCockpit(patientId: string) {
   )
 
   /**
-   * Marks on the rotatable skeleton. Same seam as every other thing written on
-   * this chart: a live clinic writes a column, the demo writes the browser.
+   * Marks on the body map. Same seam as every other thing written on this
+   * chart: a live clinic writes a column, the demo writes the browser.
    */
-  const persistMarks3d = useCallback(
-    (next: BodyMark3d[]) => {
-      setBodyMarks3dRaw(next)
+  const persistMarks = useCallback(
+    (next: BodyMark[]) => {
+      setBodyMarksRaw(next)
       if (isLive) {
-        void savePatientFields({ bodyMap3d: next })
+        void savePatientFields({ bodyMap: next })
         return
       }
-      writeField(patientId, "bodyMarks3d", next)
+      writeField(patientId, "bodyMarks", next)
     },
     [patientId, isLive, savePatientFields],
   )
 
-  const addBodyMark3d = useCallback(
-    (draft: Omit<BodyMark3d, "id" | "createdAt">) => {
-      persistMarks3d([
-        { ...draft, id: `bm3-${Date.now()}`, createdAt: new Date().toISOString() },
-        ...bodyMarks3d,
+  const addBodyMark = useCallback(
+    (draft: Omit<BodyMark, "id" | "createdAt">) => {
+      persistMarks([
+        { ...draft, id: `bm-${Date.now()}`, createdAt: new Date().toISOString() },
+        ...bodyMarks,
       ])
     },
-    [bodyMarks3d, persistMarks3d],
+    [bodyMarks, persistMarks],
   )
 
-  const updateBodyMark3dNote = useCallback(
+  const updateBodyMarkNote = useCallback(
     (id: string, note: string) => {
-      persistMarks3d(
-        bodyMarks3d.map((m) => (m.id === id ? { ...m, note: note || undefined } : m)),
-      )
+      persistMarks(bodyMarks.map((m) => (m.id === id ? { ...m, note: note || undefined } : m)))
     },
-    [bodyMarks3d, persistMarks3d],
+    [bodyMarks, persistMarks],
   )
 
-  /**
-   * Set which kinds of finding a mark records.
-   *
-   * Writing `tones` drops the old single `tone` from the row on the way past,
-   * so a mark is never stored saying one thing in two places.
-   */
-  const updateBodyMark3dTones = useCallback(
+  const updateBodyMarkTones = useCallback(
     (id: string, tones: BodyMarkTone[]) => {
-      persistMarks3d(
-        bodyMarks3d.map((m) =>
-          m.id === id ? { ...m, tones: tones.length ? tones : undefined, tone: undefined } : m,
-        ),
+      persistMarks(
+        bodyMarks.map((m) => (m.id === id ? { ...m, tones: tones.length ? tones : undefined } : m)),
       )
     },
-    [bodyMarks3d, persistMarks3d],
+    [bodyMarks, persistMarks],
   )
 
-  const removeBodyMark3d = useCallback(
+  const removeBodyMark = useCallback(
     (id: string) => {
-      persistMarks3d(bodyMarks3d.filter((m) => m.id !== id))
+      persistMarks(bodyMarks.filter((m) => m.id !== id))
     },
-    [bodyMarks3d, persistMarks3d],
+    [bodyMarks, persistMarks],
   )
 
   /**
@@ -849,10 +844,11 @@ export function usePatientCockpit(patientId: string) {
     contactOverrides,
     saveContactOverrides,
     deleteDocumentRecord,
+    bodyMarks,
     bodyMarks3d,
-    addBodyMark3d,
-    updateBodyMark3dNote,
-    updateBodyMark3dTones,
-    removeBodyMark3d,
+    addBodyMark,
+    updateBodyMarkNote,
+    updateBodyMarkTones,
+    removeBodyMark,
   }
 }
