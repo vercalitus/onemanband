@@ -156,35 +156,249 @@ export function regionAt(view: BodyMapView, x: number, y: number): Region | null
   return REGIONS[view].find((r) => contains(r.polygon, x, y)) ?? null
 }
 
+
+/* -------------------------------------------------------------------------- */
+/* The finer level: parts inside each area                                    */
+/* -------------------------------------------------------------------------- */
+
 /**
- * The spine, named one segment at a time.
+ * Every area splits into smaller parts when a figure is opened up close.
  *
- * An area says "lower back"; a chiropractor's finding says L4. The picture
- * cannot show a vertebra at a size anyone could tap, so the levels are a row
- * of their own, chosen alongside the areas and stored beside them.
+ * Nobody can say in advance where a practitioner will need to be precise, so
+ * every area has parts, not only the back. They are made rather than drawn:
+ *
+ *  - **Beside the spine, by level.** The back of the neck splits into C1–C7,
+ *    the middle and lower back into the thoracic and lumbar levels, each side
+ *    on its own. That is how a chiropractor names a spot there, and the level
+ *    is what lines it up with the spine model.
+ *  - **Everywhere else, by position.** Upper, middle and lower down the length
+ *    of an area; inner and outer across it, inner being the side nearer the
+ *    body's midline in the standing position the figures show. An area that
+ *    straddles the midline splits into the patient's right and left instead.
+ *
+ * A part is stored as `parent/part` (`lowerBack:r/L4`, `thighFront:l/upper-outer`),
+ * so the area it belongs to is always readable from it.
  */
-export const VERTEBRAE: { group: string; levels: string[] }[] = [
-  { group: "C", levels: ["C1", "C2", "C3", "C4", "C5", "C6", "C7"] },
-  {
-    group: "T",
-    levels: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"],
-  },
-  { group: "L", levels: ["L1", "L2", "L3", "L4", "L5"] },
-  { group: "S", levels: ["Sacrum", "Coccyx"] },
+
+/** Heights of the spinal levels on the back figure, in its pixels. */
+const SPINE_BANDS: { group: string; levels: string[]; y0: number; y1: number }[] = [
+  { group: "C", levels: ["C1", "C2", "C3", "C4", "C5", "C6", "C7"], y0: 178, y1: 232 },
+  { group: "T-upper", levels: ["T1", "T2", "T3", "T4", "T5", "T6"], y0: 232, y1: 432 },
+  { group: "T-lower", levels: ["T7", "T8", "T9", "T10", "T11", "T12"], y0: 432, y1: 540 },
+  { group: "L", levels: ["L1", "L2", "L3", "L4", "L5"], y0: 540, y1: 612 },
 ]
 
-const SPINE_ORDER = VERTEBRAE.flatMap((g) => g.levels)
+/** Where each level sits on the back figure's midline. Sacrum and coccyx below. */
+export const LEVEL_Y: Record<string, [number, number]> = (() => {
+  const out: Record<string, [number, number]> = {}
+  for (const band of SPINE_BANDS) {
+    const step = (band.y1 - band.y0) / band.levels.length
+    band.levels.forEach((level, i) => {
+      out[level] = [band.y0 + i * step, band.y0 + (i + 1) * step]
+    })
+  }
+  out.Sacrum = [612, 740]
+  out.Coccyx = [740, 770]
+  return out
+})()
 
-/** Levels in the order they sit on the spine, not the order they were tapped. */
-export const sortVertebrae = (levels: string[]) =>
-  [...levels].sort((a, b) => SPINE_ORDER.indexOf(a) - SPINE_ORDER.indexOf(b))
+/** The areas beside the spine, and which run of levels each one covers. */
+const BY_LEVEL: Record<string, string> = {
+  neckBack: "C",
+  betweenShoulderBlades: "T-upper",
+  midBack: "T-lower",
+  lowerBack: "L",
+}
 
-/** "ישבן ימין", "Right buttock" — the order is the language's, so it is a string. */
-export function regionLabel(
-  t: (key: string, params?: Record<string, string | number>) => string,
-  id: string,
-) {
+export const MIDLINE = 257.5
+
+type Pt = [number, number]
+
+/** One side of an axis-aligned cut, Sutherland–Hodgman. */
+function clipEdge(poly: Pt[], inside: (p: Pt) => boolean, cross: (a: Pt, b: Pt) => Pt) {
+  const out: Pt[] = []
+  for (let i = 0; i < poly.length; i++) {
+    const cur = poly[i]
+    const prev = poly[(i + poly.length - 1) % poly.length]
+    if (inside(cur)) {
+      if (!inside(prev)) out.push(cross(prev, cur))
+      out.push(cur)
+    } else if (inside(prev)) {
+      out.push(cross(prev, cur))
+    }
+  }
+  return out
+}
+
+/** A polygon cut down to a rectangle. Empty when they do not meet. */
+function clipToRect(poly: Pt[], x0: number, y0: number, x1: number, y1: number): Pt[] {
+  const atX =
+    (x: number) =>
+    (a: Pt, b: Pt): Pt => [x, a[1] + ((b[1] - a[1]) * (x - a[0])) / (b[0] - a[0])]
+  const atY =
+    (y: number) =>
+    (a: Pt, b: Pt): Pt => [a[0] + ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]), y]
+  let out = poly
+  out = clipEdge(out, (p) => p[0] >= x0, atX(x0))
+  if (out.length) out = clipEdge(out, (p) => p[0] <= x1, atX(x1))
+  if (out.length) out = clipEdge(out, (p) => p[1] >= y0, atY(y0))
+  if (out.length) out = clipEdge(out, (p) => p[1] <= y1, atY(y1))
+  return out
+}
+
+const polygonArea = (poly: Pt[]) => {
+  let a = 0
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    a += (poly[j][0] + poly[i][0]) * (poly[j][1] - poly[i][1])
+  }
+  return Math.abs(a / 2)
+}
+
+export interface SubRegion {
+  /** `lowerBack:r/L4` */
+  id: string
+  parentId: string
+  polygon: Pt[]
+  points: string
+}
+
+function partsOf(view: BodyMapView, region: Region): SubRegion[] {
+  const xs = region.polygon.map((p) => p[0])
+  const ys = region.polygon.map((p) => p[1])
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  const cells: { part: string; rect: [number, number, number, number] }[] = []
+
+  const band =
+    view === "back" ? SPINE_BANDS.find((b) => b.group === BY_LEVEL[region.key]) : undefined
+  if (band) {
+    const step = (band.y1 - band.y0) / band.levels.length
+    band.levels.forEach((level, i) => {
+      cells.push({ part: level, rect: [minX, band.y0 + i * step, maxX, band.y0 + (i + 1) * step] })
+    })
+  } else {
+    const height = maxY - minY
+    const width = maxX - minX
+    const rows: (string | null)[] =
+      height > 150 ? ["upper", "middle", "lower"] : height > 60 ? ["upper", "lower"] : [null]
+    const straddles = minX < MIDLINE - 5 && maxX > MIDLINE + 5
+    // Which half is the patient's right depends on the figure: from the front
+    // their right is on our left.
+    const leftHalf = view === "front" ? "r" : "l"
+    const rightHalf = view === "front" ? "l" : "r"
+    const onLeft = (minX + maxX) / 2 < MIDLINE
+    const midX = (minX + maxX) / 2
+    const cols: { name: string | null; x0: number; x1: number }[] = straddles
+      ? [
+          { name: leftHalf, x0: minX, x1: MIDLINE },
+          { name: rightHalf, x0: MIDLINE, x1: maxX },
+        ]
+      : width > 60
+        ? [
+            { name: onLeft ? "outer" : "inner", x0: minX, x1: midX },
+            { name: onLeft ? "inner" : "outer", x0: midX, x1: maxX },
+          ]
+        : [{ name: null, x0: minX, x1: maxX }]
+    rows.forEach((row, i) => {
+      const y0 = minY + (height * i) / rows.length
+      const y1 = minY + (height * (i + 1)) / rows.length
+      for (const col of cols) {
+        const part = [row, col.name].filter(Boolean).join("-")
+        if (part) cells.push({ part, rect: [col.x0, y0, col.x1, y1] })
+      }
+    })
+  }
+
+  const out: SubRegion[] = []
+  for (const cell of cells) {
+    const polygon = clipToRect(region.polygon, ...cell.rect)
+    if (polygon.length < 3 || polygonArea(polygon) < 40) continue
+    out.push({
+      id: `${region.id}/${cell.part}`,
+      parentId: region.id,
+      polygon,
+      points: polygon
+        .map(([x, y]) => `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`)
+        .join(" "),
+    })
+  }
+  return out
+}
+
+export const SUBREGIONS: Record<BodyMapView, SubRegion[]> = {
+  front: REGIONS.front.flatMap((r) => partsOf("front", r)),
+  back: REGIONS.back.flatMap((r) => partsOf("back", r)),
+}
+
+/** The part under a point, when the figure is open close enough to show parts. */
+export function subRegionAt(view: BodyMapView, x: number, y: number): SubRegion | null {
+  const parent = regionAt(view, x, y)
+  if (!parent) return null
+  return (
+    SUBREGIONS[view].find((s) => s.parentId === parent.id && contains(s.polygon, x, y)) ?? null
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* The spine                                                                   */
+/* -------------------------------------------------------------------------- */
+
+const LEVELS = [...SPINE_BANDS.flatMap((b) => b.levels), "Sacrum"]
+
+/**
+ * Everything the spine model can name, top to bottom: each level, its right
+ * and left side, the disc below it, then sacrum, the sacroiliac joints and
+ * coccyx. Keeps a mark's spinal items in the order they sit on the body.
+ */
+export const SPINE_ORDER: string[] = [
+  ...LEVELS.flatMap((level, i) => {
+    if (level === "Sacrum") return ["Sacrum", "SI R", "SI L"]
+    const next = LEVELS[i + 1] === "Sacrum" ? "S1" : LEVELS[i + 1]
+    return [level, `${level} R`, `${level} L`, `${level}/${next}`]
+  }),
+  "Coccyx",
+]
+
+export const sortSpine = (items: string[]) =>
+  [...items].sort((a, b) => SPINE_ORDER.indexOf(a) - SPINE_ORDER.indexOf(b))
+
+/** The level an item belongs to, for placing it on the back figure: `L4 R` is `L4`. */
+export const levelOf = (item: string) => {
+  const head = item.split(/[ /]/)[0]
+  return head === "SI" ? "Sacrum" : head
+}
+
+/* -------------------------------------------------------------------------- */
+/* Names                                                                       */
+/* -------------------------------------------------------------------------- */
+
+type Translate = (key: string, params?: Record<string, string | number>) => string
+
+/** "ישבן ימין", "Right buttock": the order is the language's, so it is a string. */
+function areaLabel(t: Translate, id: string) {
   const [key, side] = id.split(":")
   const name = t(`bodyMap.region.${key}`)
   return side ? t("bodyMap.sided", { name, side: t(`bodyMap.side.${side}`) }) : name
+}
+
+/** An area or a part of one: "גב תחתון ימין › L4", "ירך קדמית שמאל › עליון חיצוני". */
+export function regionLabel(t: Translate, id: string) {
+  const [parent, part] = id.split("/")
+  const name = areaLabel(t, parent)
+  if (!part) return name
+  const words = part.split("-").map((w) => {
+    if (/^[CTL]\d+$/.test(w)) return w
+    if (w === "r" || w === "l") return t(`bodyMap.side.${w}`)
+    return t(`bodyMap.part.${w}`)
+  })
+  return `${name} › ${words.join(" ")}`
+}
+
+/** The spine model's items, with the side in the app's language: "L4 ימין", "L4/L5". */
+export function spineLabel(t: Translate, item: string) {
+  const [level, side] = item.split(" ")
+  if (side === "R" || side === "L") return `${level} ${t(`bodyMap.side.${side.toLowerCase()}`)}`
+  return item
 }
