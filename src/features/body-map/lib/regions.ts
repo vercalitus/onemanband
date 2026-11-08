@@ -383,17 +383,39 @@ function areaLabel(t: Translate, id: string) {
   return side ? t("bodyMap.sided", { name, side: t(`bodyMap.side.${side}`) }) : name
 }
 
+/** Just the part, for a button inside its own area: "L4", "עליון חיצוני". */
+export function partLabel(t: Translate, id: string) {
+  const part = id.split("/")[1] ?? ""
+  return part
+    .split("-")
+    .map((w) => {
+      if (/^[CTL]\d+$/.test(w)) return w
+      if (w === "r" || w === "l") return t(`bodyMap.side.${w}`)
+      return t(`bodyMap.part.${w}`)
+    })
+    .join(" ")
+}
+
 /** An area or a part of one: "גב תחתון ימין › L4", "ירך קדמית שמאל › עליון חיצוני". */
 export function regionLabel(t: Translate, id: string) {
   const [parent, part] = id.split("/")
   const name = areaLabel(t, parent)
-  if (!part) return name
-  const words = part.split("-").map((w) => {
-    if (/^[CTL]\d+$/.test(w)) return w
-    if (w === "r" || w === "l") return t(`bodyMap.side.${w}`)
-    return t(`bodyMap.part.${w}`)
-  })
-  return `${name} › ${words.join(" ")}`
+  return part ? `${name} › ${partLabel(t, id)}` : name
+}
+
+/** Every part of an area, in the order they were made (top to bottom). */
+export function partsOfArea(areaId: string): SubRegion[] {
+  const seen = new Set<string>()
+  const out: SubRegion[] = []
+  for (const view of ["front", "back"] as const) {
+    for (const s of SUBREGIONS[view]) {
+      if (s.parentId === areaId && !seen.has(s.id)) {
+        seen.add(s.id)
+        out.push(s)
+      }
+    }
+  }
+  return out
 }
 
 /** The spine model's items, with the side in the app's language: "L4 ימין", "L4/L5". */

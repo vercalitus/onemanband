@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { ChevronDown, Maximize2, Minus, Plus, Scan, Undo2, X } from "lucide-react"
+import { ChevronDown, Undo2, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { BODY_MAP_FLUSH_EVENT } from "../lib/flush-event"
@@ -12,6 +12,8 @@ import {
   REGIONS,
   SUBREGIONS,
   levelOf,
+  partLabel,
+  partsOfArea,
   regionAt,
   regionLabel,
   sortSpine,
@@ -43,28 +45,28 @@ const SpineViewer = dynamic(() => import("./spine-viewer").then((m) => m.SpineVi
 })
 
 /**
- * The body map: two figures, front and back, marked by area, and the spine.
+ * The body map: two figures, front and back, and the spine as a model.
  *
- * It replaced a rotatable skeleton that was precise and slow: a finding meant
- * turning the model to the angle that showed it. A practitioner thinks in
- * areas ("right buttock, down the back of the thigh") and in spinal levels,
- * so those are what a mark is made of.
+ * **The figures never change.** An earlier version opened one figure up in a
+ * zoomed view of its own to reach the smaller parts, and the practitioner
+ * lost the whole body to see a piece of it. Now an area opens where it is:
  *
- * Three ways to look, one record:
+ *  1. A tap on an area opens it: its parts are outlined inside it, on both
+ *     figures where it appears, and listed beside the map. Nothing is marked.
+ *  2. Another tap marks: on a part inside the open area, that part; from the
+ *     list, the whole area or any of its parts. Martin marks both, so both are
+ *     always one tap away.
+ *  3. A tap outside closes it. What was marked stays marked.
  *
- *  - **Both figures** side by side, marked by area: the quick way.
- *  - **One figure, opened up**: zoom and pan, and every area splits into
- *    smaller parts (L4 on the right, the upper outer thigh). For when the
- *    finding is more precise than an area.
- *  - **The spine** as a model: a level, its side, the disc below it. What is
- *    chosen there shows on the back figure's midline too.
+ * The list is not decoration. Without zoom a lumbar level is about eight
+ * pixels tall on the figure, which no finger can hit reliably; the buttons
+ * are the dependable way to the same part, and the figure shows the result.
  *
- * Two tools throughout: a tap names, the pen outlines. A pen line also names
- * every area or part it crosses, so a drawing is never only a picture.
+ * The pen draws as before, and names every area or part its line crosses.
  */
 
 type Mode = "pen" | "point"
-type Stage = "both" | BodyMapView | "spine"
+type Stage = "figures" | "spine"
 
 const TONE_COLOR: Record<BodyMarkTone, string> = {
   pain: "#dc2626",
@@ -75,6 +77,7 @@ const BOTH_COLOR = "#ea580c"
 /** Marks made before a finding had a kind. Shown as itself, never guessed at. */
 const UNCLASSIFIED_COLOR = "#94a3b8"
 const HOVER_COLOR = "#0ea5e9"
+const OPEN_COLOR = "#0369a1"
 const INK = "#111827"
 
 const toneColor = (tones: BodyMarkTone[]) => {
@@ -85,12 +88,7 @@ const toneColor = (tones: BodyMarkTone[]) => {
 
 const TONES: BodyMarkTone[] = ["pain", "nerve"]
 const VIEWS: BodyMapView[] = ["front", "back"]
-const STAGES: Stage[] = ["both", "front", "back", "spine"]
-
-/** How tall the opened-up figure's window is, and how far it zooms. */
-const FOCUS_HEIGHT = 640
-const MIN_ZOOM = 1
-const MAX_ZOOM = 6
+const STAGES: Stage[] = ["figures", "spine"]
 
 /** What Undo restores: a snapshot, so "put it back exactly" cannot drift. */
 interface Draft {
@@ -102,12 +100,6 @@ interface Draft {
 const EMPTY: Draft = { regions: [], vertebrae: [], strokes: [], note: "" }
 
 type Pending = { kind: "clear" } | { kind: "delete"; id: string } | null
-
-interface Zoom {
-  s: number
-  tx: number
-  ty: number
-}
 
 /** The colour every named thing takes: saved findings, then the one in focus on top. */
 function colourMap(
@@ -147,32 +139,24 @@ export function BodyMapViewer({
   onUpdateTones: (id: string, tones: BodyMarkTone[]) => void
 }) {
   const { t, localeTag } = useLocale()
-  const [stage, setStage] = useState<Stage>("both")
+  const [stage, setStage] = useState<Stage>("figures")
   const [mode, setMode] = useState<Mode>("point")
   const [tones, setTones] = useState<BodyMarkTone[]>(["pain"])
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [history, setHistory] = useState<Draft[]>([])
   const [liveStroke, setLiveStroke] = useState<FigureStroke | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
+  /** The area broken down into its parts, if any. Opening marks nothing. */
+  const [openArea, setOpenArea] = useState<string | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   const [editNote, setEditNote] = useState("")
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [pending, setPending] = useState<Pending>(null)
-  const [zoom, setZoom] = useState<Zoom>({ s: 1, tx: 0, ty: 0 })
-  const [viewportWidth, setViewportWidth] = useState(0)
 
   const figureRefs = useRef<Record<BodyMapView, SVGSVGElement | null>>({ front: null, back: null })
-  const viewportRef = useRef<HTMLDivElement>(null)
   const drawing = useRef<{ pointer: number; stroke: FigureStroke } | null>(null)
   const pressAt = useRef<{ x: number; y: number } | null>(null)
   const penSeen = useRef(false)
-  /** Fingers on the opened-up figure, for pinching. */
-  const touches = useRef(new Map<number, { x: number; y: number }>())
-  const pinch = useRef<{ dist: number; mid: { x: number; y: number }; from: Zoom } | null>(null)
-  const pan = useRef<{ x: number; y: number; from: Zoom; moved: boolean } | null>(null)
-
-  const focusView: BodyMapView | null = stage === "front" || stage === "back" ? stage : null
-  const fine = focusView !== null
 
   const openMark = marks.find((m) => m.id === openId) ?? null
   const highlight = openMark ? toneColor(markTones(openMark)) : toneColor(tones)
@@ -204,74 +188,9 @@ export function BodyMapViewer({
   )
   const emphasis = useMemo(() => new Set([...focusRegions, ...focusSpine]), [focusRegions, focusSpine])
 
-  /* ── Opening a figure up ──────────────────────────────────────────────── */
+  /* ── Pointer: open, mark, draw ────────────────────────────────────────── */
 
-  // The window's width decides where "fit" puts the figure.
-  useEffect(() => {
-    const el = viewportRef.current
-    if (!el) return
-    const observer = new ResizeObserver(() => setViewportWidth(el.clientWidth))
-    observer.observe(el)
-    setViewportWidth(el.clientWidth)
-    return () => observer.disconnect()
-  }, [focusView])
-
-  const baseWidth = focusView
-    ? (FOCUS_HEIGHT * FIGURES[focusView].width) / FIGURES[focusView].height
-    : 0
-  const fit = useCallback(
-    (): Zoom => ({ s: 1, tx: Math.max(0, (viewportWidth - baseWidth) / 2), ty: 0 }),
-    [viewportWidth, baseWidth],
-  )
-  useEffect(() => {
-    if (focusView) setZoom(fit())
-  }, [focusView, fit])
-
-  /** Zoom around a point in the window, keeping what is under it where it is. */
-  const zoomAt = useCallback((px: number, py: number, nextScale: number) => {
-    setZoom((z) => {
-      const s = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextScale))
-      const cx = (px - z.tx) / z.s
-      const cy = (py - z.ty) / z.s
-      return { s, tx: px - cx * s, ty: py - cy * s }
-    })
-  }, [])
-
-  // A wheel listener React would register as passive, which cannot stop the
-  // page scrolling under the figure. So it is attached by hand.
-  useEffect(() => {
-    const el = viewportRef.current
-    if (!el || !focusView) return
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const rect = el.getBoundingClientRect()
-      setZoom((z) => {
-        const s = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z.s * Math.exp(-e.deltaY * 0.0015)))
-        const px = e.clientX - rect.left
-        const py = e.clientY - rect.top
-        const cx = (px - z.tx) / z.s
-        const cy = (py - z.ty) / z.s
-        return { s, tx: px - cx * s, ty: py - cy * s }
-      })
-    }
-    el.addEventListener("wheel", onWheel, { passive: false })
-    return () => el.removeEventListener("wheel", onWheel)
-  }, [focusView])
-
-  const zoomButton = (factor: number) => {
-    const el = viewportRef.current
-    if (!el) return
-    zoomAt(el.clientWidth / 2, el.clientHeight / 2, zoom.s * factor)
-  }
-
-  const goTo = (next: Stage) => {
-    setStage(next)
-    setHovered(null)
-  }
-
-  /* ── Pointer: tap, pen, pan and pinch ─────────────────────────────────── */
-
-  /** A screen point as the figure's own pixels. Right at any zoom. */
+  /** A screen point as the figure's own pixels. */
   const toFigure = (view: BodyMapView, clientX: number, clientY: number) => {
     const el = figureRefs.current[view]
     if (!el) return null
@@ -283,139 +202,79 @@ export function BodyMapViewer({
     }
   }
 
-  const hitAt = (view: BodyMapView, x: number, y: number) =>
-    (fine ? subRegionAt(view, x, y) : null)?.id ?? regionAt(view, x, y)?.id
+  /** What a point names: a part inside the open area, otherwise the area. */
+  const hitAt = (view: BodyMapView, x: number, y: number) => {
+    const area = regionAt(view, x, y)
+    if (!area) return undefined
+    if (area.id === openArea) return subRegionAt(view, x, y)?.id ?? area.id
+    return area.id
+  }
 
   const addRegion = useCallback((id: string | undefined) => {
     if (!id) return
     setDraft((d) => (d.regions.includes(id) ? d : { ...d, regions: [...d.regions, id] }))
   }, [])
 
-  const abandonStroke = () => {
-    drawing.current = null
-    setLiveStroke(null)
+  const toggleRegion = (id: string) => {
+    // A tap on something chosen unchooses it: the gesture that chose it is the
+    // obvious one for changing your mind.
+    remember()
+    setDraft((d) => ({
+      ...d,
+      regions: d.regions.includes(id) ? d.regions.filter((r) => r !== id) : [...d.regions, id],
+    }))
   }
 
   const isDrawPress = (e: React.PointerEvent) => {
     if (mode !== "pen") return false
     if (e.button !== 0 && e.pointerType === "mouse") return false
-    // Once a stylus has been used, a finger is the hand steadying the tablet,
-    // or moving the figure.
+    // Once a stylus has been used, a finger is the hand steadying the tablet.
     if (e.pointerType === "touch" && penSeen.current) return false
     return true
   }
 
   const onPointerDown = (view: BodyMapView) => (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.pointerType === "pen") penSeen.current = true
-    const viewport = viewportRef.current?.getBoundingClientRect()
-
-    if (fine && e.pointerType === "touch") {
-      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-      if (touches.current.size === 2 && viewport) {
-        // A second finger: this is a pinch, and whatever the first one started
-        // is not a tap or a line.
-        abandonStroke()
-        pressAt.current = null
-        pan.current = null
-        const [a, b] = [...touches.current.values()]
-        pinch.current = {
-          dist: Math.hypot(a.x - b.x, a.y - b.y),
-          mid: { x: (a.x + b.x) / 2 - viewport.left, y: (a.y + b.y) / 2 - viewport.top },
-          from: zoom,
-        }
-        return
-      }
-    }
-
-    if (isDrawPress(e)) {
-      if (drawing.current) return
-      const p = toFigure(view, e.clientX, e.clientY)
-      if (!p) return
-      // Once per stroke: the line and everything it crosses come back together.
-      remember()
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId)
-      } catch {
-        /* keep drawing without capture */
-      }
-      const stroke: FigureStroke = { view, points: [[p.x, p.y]] }
-      drawing.current = { pointer: e.pointerId, stroke }
-      setLiveStroke(stroke)
-      addRegion(hitAt(view, p.x, p.y))
+    if (!isDrawPress(e)) {
+      pressAt.current = { x: e.clientX, y: e.clientY }
       return
     }
-
-    pressAt.current = { x: e.clientX, y: e.clientY }
-    if (fine) {
-      pan.current = { x: e.clientX, y: e.clientY, from: zoom, moved: false }
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId)
-      } catch {
-        /* pan without capture */
-      }
+    if (drawing.current) return
+    const p = toFigure(view, e.clientX, e.clientY)
+    if (!p) return
+    // Once per stroke: the line and everything it crosses come back together.
+    remember()
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* keep drawing without capture */
     }
+    const stroke: FigureStroke = { view, points: [[p.x, p.y]] }
+    drawing.current = { pointer: e.pointerId, stroke }
+    setLiveStroke(stroke)
+    addRegion(hitAt(view, p.x, p.y))
   }
 
   const onPointerMove = (view: BodyMapView) => (e: React.PointerEvent<SVGSVGElement>) => {
-    if (touches.current.has(e.pointerId)) {
-      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    }
-    const pinching = pinch.current
-    const viewport = viewportRef.current?.getBoundingClientRect()
-    if (pinching && touches.current.size >= 2 && viewport) {
-      const [a, b] = [...touches.current.values()]
-      const dist = Math.hypot(a.x - b.x, a.y - b.y)
-      const mid = { x: (a.x + b.x) / 2 - viewport.left, y: (a.y + b.y) / 2 - viewport.top }
-      const from = pinching.from
-      const s = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, (from.s * dist) / pinching.dist))
-      const cx = (pinching.mid.x - from.tx) / from.s
-      const cy = (pinching.mid.y - from.ty) / from.s
-      setZoom({ s, tx: mid.x - cx * s, ty: mid.y - cy * s })
-      return
-    }
-
+    const p = toFigure(view, e.clientX, e.clientY)
+    if (!p) return
     const current = drawing.current
     if (current && current.pointer === e.pointerId) {
-      const p = toFigure(view, e.clientX, e.clientY)
-      if (!p) return
       current.stroke = { view, points: [...current.stroke.points, [p.x, p.y]] }
       setLiveStroke(current.stroke)
       addRegion(hitAt(view, p.x, p.y))
       return
     }
-
-    const panning = pan.current
-    if (panning && e.buttons) {
-      const dx = e.clientX - panning.x
-      const dy = e.clientY - panning.y
-      if (!panning.moved && Math.hypot(dx, dy) > 8) {
-        panning.moved = true
-        pressAt.current = null
-      }
-      if (panning.moved) {
-        setZoom({ ...panning.from, tx: panning.from.tx + dx, ty: panning.from.ty + dy })
-      }
-      return
-    }
-
-    const p = toFigure(view, e.clientX, e.clientY)
-    if (!p) return
     const id = hitAt(view, p.x, p.y) ?? null
-    // Only when it changes: a state write per move re-renders the figure.
+    // Only when it changes: a state write per move re-renders the figures.
     setHovered((prev) => (prev === id ? prev : id))
   }
 
   const onPointerUp = (view: BodyMapView) => (e: React.PointerEvent<SVGSVGElement>) => {
-    touches.current.delete(e.pointerId)
-    if (pinch.current) {
-      if (touches.current.size < 2) pinch.current = null
-      return
-    }
-
     const current = drawing.current
     if (current && current.pointer === e.pointerId) {
       drawing.current = null
-      // Kept as fractions of the figure, so a line survives any zoom or size.
+      // Kept as fractions of the figure, so a line survives any size.
       const { width, height } = FIGURES[view]
       const finished: FigureStroke = {
         view,
@@ -429,9 +288,7 @@ export function BodyMapViewer({
       return
     }
 
-    const panned = pan.current?.moved
-    pan.current = null
-    if (panned || !pressAt.current || e.type !== "pointerup" || mode !== "point") {
+    if (!pressAt.current || e.type !== "pointerup" || mode !== "point") {
       pressAt.current = null
       return
     }
@@ -439,15 +296,19 @@ export function BodyMapViewer({
     pressAt.current = null
     if (moved > 8) return
     const p = toFigure(view, e.clientX, e.clientY)
-    const id = p ? hitAt(view, p.x, p.y) : undefined
-    if (!id) return
-    // A tap on something chosen unchooses it: the gesture that chose it is the
-    // obvious one for changing your mind.
-    remember()
-    setDraft((d) => ({
-      ...d,
-      regions: d.regions.includes(id) ? d.regions.filter((r) => r !== id) : [...d.regions, id],
-    }))
+    const area = p ? regionAt(view, p.x, p.y) : null
+    // Outside the body: close whatever is open. Nothing marked is lost.
+    if (!p || !area) {
+      setOpenArea(null)
+      return
+    }
+    // The first tap on an area opens it, and only opens it.
+    if (area.id !== openArea) {
+      setOpenArea(area.id)
+      return
+    }
+    // Inside the open area, a tap marks the part under it.
+    toggleRegion(subRegionAt(view, p.x, p.y)?.id ?? area.id)
   }
 
   const toggleSpine = (item: string) => {
@@ -484,6 +345,7 @@ export function BodyMapViewer({
     })
     setDraft(EMPTY)
     setHistory([])
+    setOpenArea(null)
   }
 
   /*
@@ -539,6 +401,8 @@ export function BodyMapViewer({
     setEditNote(m.note ?? "")
   }
 
+  const openParts = useMemo(() => (openArea ? partsOfArea(openArea) : []), [openArea])
+
   /* ── Drawing a figure ─────────────────────────────────────────────────── */
 
   const strokesFor = (view: BodyMapView) => {
@@ -578,6 +442,7 @@ export function BodyMapViewer({
   const figure = (view: BodyMapView) => {
     const fig = FIGURES[view]
     const viewBox = `0 0 ${fig.width} ${fig.height}`
+    const openShape = REGIONS[view].find((r) => r.id === openArea)
     return (
       <>
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed local figure, drawn over at its own pixel size */}
@@ -604,33 +469,34 @@ export function BodyMapViewer({
         >
           {REGIONS[view].map((r) => {
             const color = regionColors.get(r.id)
-            const isHover = !fine && r.id === hovered && !color
-            if (!color && !isHover) return null
+            const isOpen = r.id === openArea
+            const isHover = r.id === hovered && !color && !isOpen
+            if (!color && !isHover && !isOpen) return null
             return (
               <polygon
                 key={r.id}
                 points={r.points}
-                fill={color ?? HOVER_COLOR}
-                fillOpacity={color ? (emphasis.has(r.id) ? 0.62 : 0.42) : 0.28}
+                fill={color ?? (isOpen ? OPEN_COLOR : HOVER_COLOR)}
+                fillOpacity={color ? (emphasis.has(r.id) ? 0.62 : 0.42) : isOpen ? 0.1 : 0.28}
               />
             )
           })}
           {SUBREGIONS[view].map((s) => {
             const color = regionColors.get(s.id)
-            const isHover = fine && s.id === hovered && !color
-            if (!color && !isHover && !fine) return null
+            const inOpen = s.parentId === openArea
+            const isHover = inOpen && s.id === hovered && !color
+            if (!color && !inOpen) return null
             return (
               <polygon
                 key={s.id}
                 points={s.points}
                 fill={color ?? (isHover ? HOVER_COLOR : "none")}
                 fillOpacity={color ? (emphasis.has(s.id) ? 0.66 : 0.46) : 0.3}
-                // Opened up, the parts are outlined so you can see what a tap
-                // will choose before you make it.
-                stroke={fine ? "#334155" : "none"}
-                strokeOpacity={0.22}
-                strokeWidth={0.75}
-                vectorEffect="non-scaling-stroke"
+                // The open area's parts are outlined, so a tap's target is
+                // visible before it is made.
+                stroke={inOpen ? "#0f172a" : "none"}
+                strokeOpacity={0.4}
+                strokeWidth={0.6}
               />
             )
           })}
@@ -641,7 +507,7 @@ export function BodyMapViewer({
           }}
           viewBox={viewBox}
           className="absolute inset-0 h-full w-full touch-none"
-          style={{ cursor: mode === "pen" ? "crosshair" : fine ? "grab" : "pointer" }}
+          style={{ cursor: mode === "pen" ? "crosshair" : "pointer" }}
           onPointerDown={onPointerDown(view)}
           onPointerMove={onPointerMove(view)}
           onPointerUp={onPointerUp(view)}
@@ -650,6 +516,17 @@ export function BodyMapViewer({
           role="img"
           aria-label={t(`bodyMap.figureAlt.${view}`)}
         >
+          {/* The open area's edge, over everything, so it reads as open. */}
+          {openShape && (
+            <polygon
+              points={openShape.points}
+              fill="none"
+              stroke={OPEN_COLOR}
+              strokeWidth={2.5}
+              strokeDasharray="6 4"
+              strokeLinejoin="round"
+            />
+          )}
           {view === "back" &&
             spineMarkers().map((m) => (
               <rect
@@ -663,7 +540,6 @@ export function BodyMapViewer({
                 fillOpacity={emphasis.has(m.item) ? 0.9 : 0.7}
                 stroke="#ffffff"
                 strokeWidth={0.75}
-                vectorEffect="non-scaling-stroke"
               />
             ))}
           {strokesFor(view).map((s) => (
@@ -672,8 +548,7 @@ export function BodyMapViewer({
               points={s.points}
               fill="none"
               stroke={INK}
-              strokeWidth={s.strong ? 3 : 2.25}
-              vectorEffect="non-scaling-stroke"
+              strokeWidth={s.strong ? 5 : 3.5}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -693,13 +568,15 @@ export function BodyMapViewer({
       {/* ── The figures ───────────────────────────────────────────────────── */}
       <div className="relative min-w-0 rounded-2xl border border-slate-200 bg-white p-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          {/* Where you are looking. */}
-          <div className="inline-flex flex-wrap rounded-full border border-slate-200 bg-slate-50 p-0.5">
+          <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-0.5">
             {STAGES.map((value) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => goTo(value)}
+                onClick={() => {
+                  setStage(value)
+                  setHovered(null)
+                }}
                 aria-pressed={stage === value}
                 className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                   stage === value ? "bg-sky-700 text-white" : "text-slate-600 hover:text-slate-900"
@@ -711,7 +588,7 @@ export function BodyMapViewer({
           </div>
           <div className="flex items-center gap-2">
             {/* What a touch does. The spine model has one tool: a tap. */}
-            {stage !== "spine" && (
+            {stage === "figures" && (
               <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-0.5">
                 {(
                   [
@@ -746,80 +623,24 @@ export function BodyMapViewer({
           </div>
         </div>
 
-        {stage === "both" && (
+        {stage === "figures" ? (
           <div className="grid grid-cols-2 gap-3">
             {VIEWS.map((view) => (
               <figure key={view} className="m-0 flex min-w-0 flex-col items-center gap-1">
-                <figcaption className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                <figcaption className="text-xs font-semibold text-slate-500">
                   {t(`bodyMap.view.${view}`)}
-                  <button
-                    type="button"
-                    onClick={() => goTo(view)}
-                    aria-label={t("bodyMap.openUp", { view: t(`bodyMap.view.${view}`) })}
-                    className="flex size-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-sky-700"
-                  >
-                    <Maximize2 className="size-3.5" aria-hidden />
-                  </button>
                 </figcaption>
-                <div className="relative w-full max-w-[280px] select-none">{figure(view)}</div>
+                <div className="relative w-full max-w-[300px] select-none">{figure(view)}</div>
               </figure>
             ))}
           </div>
-        )}
-
-        {focusView && (
-          <div
-            ref={viewportRef}
-            className="relative w-full touch-none overflow-hidden rounded-xl bg-slate-50/60 select-none"
-            style={{ height: FOCUS_HEIGHT }}
-          >
-            <div
-              className="absolute left-0 top-0 origin-top-left"
-              style={{
-                width: baseWidth,
-                transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.s})`,
-              }}
-            >
-              {figure(focusView)}
-            </div>
-            <div className="absolute end-3 top-3 flex flex-col gap-1.5">
-              {(
-                [
-                  [Plus, "bodyMap.zoomIn", () => zoomButton(1.5)],
-                  [Minus, "bodyMap.zoomOut", () => zoomButton(1 / 1.5)],
-                  [Scan, "bodyMap.fit", () => setZoom(fit())],
-                ] as const
-              ).map(([Icon, key, action]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={action}
-                  aria-label={t(key)}
-                  title={t(key)}
-                  className="flex size-9 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-700 shadow-sm transition-colors hover:border-slate-400"
-                >
-                  <Icon className="size-4" aria-hidden />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {stage === "spine" && (
+        ) : (
           <SpineViewer colors={spineColors} emphasis={emphasis} onToggle={toggleSpine} />
         )}
 
-        {stage !== "spine" && (
+        {stage === "figures" && (
           <p className="mt-2 text-center text-[11px] font-medium text-slate-500">
-            {t(
-              fine
-                ? mode === "pen"
-                  ? "bodyMap.hint.focusPen"
-                  : "bodyMap.hint.focus"
-                : mode === "pen"
-                  ? "bodyMap.hint.pen"
-                  : "bodyMap.hint.point",
-            )}
+            {t(mode === "pen" ? "bodyMap.hint.pen" : "bodyMap.hint.point")}
           </p>
         )}
         {/* CC BY 4.0 requires the credit wherever the figures are shown. */}
@@ -846,6 +667,47 @@ export function BodyMapViewer({
           </p>
         </div>
 
+        {/* The open area: the whole of it, or any part, one tap each. */}
+        {openArea && stage === "figures" && (
+          <div className="rounded-2xl border-2 border-sky-200 bg-sky-50/40 p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <p className="min-w-0 flex-1 text-sm font-bold text-sky-900">{regionLabel(t, openArea)}</p>
+              <button
+                type="button"
+                onClick={() => setOpenArea(null)}
+                aria-label={t("bodyMap.parts.close")}
+                className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white hover:text-slate-700"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[openArea, ...openParts.map((p) => p.id)].map((id) => {
+                const on = draft.regions.includes(id)
+                const whole = id === openArea
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => toggleRegion(id)}
+                    aria-pressed={on}
+                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                      on
+                        ? "border-transparent text-white"
+                        : whole
+                          ? "border-sky-300 bg-white text-sky-900 hover:bg-sky-50"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                    style={on ? { backgroundColor: toneColor(tones) } : undefined}
+                  >
+                    {whole ? t("bodyMap.parts.whole") : partLabel(t, id)}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Either, both or neither: two things that can be true of one spot. */}
         <div className="grid grid-cols-2 gap-2">
           {TONES.map((value) => (
@@ -871,13 +733,28 @@ export function BodyMapViewer({
             {(draft.regions.length > 0 || draft.vertebrae.length > 0) && (
               <div className="mb-3 flex flex-wrap gap-1.5">
                 {[...draft.regions, ...draft.vertebrae].map((item) => {
-                  const name = draft.regions.includes(item) ? regionLabel(t, item) : spineLabel(t, item)
+                  const isRegion = draft.regions.includes(item)
+                  const name = isRegion ? regionLabel(t, item) : spineLabel(t, item)
                   return (
                     <span
                       key={item}
                       className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
                     >
-                      {name}
+                      {/* A tag opens its area, the same as a tap on the body. */}
+                      {isRegion ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStage("figures")
+                            setOpenArea(item.split("/")[0])
+                          }}
+                          className="hover:text-sky-700"
+                        >
+                          {name}
+                        </button>
+                      ) : (
+                        name
+                      )}
                       <button
                         type="button"
                         onClick={() => removeItem(item)}
