@@ -242,6 +242,14 @@ export type BodyMapView = "front" | "back"
 export interface FigureStroke {
   view: BodyMapView
   points: [number, number][]
+  /**
+   * Where the line starts and ends, by area or part id. A line is usually a
+   * path (pain running from the low back down the leg), so it is recorded as
+   * one: from here to there. It used to name every area it crossed, which
+   * turned one line into eleven findings.
+   */
+  from?: string
+  to?: string
 }
 
 /**

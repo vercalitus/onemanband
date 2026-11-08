@@ -2,23 +2,24 @@
 
 import dynamic from "next/dynamic"
 import { ChevronDown, Undo2, X } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { BODY_MAP_FLUSH_EVENT } from "../lib/flush-event"
 import {
+  AREAS,
   FIGURES,
   LEVEL_Y,
   MIDLINE,
-  REGIONS,
-  SUBREGIONS,
+  areaById,
+  groupBySide,
+  itemName,
   levelOf,
+  partAt,
   partLabel,
-  partsOfArea,
-  regionAt,
   regionLabel,
+  sideOf,
   sortSpine,
   spineLabel,
-  subRegionAt,
 } from "../lib/regions"
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
@@ -47,22 +48,22 @@ const SpineViewer = dynamic(() => import("./spine-viewer").then((m) => m.SpineVi
 /**
  * The body map: two figures, front and back, and the spine as a model.
  *
- * **The figures never change.** An earlier version opened one figure up in a
- * zoomed view of its own to reach the smaller parts, and the practitioner
- * lost the whole body to see a piece of it. Now an area opens where it is:
+ * **The figures never change.** An area opens where it is:
  *
- *  1. A tap on an area opens it: its parts are outlined inside it, on both
- *     figures where it appears, and listed beside the map. Nothing is marked.
- *  2. Another tap marks: on a part inside the open area, that part; from the
- *     list, the whole area or any of its parts. Martin marks both, so both are
- *     always one tap away.
+ *  1. A tap on an area opens it: its parts are outlined inside it and listed
+ *     beside the map. Nothing is marked.
+ *  2. Another tap marks: on a part, that part; from the list, the whole area
+ *     or any of its parts. Martin marks both, so both are one tap away.
  *  3. A tap outside closes it. What was marked stays marked.
  *
- * The list is not decoration. Without zoom a lumbar level is about eight
- * pixels tall on the figure, which no finger can hit reliably; the buttons
- * are the dependable way to the same part, and the figure shows the result.
+ * **The pen draws a path.** A line is usually pain travelling (low back down
+ * the leg), so it is recorded as where it starts and where it ends, with the
+ * drawing. It used to name every area it crossed, and one line became eleven
+ * findings that nobody had meant.
  *
- * The pen draws as before, and names every area or part its line crosses.
+ * **A mark reads by side.** Right, left, midline, spine, path: each name once,
+ * the side said once per row, instead of the same long list twice with "Right"
+ * and "Left" in front of every item.
  */
 
 type Mode = "pen" | "point"
@@ -160,6 +161,7 @@ export function BodyMapViewer({
 
   const openMark = marks.find((m) => m.id === openId) ?? null
   const highlight = openMark ? toneColor(markTones(openMark)) : toneColor(tones)
+  const open = openArea ? areaById(openArea) : null
 
   const toggleTone = (value: BodyMarkTone) =>
     setTones((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]))
@@ -204,16 +206,10 @@ export function BodyMapViewer({
 
   /** What a point names: a part inside the open area, otherwise the area. */
   const hitAt = (view: BodyMapView, x: number, y: number) => {
-    const area = regionAt(view, x, y)
-    if (!area) return undefined
-    if (area.id === openArea) return subRegionAt(view, x, y)?.id ?? area.id
-    return area.id
+    const part = partAt(view, x, y)
+    if (!part) return undefined
+    return part.areaId === openArea ? part.id : part.areaId
   }
-
-  const addRegion = useCallback((id: string | undefined) => {
-    if (!id) return
-    setDraft((d) => (d.regions.includes(id) ? d : { ...d, regions: [...d.regions, id] }))
-  }, [])
 
   const toggleRegion = (id: string) => {
     // A tap on something chosen unchooses it: the gesture that chose it is the
@@ -242,7 +238,7 @@ export function BodyMapViewer({
     if (drawing.current) return
     const p = toFigure(view, e.clientX, e.clientY)
     if (!p) return
-    // Once per stroke: the line and everything it crosses come back together.
+    // Once per stroke: the whole line comes back as one.
     remember()
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -252,7 +248,6 @@ export function BodyMapViewer({
     const stroke: FigureStroke = { view, points: [[p.x, p.y]] }
     drawing.current = { pointer: e.pointerId, stroke }
     setLiveStroke(stroke)
-    addRegion(hitAt(view, p.x, p.y))
   }
 
   const onPointerMove = (view: BodyMapView) => (e: React.PointerEvent<SVGSVGElement>) => {
@@ -262,7 +257,6 @@ export function BodyMapViewer({
     if (current && current.pointer === e.pointerId) {
       current.stroke = { view, points: [...current.stroke.points, [p.x, p.y]] }
       setLiveStroke(current.stroke)
-      addRegion(hitAt(view, p.x, p.y))
       return
     }
     const id = hitAt(view, p.x, p.y) ?? null
@@ -274,17 +268,25 @@ export function BodyMapViewer({
     const current = drawing.current
     if (current && current.pointer === e.pointerId) {
       drawing.current = null
-      // Kept as fractions of the figure, so a line survives any size.
-      const { width, height } = FIGURES[view]
-      const finished: FigureStroke = {
-        view,
-        points: current.stroke.points.map(([x, y]) => [
-          Math.round((x / width) * 10000) / 10000,
-          Math.round((y / height) * 10000) / 10000,
-        ]),
-      }
-      if (finished.points.length > 1) setDraft((d) => ({ ...d, strokes: [...d.strokes, finished] }))
       setLiveStroke(null)
+      const pts = current.stroke.points
+      if (pts.length > 1) {
+        const { width, height } = FIGURES[view]
+        // The path's two ends, as the most precise thing under each.
+        const first = partAt(view, pts[0][0], pts[0][1])
+        const last = partAt(view, pts[pts.length - 1][0], pts[pts.length - 1][1])
+        const finished: FigureStroke = {
+          view,
+          // Fractions of the figure, so a line survives any size.
+          points: pts.map(([x, y]) => [
+            Math.round((x / width) * 10000) / 10000,
+            Math.round((y / height) * 10000) / 10000,
+          ]),
+          from: first?.id,
+          to: last?.id,
+        }
+        setDraft((d) => ({ ...d, strokes: [...d.strokes, finished] }))
+      }
       return
     }
 
@@ -296,19 +298,19 @@ export function BodyMapViewer({
     pressAt.current = null
     if (moved > 8) return
     const p = toFigure(view, e.clientX, e.clientY)
-    const area = p ? regionAt(view, p.x, p.y) : null
+    const part = p ? partAt(view, p.x, p.y) : null
     // Outside the body: close whatever is open. Nothing marked is lost.
-    if (!p || !area) {
+    if (!part) {
       setOpenArea(null)
       return
     }
     // The first tap on an area opens it, and only opens it.
-    if (area.id !== openArea) {
-      setOpenArea(area.id)
+    if (part.areaId !== openArea) {
+      setOpenArea(part.areaId)
       return
     }
     // Inside the open area, a tap marks the part under it.
-    toggleRegion(subRegionAt(view, p.x, p.y)?.id ?? area.id)
+    toggleRegion(part.id)
   }
 
   const toggleSpine = (item: string) => {
@@ -328,6 +330,11 @@ export function BodyMapViewer({
       regions: d.regions.filter((r) => r !== item),
       vertebrae: d.vertebrae.filter((v) => v !== item),
     }))
+  }
+
+  const removeStroke = (index: number) => {
+    remember()
+    setDraft((d) => ({ ...d, strokes: d.strokes.filter((_, i) => i !== index) }))
   }
 
   /* ── Saving ───────────────────────────────────────────────────────────── */
@@ -369,15 +376,50 @@ export function BodyMapViewer({
     }
   }, [])
 
-  const describe = (regions: string[], spine: string[]) =>
-    [...regions.map((id) => regionLabel(t, id)), ...spine.map((v) => spineLabel(t, v))].join(" · ")
+  /* ── Words ────────────────────────────────────────────────────────────── */
 
-  const headline = hasDraft
-    ? describe(draft.regions, draft.vertebrae) || t("bodyMap.drawingOnly")
-    : openMark
-      ? describe(openMark.regions, openMark.vertebrae) || t("bodyMap.drawingOnly")
-      : hovered
-        ? regionLabel(t, hovered)
+  const pathText = (s: FigureStroke) => {
+    if (!s.from && !s.to) return null
+    if (!s.from || !s.to || s.from === s.to) {
+      return t("bodyMap.pathSingle", { where: regionLabel(t, (s.from ?? s.to)!) })
+    }
+    return t("bodyMap.path", { from: regionLabel(t, s.from), to: regionLabel(t, s.to) })
+  }
+
+  /** One line for a saved mark: grouped, each name once. */
+  const summary = (m: { regions: string[]; vertebrae: string[]; strokes: FigureStroke[] }) => {
+    const g = groupBySide(m.regions)
+    const parts: string[] = []
+    for (const side of ["r", "l", "mid"] as const) {
+      if (g[side].length) {
+        parts.push(`${t(`bodyMap.group.${side}`)}: ${g[side].map((id) => itemName(t, id)).join(", ")}`)
+      }
+    }
+    if (m.vertebrae.length) {
+      parts.push(`${t("bodyMap.group.spine")}: ${m.vertebrae.map((v) => spineLabel(t, v)).join(", ")}`)
+    }
+    for (const s of m.strokes) {
+      const text = pathText(s)
+      if (text) parts.push(`${t("bodyMap.group.path")}: ${text}`)
+    }
+    return parts.join(" · ") || t("bodyMap.drawingOnly")
+  }
+
+  /** A part's own name, with its side when the area itself has none (T4 ימין). */
+  const partButtonLabel = (id: string) => {
+    const side = sideOf(id)
+    const areaSided = id.split("/")[0].includes(":")
+    const name = partLabel(t, id)
+    return side && !areaSided ? `${name} ${t(`bodyMap.side.${side}`)}` : name
+  }
+
+  const itemCount = draft.regions.length + draft.vertebrae.length + draft.strokes.length
+  const headline = hovered
+    ? regionLabel(t, hovered)
+    : open
+      ? regionLabel(t, open.id)
+      : hasDraft
+        ? t("bodyMap.count", { n: itemCount })
         : "—"
 
   const confirmPending = () => {
@@ -400,8 +442,6 @@ export function BodyMapViewer({
     setOpenId(m.id)
     setEditNote(m.note ?? "")
   }
-
-  const openParts = useMemo(() => (openArea ? partsOfArea(openArea) : []), [openArea])
 
   /* ── Drawing a figure ─────────────────────────────────────────────────── */
 
@@ -442,7 +482,6 @@ export function BodyMapViewer({
   const figure = (view: BodyMapView) => {
     const fig = FIGURES[view]
     const viewBox = `0 0 ${fig.width} ${fig.height}`
-    const openShape = REGIONS[view].find((r) => r.id === openArea)
     return (
       <>
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed local figure, drawn over at its own pixel size */}
@@ -454,8 +493,7 @@ export function BodyMapViewer({
           draggable={false}
           className="pointer-events-none block h-auto w-full"
         />
-        {/* The colour, clipped to the figure's own outline: the areas only
-            partition the body, the picture traces it. */}
+        {/* The colour, clipped to the figure's own outline. */}
         <svg
           viewBox={viewBox}
           className="pointer-events-none absolute inset-0 h-full w-full mix-blend-multiply"
@@ -467,38 +505,31 @@ export function BodyMapViewer({
           }}
           aria-hidden
         >
-          {REGIONS[view].map((r) => {
-            const color = regionColors.get(r.id)
-            const isOpen = r.id === openArea
-            const isHover = r.id === hovered && !color && !isOpen
-            if (!color && !isHover && !isOpen) return null
-            return (
-              <polygon
-                key={r.id}
-                points={r.points}
-                fill={color ?? (isOpen ? OPEN_COLOR : HOVER_COLOR)}
-                fillOpacity={color ? (emphasis.has(r.id) ? 0.62 : 0.42) : isOpen ? 0.1 : 0.28}
-              />
-            )
-          })}
-          {SUBREGIONS[view].map((s) => {
-            const color = regionColors.get(s.id)
-            const inOpen = s.parentId === openArea
-            const isHover = inOpen && s.id === hovered && !color
-            if (!color && !inOpen) return null
-            return (
-              <polygon
-                key={s.id}
-                points={s.points}
-                fill={color ?? (isHover ? HOVER_COLOR : "none")}
-                fillOpacity={color ? (emphasis.has(s.id) ? 0.66 : 0.46) : 0.3}
-                // The open area's parts are outlined, so a tap's target is
-                // visible before it is made.
-                stroke={inOpen ? "#0f172a" : "none"}
-                strokeOpacity={0.4}
-                strokeWidth={0.6}
-              />
-            )
+          {AREAS[view].map((area) => {
+            const areaColor = regionColors.get(area.id)
+            const isOpen = area.id === openArea
+            const areaHover = area.id === hovered && !areaColor && !isOpen
+            return area.parts.map((part) => {
+              // A part marked on its own wins over the area's colour.
+              const partColor = part.id !== area.id ? regionColors.get(part.id) : undefined
+              const color = partColor ?? areaColor
+              const partHover = isOpen && part.id === hovered && !color
+              if (!color && !areaHover && !partHover && !isOpen) return null
+              const strong = emphasis.has(part.id) || emphasis.has(area.id)
+              return (
+                <polygon
+                  key={part.id}
+                  points={part.points}
+                  fill={color ?? (partHover || areaHover ? HOVER_COLOR : OPEN_COLOR)}
+                  fillOpacity={color ? (strong ? 0.6 : 0.4) : partHover || areaHover ? 0.28 : 0.08}
+                  // The open area's parts are outlined, so a tap's target is
+                  // visible before it is made.
+                  stroke={isOpen && area.breaksDown ? "#0f172a" : "none"}
+                  strokeOpacity={0.45}
+                  strokeWidth={0.7}
+                />
+              )
+            })
           })}
         </svg>
         <svg
@@ -516,17 +547,6 @@ export function BodyMapViewer({
           role="img"
           aria-label={t(`bodyMap.figureAlt.${view}`)}
         >
-          {/* The open area's edge, over everything, so it reads as open. */}
-          {openShape && (
-            <polygon
-              points={openShape.points}
-              fill="none"
-              stroke={OPEN_COLOR}
-              strokeWidth={2.5}
-              strokeDasharray="6 4"
-              strokeLinejoin="round"
-            />
-          )}
           {view === "back" &&
             spineMarkers().map((m) => (
               <rect
@@ -557,6 +577,38 @@ export function BodyMapViewer({
       </>
     )
   }
+
+  const draftGroups = groupBySide(draft.regions)
+
+  const chip = (key: string, label: string, onRemove: () => void, onOpen?: () => void) => (
+    <span
+      key={key}
+      className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
+    >
+      {onOpen ? (
+        <button type="button" onClick={onOpen} className="hover:text-sky-700">
+          {label}
+        </button>
+      ) : (
+        label
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={t("bodyMap.remove", { name: label })}
+        className="text-slate-400 transition-colors hover:text-rose-600"
+      >
+        <X className="size-3" aria-hidden />
+      </button>
+    </span>
+  )
+
+  const row = (label: string, children: React.ReactNode) => (
+    <div key={label} className="flex items-start gap-2">
+      <span className="mt-1 w-16 shrink-0 text-[11px] font-bold text-slate-500">{label}</span>
+      <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">{children}</div>
+    </div>
+  )
 
   return (
     /*
@@ -655,23 +707,20 @@ export function BodyMapViewer({
 
       {/* ── What is being marked, and what it says ────────────────────────── */}
       <div className="flex min-w-0 flex-col gap-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        {/* What the pointer is on, or the area open, or how much is marked —
+            never the whole list again: that is in the card below. */}
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-            {hasDraft ? t("bodyMap.marked") : t("bodyMap.underCursor")}
+            {hovered || open ? t("bodyMap.underCursor") : t("bodyMap.marked")}
           </p>
-          <p
-            className="mt-1 break-words text-xl font-bold leading-snug"
-            style={{ color: hasDraft || openMark ? highlight : "#0369a1" }}
-          >
-            {headline}
-          </p>
+          <p className="mt-0.5 break-words text-lg font-bold leading-snug text-sky-800">{headline}</p>
         </div>
 
         {/* The open area: the whole of it, or any part, one tap each. */}
-        {openArea && stage === "figures" && (
+        {open && stage === "figures" && (
           <div className="rounded-2xl border-2 border-sky-200 bg-sky-50/40 p-3">
             <div className="mb-2 flex items-center gap-2">
-              <p className="min-w-0 flex-1 text-sm font-bold text-sky-900">{regionLabel(t, openArea)}</p>
+              <p className="min-w-0 flex-1 text-sm font-bold text-sky-900">{regionLabel(t, open.id)}</p>
               <button
                 type="button"
                 onClick={() => setOpenArea(null)}
@@ -682,9 +731,9 @@ export function BodyMapViewer({
               </button>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {[openArea, ...openParts.map((p) => p.id)].map((id) => {
+              {[open.id, ...open.parts.filter((p) => p.id !== open.id).map((p) => p.id)].map((id) => {
                 const on = draft.regions.includes(id)
-                const whole = id === openArea
+                const whole = id === open.id
                 return (
                   <button
                     key={id}
@@ -700,7 +749,7 @@ export function BodyMapViewer({
                     }`}
                     style={on ? { backgroundColor: toneColor(tones) } : undefined}
                   >
-                    {whole ? t("bodyMap.parts.whole") : partLabel(t, id)}
+                    {whole ? t("bodyMap.parts.whole") : partButtonLabel(id)}
                   </button>
                 )
               })}
@@ -730,44 +779,39 @@ export function BodyMapViewer({
 
         {hasDraft && (
           <div className="rounded-2xl border-2 border-slate-300 bg-slate-50/60 p-4">
-            {(draft.regions.length > 0 || draft.vertebrae.length > 0) && (
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {[...draft.regions, ...draft.vertebrae].map((item) => {
-                  const isRegion = draft.regions.includes(item)
-                  const name = isRegion ? regionLabel(t, item) : spineLabel(t, item)
-                  return (
-                    <span
-                      key={item}
-                      className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
-                    >
-                      {/* A tag opens its area, the same as a tap on the body. */}
-                      {isRegion ? (
-                        <button
-                          type="button"
-                          onClick={() => {
+            <div className="mb-3 grid gap-2">
+              {(["r", "l", "mid"] as const).map((side) =>
+                draftGroups[side].length
+                  ? row(
+                      t(`bodyMap.group.${side}`),
+                      draftGroups[side].map((id) =>
+                        chip(
+                          id,
+                          itemName(t, id),
+                          () => removeItem(id),
+                          () => {
                             setStage("figures")
-                            setOpenArea(item.split("/")[0])
-                          }}
-                          className="hover:text-sky-700"
-                        >
-                          {name}
-                        </button>
-                      ) : (
-                        name
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item)}
-                        aria-label={t("bodyMap.remove", { name })}
-                        className="text-slate-400 transition-colors hover:text-rose-600"
-                      >
-                        <X className="size-3" aria-hidden />
-                      </button>
-                    </span>
-                  )
-                })}
-              </div>
-            )}
+                            setOpenArea(id.split("/")[0])
+                          },
+                        ),
+                      ),
+                    )
+                  : null,
+              )}
+              {draft.vertebrae.length > 0 &&
+                row(
+                  t("bodyMap.group.spine"),
+                  draft.vertebrae.map((v) => chip(v, spineLabel(t, v), () => removeItem(v))),
+                )}
+              {draft.strokes.some((s) => pathText(s)) &&
+                row(
+                  t("bodyMap.group.path"),
+                  draft.strokes.map((s, i) => {
+                    const text = pathText(s)
+                    return text ? chip(`path-${i}`, text, () => removeStroke(i)) : null
+                  }),
+                )}
+            </div>
             <label
               htmlFor="body-mark-note"
               className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
@@ -808,12 +852,12 @@ export function BodyMapViewer({
             </p>
             <ul className="space-y-2">
               {marks.map((m) => {
-                const open = openId === m.id
+                const isOpen = openId === m.id
                 const kinds = markTones(m)
                 return (
                   <li
                     key={m.id}
-                    className={`overflow-hidden rounded-xl border ${open ? "border-slate-300 bg-slate-50/60" : "border-slate-100"}`}
+                    className={`overflow-hidden rounded-xl border ${isOpen ? "border-slate-300 bg-slate-50/60" : "border-slate-100"}`}
                   >
                     <button
                       type="button"
@@ -826,10 +870,8 @@ export function BodyMapViewer({
                         aria-hidden
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-slate-800">
-                          {describe(m.regions, m.vertebrae) || t("bodyMap.drawingOnly")}
-                        </span>
-                        {!open && m.note && (
+                        <span className="block text-sm font-semibold leading-snug text-slate-800">{summary(m)}</span>
+                        {!isOpen && m.note && (
                           <span className="mt-0.5 block truncate text-xs text-slate-600">{m.note}</span>
                         )}
                         <span className="mt-0.5 block text-[11px] text-slate-400">
@@ -841,12 +883,12 @@ export function BodyMapViewer({
                         </span>
                       </span>
                       <ChevronDown
-                        className={`mt-0.5 size-4 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+                        className={`mt-0.5 size-4 shrink-0 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
                         aria-hidden
                       />
                     </button>
 
-                    {open && (
+                    {isOpen && (
                       <div className="border-t border-slate-200 px-3 py-3">
                         <div className="mb-3 flex flex-wrap gap-1.5">
                           {TONES.map((value) => {
@@ -953,7 +995,7 @@ export function BodyMapViewer({
 
       {/* Anything that loses work asks first: deleting a saved mark, and Clear,
           which takes the areas, the spine, the drawing and the note at once. */}
-      <Dialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+      <Dialog open={pending !== null} onOpenChange={(isOpen) => !isOpen && setPending(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>
