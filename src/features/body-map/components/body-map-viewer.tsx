@@ -163,6 +163,16 @@ export function BodyMapViewer({
   const highlight = openMark ? toneColor(markTones(openMark)) : toneColor(tones)
   const open = openArea ? areaById(openArea) : null
 
+  // On a tablet held upright the parts list sits under the figures, past the
+  // fold. An area opened there brings its list just into view — never further,
+  // so the figure being tapped stays where the finger is.
+  const partsRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!openArea || !partsRef.current) return
+    if (!window.matchMedia("(pointer: coarse)").matches) return
+    partsRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  }, [openArea])
+
   const toggleTone = (value: BodyMarkTone) =>
     setTones((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]))
 
@@ -537,7 +547,9 @@ export function BodyMapViewer({
             figureRefs.current[view] = el
           }}
           viewBox={viewBox}
-          className="absolute inset-0 h-full w-full touch-none"
+          // A finger may scroll the page past the figures; only the pen needs
+          // every movement for itself.
+          className={`absolute inset-0 h-full w-full ${mode === "pen" ? "touch-none" : "touch-manipulation"}`}
           style={{ cursor: mode === "pen" ? "crosshair" : "pointer" }}
           onPointerDown={onPointerDown(view)}
           onPointerMove={onPointerMove(view)}
@@ -583,7 +595,7 @@ export function BodyMapViewer({
   const chip = (key: string, label: string, onRemove: () => void, onOpen?: () => void) => (
     <span
       key={key}
-      className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
+      className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 pointer-coarse:py-1.5 pointer-coarse:text-sm"
     >
       {onOpen ? (
         <button type="button" onClick={onOpen} className="hover:text-sky-700">
@@ -596,9 +608,9 @@ export function BodyMapViewer({
         type="button"
         onClick={onRemove}
         aria-label={t("bodyMap.remove", { name: label })}
-        className="text-slate-400 transition-colors hover:text-rose-600"
+        className="text-slate-400 transition-colors hover:text-rose-600 pointer-coarse:-my-1.5 pointer-coarse:-me-1.5 pointer-coarse:p-1.5"
       >
-        <X className="size-3" aria-hidden />
+        <X className="size-3 pointer-coarse:size-4" aria-hidden />
       </button>
     </span>
   )
@@ -616,7 +628,16 @@ export function BodyMapViewer({
      * that beside the panel the figures came out 160px wide, so below 2xl the
      * panel goes underneath and the figures take the width.
      */
-    <div className="grid gap-4 2xl:grid-cols-[3fr_2fr]">
+    /*
+     * A tablet on its side is too short for the figures and the panel one
+     * above the other: an area opened there listed its parts off the screen.
+     * There the figures fit the height and the panel stands beside them.
+     */
+    <div
+      className={`grid gap-4 2xl:grid-cols-[3fr_2fr] ${
+        stage === "figures" ? "pointer-coarse:landscape:grid-cols-[auto_minmax(0,1fr)]" : ""
+      }`}
+    >
       {/* ── The figures ───────────────────────────────────────────────────── */}
       <div className="relative min-w-0 rounded-2xl border border-slate-200 bg-white p-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -630,7 +651,7 @@ export function BodyMapViewer({
                   setHovered(null)
                 }}
                 aria-pressed={stage === value}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors pointer-coarse:px-4 pointer-coarse:py-2.5 pointer-coarse:text-sm ${
                   stage === value ? "bg-sky-700 text-white" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
@@ -653,7 +674,7 @@ export function BodyMapViewer({
                     type="button"
                     onClick={() => setMode(value)}
                     aria-pressed={mode === value}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors pointer-coarse:px-4 pointer-coarse:py-2.5 pointer-coarse:text-sm ${
                       mode === value ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -666,7 +687,7 @@ export function BodyMapViewer({
               <button
                 type="button"
                 onClick={undo}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400"
+                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 pointer-coarse:px-4 pointer-coarse:py-2.5 pointer-coarse:text-sm"
               >
                 <Undo2 className="size-3.5 rtl:-scale-x-100" aria-hidden />
                 {t("bodyMap.undo")}
@@ -682,7 +703,10 @@ export function BodyMapViewer({
                 <figcaption className="text-xs font-semibold text-slate-500">
                   {t(`bodyMap.view.${view}`)}
                 </figcaption>
-                <div className="relative w-full max-w-[300px] select-none">{figure(view)}</div>
+                {/* 0.38 is the figure's width over its height. */}
+                <div className="relative w-full max-w-[300px] select-none pointer-coarse:landscape:w-[max(180px,calc((100dvh-280px)*0.38))]">
+                  {figure(view)}
+                </div>
               </figure>
             ))}
           </div>
@@ -718,14 +742,14 @@ export function BodyMapViewer({
 
         {/* The open area: the whole of it, or any part, one tap each. */}
         {open && stage === "figures" && (
-          <div className="rounded-2xl border-2 border-sky-200 bg-sky-50/40 p-3">
+          <div ref={partsRef} className="scroll-mb-28 rounded-2xl border-2 border-sky-200 bg-sky-50/40 p-3">
             <div className="mb-2 flex items-center gap-2">
               <p className="min-w-0 flex-1 text-sm font-bold text-sky-900">{regionLabel(t, open.id)}</p>
               <button
                 type="button"
                 onClick={() => setOpenArea(null)}
                 aria-label={t("bodyMap.parts.close")}
-                className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white hover:text-slate-700"
+                className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white hover:text-slate-700 pointer-coarse:size-10"
               >
                 <X className="size-4" aria-hidden />
               </button>
@@ -740,7 +764,7 @@ export function BodyMapViewer({
                     type="button"
                     onClick={() => toggleRegion(id)}
                     aria-pressed={on}
-                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors pointer-coarse:px-3.5 pointer-coarse:py-2.5 pointer-coarse:text-sm ${
                       on
                         ? "border-transparent text-white"
                         : whole
