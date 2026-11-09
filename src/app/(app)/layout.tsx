@@ -14,15 +14,19 @@ import { TodosProvider } from "@/components/providers/todos-provider"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const mainColumn = (
-    <div className="relative flex min-h-screen min-w-0 max-w-full flex-1 flex-col bg-background shadow-[-6px_0_28px_-14px_rgba(15,23,42,0.06)] rtl:shadow-[6px_0_28px_-14px_rgba(15,23,42,0.06)]">
-      <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/95 backdrop-blur-md">
-        <div className="flex min-h-14 w-full min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-1.5 sm:gap-x-4 sm:px-6 md:flex-nowrap md:px-8">
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+    <div className="relative flex min-h-screen min-w-0 max-w-full flex-1 flex-col bg-background">
+      {/* The plate: the cobalt band across the top, the other half of the L the
+          rail starts (DESIGN.md). It carries the day in display numerals. It
+          scrolls away with the page rather than sticking: on an iPad in
+          landscape a 96px band held in place is an eighth of the screen. */}
+      <header className="on-cobalt bg-cobalt text-white">
+        <div className="flex min-h-24 w-full min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <MobileNav />
             <HeaderBarDate />
           </div>
 
-          <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <HeaderActions />
             <LocaleSwitcher />
             {/*
@@ -40,7 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 min-w-0 max-w-full px-4 pb-3 pt-7 sm:px-6 md:px-8 md:pt-8">{children}</main>
+      <main className="flex-1 min-w-0 max-w-full px-4 pb-3 pt-6 sm:px-6 md:pt-8">{children}</main>
     </div>
   )
 
@@ -51,7 +55,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <GlobalAddPatientProvider>
             <ScheduleDayProvider>
               <div className="min-h-screen bg-background">
-                <div className="mx-auto flex min-h-screen min-w-0 max-w-[1680px] flex-row">
+                <div className="flex min-h-screen min-w-0 flex-row">
                   {/*
                    * With dir=rtl + flex-row, DOM order determines visual placement:
                    * first child sits at inline-start (= right in RTL). Render sidebar first

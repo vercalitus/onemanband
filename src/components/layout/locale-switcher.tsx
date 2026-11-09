@@ -37,12 +37,12 @@ export function LocaleSwitcher() {
       <DropdownMenuTrigger
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
-          "h-9 shrink-0 gap-1.5 border-slate-200 px-2.5 text-sky-700",
+          "h-11 shrink-0 gap-1.5 rounded-md border-white/25 bg-transparent px-3 text-white hover:bg-white/10 hover:text-white",
         )}
         aria-label={t("locale.menuLabel")}
       >
         <Globe className="size-[15px] shrink-0" aria-hidden />
-        <span className="text-[11px] font-semibold uppercase tabular-nums">{LOCALE_BADGE[locale]}</span>
+        <span className="text-[13px] font-bold uppercase tabular-nums">{LOCALE_BADGE[locale]}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="min-w-[10rem] p-2">
         <DropdownMenuRadioGroup value={locale} onValueChange={(v) => setLocale(v as Locale)}>

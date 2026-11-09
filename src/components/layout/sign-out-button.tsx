@@ -28,10 +28,10 @@ export function SignOutButton() {
       variant="outline"
       size="icon-sm"
       onClick={handleSignOut}
-      className="shrink-0 border-slate-100 bg-white shadow-none"
+      className="size-11 shrink-0 rounded-md border-white/25 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white"
       aria-label={t("header.signOut")}
     >
-      <LogOut className="size-4 text-slate-500" />
+      <LogOut className="size-4" />
     </Button>
   )
 }

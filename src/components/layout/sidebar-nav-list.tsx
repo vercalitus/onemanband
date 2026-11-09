@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronRight } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { navigationIcons, navigationItems } from "@/lib/navigation"
@@ -28,105 +27,92 @@ function navKeyForHref(href: string) {
   }
 }
 
+type Variant = "rail" | "drawer"
+
 type SidebarNavListProps = {
   onItemClick?: () => void
+  /** `rail`: icon over label in the narrow cobalt rail. `drawer`: a full-width row in the phone menu. */
+  variant?: Variant
 }
 
 function SidebarNavLink({
   item,
   pathname,
   onItemClick,
-  tier,
   label,
+  variant,
 }: {
   item: NavItem
   pathname: string
   onItemClick?: () => void
-  tier: "primary" | "secondary"
   label: string
+  variant: Variant
 }) {
   const Icon = navigationIcons[item.icon]
   const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
-  const secondary = tier === "secondary"
+
+  if (variant === "rail") {
+    return (
+      <Link
+        href={item.href}
+        onClick={onItemClick}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "flex min-h-[60px] w-[76px] flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[13px] leading-tight transition-colors",
+          isActive ? "bg-ground font-bold text-cobalt" : "text-white/80 hover:bg-white/10 hover:text-white",
+        )}
+      >
+        <Icon className="size-[22px] shrink-0 stroke-[1.75]" aria-hidden />
+        <span className="text-balance">{label}</span>
+      </Link>
+    )
+  }
 
   return (
     <Link
       href={item.href}
       onClick={onItemClick}
+      aria-current={isActive ? "page" : undefined}
       className={cn(
-        "relative flex w-full items-start gap-3 overflow-visible px-5 transition-colors duration-200",
-        secondary ? "py-2.5" : "py-3.5",
-        isActive
-          ? cn(
-              "z-0 bg-sky-400/18",
-              /* Inset sky bar + soft glow to the left (no ::before — works reliably across builds). */
-              "shadow-[inset_5px_0_0_0_rgb(56_189_248),inset_0_1px_0_rgba(255,255,255,0.07),-6px_0_22px_-10px_rgba(56,189,248,0.42)]",
-            )
-          : "hover:bg-white/[0.06]",
+        "flex min-h-12 w-full items-center gap-3 rounded-md px-4 text-[17px] transition-colors",
+        isActive ? "bg-ground font-bold text-cobalt" : "text-white/85 hover:bg-white/10 hover:text-white",
       )}
     >
-      <Icon
-        className={cn(
-          secondary ? "mt-px size-3.5" : "mt-0.5 size-4",
-          "shrink-0 stroke-[1.75]",
-          isActive ? "text-sky-400" : secondary ? "text-sky-300/55" : "text-sky-200",
-        )}
-      />
-      <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "tracking-[0.01em]",
-            secondary
-              ? "text-[11px] font-normal leading-snug tracking-wide text-white/55"
-              : "text-sm font-semibold text-white",
-          )}
-        >
-          {label}
-        </p>
-      </div>
-      <ChevronRight
-        className={cn(
-          "ms-auto shrink-0 stroke-[1.75] transition-transform text-sky-400/40 rtl:-scale-x-100",
-          secondary ? "mt-px size-3" : "mt-0.5 size-3.5",
-          isActive && "translate-x-0.5 text-sky-400",
-        )}
-      />
+      <Icon className="size-5 shrink-0 stroke-[1.75]" aria-hidden />
+      {label}
     </Link>
   )
 }
 
-export function SidebarNavList({ onItemClick }: SidebarNavListProps) {
+export function SidebarNavList({ onItemClick, variant = "drawer" }: SidebarNavListProps) {
   const pathname = usePathname()
   const { t } = useLocale()
   const primaryItems = navigationItems.filter((i) => i.href !== "/settings")
   const secondaryItems = navigationItems.filter((i) => i.href === "/settings")
 
+  const render = (item: NavItem) => (
+    <SidebarNavLink
+      key={item.href}
+      item={item}
+      pathname={pathname}
+      onItemClick={onItemClick}
+      label={t(navKeyForHref(item.href))}
+      variant={variant}
+    />
+  )
+
   return (
     <>
-      {primaryItems.map((item) => (
-        <SidebarNavLink
-          key={item.href}
-          item={item}
-          pathname={pathname}
-          onItemClick={onItemClick}
-          tier="primary"
-          label={t(navKeyForHref(item.href))}
-        />
-      ))}
-      {secondaryItems.length > 0 ? (
-        <div className="mt-2 border-t border-white/[0.08] pt-1">
-          {secondaryItems.map((item) => (
-            <SidebarNavLink
-              key={item.href}
-              item={item}
-              pathname={pathname}
-              onItemClick={onItemClick}
-              tier="secondary"
-              label={t(navKeyForHref(item.href))}
-            />
-          ))}
-        </div>
-      ) : null}
+      {primaryItems.map(render)}
+      {/* Settings is reached rarely, so it sits apart: at the foot of the
+          rail, or under a hairline in the drawer. */}
+      <div
+        className={cn(
+          variant === "rail" ? "mt-auto flex w-full justify-center" : "mt-2 w-full border-t border-white/25 pt-2",
+        )}
+      >
+        {secondaryItems.map(render)}
+      </div>
     </>
   )
 }

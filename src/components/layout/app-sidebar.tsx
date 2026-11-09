@@ -1,59 +1,37 @@
 "use client"
 
-import { Stethoscope } from "lucide-react"
-
 import { SidebarNavList } from "@/components/layout/sidebar-nav-list"
 import { useClinicProfile } from "@/components/layout/use-clinic-profile"
 import { useLocale } from "@/components/providers/locale-provider"
-import { cn } from "@/lib/utils"
 
-function SidebarMark() {
-  return (
-    // Static asset: avoid next/image + sharp on the server (host-specific 500s).
-    // eslint-disable-next-line @next/next/no-img-element -- intentional
-    <img
-      src="/bones.png"
-      alt=""
-      className="block h-auto w-full max-w-full object-contain"
-    />
-  )
-}
-
+/**
+ * The rail: the upright half of the cobalt L (the plate across the top is the
+ * other half — see DESIGN.md). Narrow on purpose. It used to be a 288px panel
+ * with a tagline and a decorative skeleton, which on an iPad in landscape cost
+ * a quarter of the width the chart needs.
+ */
 export function AppSidebar() {
   const profile = useClinicProfile()
-  const { t, isRtl } = useLocale()
+  const { t } = useLocale()
+  const name = profile.clinicName || t("mobile.menuTitle")
 
   return (
-    <aside
-      className={cn(
-        "hidden w-72 shrink-0 flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-5 py-6 text-slate-200 lg:flex",
-        isRtl ? "border-s border-white/10" : "border-e border-white/10",
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5 text-sky-400">
-          {profile.logoDataUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- user-provided data URL from settings
-            <img src={profile.logoDataUrl} alt="" className="size-full object-cover" />
-          ) : (
-            <Stethoscope className="size-4.5 stroke-[1.75]" />
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold tracking-[0.01em] text-white">
-            {profile.clinicName || t("mobile.menuTitle")}
-          </p>
-          <p className="text-xs text-sky-300/90">{t("nav.tagline")}</p>
-        </div>
+    <aside className="on-cobalt sticky top-0 hidden h-screen w-[88px] shrink-0 flex-col items-center bg-cobalt py-3 text-white md:flex border-e border-white/25">
+      <div
+        className="mb-3 flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border-2 border-white font-display text-[22px] leading-none"
+        title={name}
+      >
+        {profile.logoDataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- user-provided data URL from settings
+          <img src={profile.logoDataUrl} alt={name} className="size-full object-cover" />
+        ) : (
+          <span aria-label={name}>ob</span>
+        )}
       </div>
 
-      <nav className="mt-6 -mx-5 mb-8 flex flex-col gap-1">
-        <SidebarNavList />
+      <nav className="flex w-full flex-1 flex-col items-center gap-1" aria-label={t("mobile.drawerAria")}>
+        <SidebarNavList variant="rail" />
       </nav>
-
-      <div className="mt-auto w-full opacity-[0.72]">
-        <SidebarMark />
-      </div>
     </aside>
   )
 }

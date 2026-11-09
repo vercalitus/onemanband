@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
-import { Assistant, Geist_Mono, IBM_Plex_Sans_Arabic, Plus_Jakarta_Sans } from "next/font/google";
+import { Geist_Mono, Heebo, IBM_Plex_Sans_Arabic, Secular_One } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
+// One family for Latin and Hebrew, so a line that mixes the two (a patient's
+// name beside "L4–L5") does not change voice halfway. See DESIGN.md.
+const heebo = Heebo({
+  variable: "--font-heebo",
+  subsets: ["latin", "hebrew"],
 });
 
-const assistant = Assistant({
-  variable: "--font-hebrew",
+// Display only: names and numerals on the cobalt plate, a sum in a form.
+const secularOne = Secular_One({
+  variable: "--font-secular",
   subsets: ["latin", "hebrew"],
+  weight: "400",
 });
 
 const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
@@ -44,7 +48,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${plusJakartaSans.variable} ${assistant.variable} ${ibmPlexSansArabic.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${heebo.variable} ${secularOne.variable} ${ibmPlexSansArabic.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground">
         <AppProviders>{children}</AppProviders>

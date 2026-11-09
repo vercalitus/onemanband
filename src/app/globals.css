@@ -7,9 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-heebo), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-heebo), system-ui, sans-serif;
+  --font-display: var(--font-secular), var(--font-heebo), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,43 +49,107 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Direction A — see DESIGN.md. The named colours below are what a redrawn
+ * screen uses. The three remapped Tailwind scales after them are a bridge:
+ * screens not yet redrawn still say `sky-600` or `slate-400`, and this makes
+ * them speak the new palette in the meantime instead of the old one.
+ */
+@theme {
+  --color-cobalt: #1D3F8F;
+  --color-cobalt-hi: #2B4FA6;
+  --color-cobalt-tint: #E6EBF5;
+  --color-signal: #E4572E;
+  --color-signal-tint: #FCECE6;
+  --color-olive: #5E6B2F;
+  --color-olive-tint: #ECEEE3;
+  --color-ink: #16181A;
+  --color-mute: #55585B;
+  --color-faint: #727578;
+  --color-ground: #F5F5F2;
+  --color-paper: #FFFFFF;
+  --color-sunk: #ECEDE8;
+  --color-hair: rgb(22 24 26 / 0.14);
+  --color-hair-soft: rgb(22 24 26 / 0.08);
+
+  /* sky -> cobalt */
+  --color-sky-50: #EEF2F9;
+  --color-sky-100: #E1E8F4;
+  --color-sky-200: #C4D1EA;
+  --color-sky-300: #9AB0DA;
+  --color-sky-400: #6684C2;
+  --color-sky-500: #3A5EAA;
+  --color-sky-600: #1D3F8F;
+  --color-sky-700: #18357A;
+  --color-sky-800: #142C66;
+  --color-sky-900: #102352;
+  --color-sky-950: #0B1838;
+
+  /* slate -> neutral ink. 400 is darkened to pass AA as small text on paper:
+     it is used for captions all over the app, and the old value failed. */
+  --color-slate-50: #F5F5F2;
+  --color-slate-100: #ECEDE8;
+  --color-slate-200: #DCDDD8;
+  --color-slate-300: #C3C5C0;
+  --color-slate-400: #727578;
+  --color-slate-500: #606366;
+  --color-slate-600: #4E5154;
+  --color-slate-700: #3A3D40;
+  --color-slate-800: #26292B;
+  --color-slate-900: #16181A;
+  --color-slate-950: #0E1011;
+
+  /* emerald -> olive: "done" is one colour everywhere */
+  --color-emerald-50: #F3F4EC;
+  --color-emerald-100: #ECEEE3;
+  --color-emerald-200: #D7DBC4;
+  --color-emerald-300: #B9C098;
+  --color-emerald-400: #94A064;
+  --color-emerald-500: #737F3E;
+  --color-emerald-600: #5E6B2F;
+  --color-emerald-700: #4B5626;
+  --color-emerald-800: #3B441F;
+  --color-emerald-900: #2E3519;
+  --color-emerald-950: #1A1F0E;
+}
+
 :root {
-  /* Soft contrast shell: cool paper background, blue-gray type (no harsh black). */
-  --background: oklch(0.978 0.006 230);
-  --foreground: oklch(0.37 0.022 235);
-  --card: oklch(0.997 0.004 230);
-  --card-foreground: oklch(0.37 0.022 235);
-  --popover: oklch(0.997 0.004 230);
-  --popover-foreground: oklch(0.37 0.022 235);
-  /* Primary actions: soft sky blue (readable on white text). */
-  --primary: oklch(0.56 0.12 240);
-  --primary-foreground: oklch(0.995 0.002 250);
-  --secondary: oklch(0.96 0.014 230);
-  --secondary-foreground: oklch(0.4 0.02 235);
-  --muted: oklch(0.966 0.008 230);
-  --muted-foreground: oklch(0.52 0.02 235);
-  --accent: oklch(0.94 0.02 230);
-  --accent-foreground: oklch(0.38 0.022 235);
-  /* Alerts / butter-orange (muted, not alarm-red). */
-  --destructive: oklch(0.75 0.1 55);
-  --border: oklch(0.91 0.012 230);
-  --input: oklch(0.93 0.01 230);
-  --ring: oklch(0.72 0.08 235);
-  --chart-1: oklch(0.72 0.09 160);
-  --chart-2: oklch(0.74 0.08 230);
-  --chart-3: oklch(0.76 0.07 200);
-  --chart-4: oklch(0.8 0.08 75);
-  --chart-5: oklch(0.82 0.09 55);
-  /* Friendlier default corner radius across cards / buttons / inputs. */
-  --radius: 1.125rem;
-  --sidebar: oklch(0.974 0.018 220);
-  --sidebar-foreground: oklch(0.38 0.04 230);
-  --sidebar-primary: oklch(0.78 0.08 220);
-  --sidebar-primary-foreground: oklch(0.22 0.06 230);
-  --sidebar-accent: oklch(0.86 0.07 220);
-  --sidebar-accent-foreground: oklch(0.22 0.06 230);
-  --sidebar-border: oklch(0.935 0.022 220);
-  --sidebar-ring: oklch(0.72 0.08 220);
+  /* Direction A. Ground, paper, ink; cobalt is the field and the selection. */
+  --background: #F5F5F2;
+  --foreground: #16181A;
+  --card: #FFFFFF;
+  --card-foreground: #16181A;
+  --popover: #FFFFFF;
+  --popover-foreground: #16181A;
+  --primary: #1D3F8F;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECEDE8;
+  --secondary-foreground: #16181A;
+  --muted: #ECEDE8;
+  --muted-foreground: #55585B;
+  --accent: #E6EBF5;
+  --accent-foreground: #16181A;
+  /* An error is not "act now": it gets its own darker red, which also reads
+     as text on paper. Orange stays reserved for the primary action. */
+  --destructive: #B3361B;
+  --border: rgb(22 24 26 / 0.14);
+  --input: rgb(22 24 26 / 0.22);
+  --ring: #1D3F8F;
+  --chart-1: #1D3F8F;
+  --chart-2: #5E6B2F;
+  --chart-3: #6684C2;
+  --chart-4: #B9C098;
+  --chart-5: #E4572E;
+  /* 6px. Every derived radius (rounded-xl, rounded-2xl…) scales from this. */
+  --radius: 0.375rem;
+  --sidebar: #1D3F8F;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #F5F5F2;
+  --sidebar-primary-foreground: #1D3F8F;
+  --sidebar-accent: rgb(255 255 255 / 0.1);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgb(255 255 255 / 0.26);
+  --sidebar-ring: #FFFFFF;
 }
 
 .dark {
@@ -131,7 +196,7 @@
 
   html[lang="he"] body,
   html[lang="he"] {
-    font-family: var(--font-hebrew), var(--font-sans), system-ui, sans-serif;
+    font-family: var(--font-heebo), system-ui, sans-serif;
   }
 
   html[lang="he"] code,
@@ -154,27 +219,37 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-color: oklch(0.978 0.006 230);
+    background-color: var(--background);
     background-image: none;
     text-rendering: optimizeLegibility;
-    letter-spacing: -0.012em;
-    line-height: 1.65;
+    line-height: 1.5;
   }
   h1,
   h2,
   h3,
   h4 {
-    color: oklch(0.3 0.025 235);
-    letter-spacing: -0.028em;
-    font-weight: 600;
+    color: var(--color-ink);
+    letter-spacing: -0.01em;
+    font-weight: 700;
   }
   p {
-    color: oklch(0.5 0.02 235);
+    color: var(--color-mute);
     font-weight: 400;
-    line-height: 1.65;
+    line-height: 1.5;
   }
   ::selection {
-    background: color-mix(in oklab, var(--primary) 22%, white);
+    background: rgb(29 63 143 / 0.22);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-cobalt);
+    outline-offset: 2px;
+  }
+  .on-cobalt :focus-visible {
+    outline-color: #fff;
+  }
+  /* Scrollbars belong to the palette too. */
+  * {
+    scrollbar-color: rgb(22 24 26 / 0.22) transparent;
   }
 }
 

@@ -137,23 +137,21 @@ export function HeaderActions() {
 
   return (
     <>
-      <div className="flex shrink-0 items-center">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={() => setModal("search")}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-50 hover:text-sky-900 sm:gap-2 sm:px-4 md:px-5"
+          className="flex min-h-11 items-center gap-2 rounded-md border border-white/25 bg-transparent px-3 text-[17px] font-medium text-white transition-colors hover:bg-white/10 sm:px-4"
           aria-label={t("header.search")}
         >
           <Search className="size-4 shrink-0" />
           <span className="hidden sm:inline">{t("header.search")}</span>
         </button>
 
-        <span className="mx-1 h-5 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-
         <button
           type="button"
           onClick={() => setModal("add")}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent px-2 py-2 text-sm font-medium text-sky-700 outline-none transition-colors hover:bg-sky-50 hover:text-sky-900 sm:gap-2 sm:px-4 md:px-5"
+          className="cursor-pointer flex min-h-11 items-center gap-2 rounded-md border border-white/25 bg-transparent px-3 text-[17px] font-medium text-white transition-colors hover:bg-white/10 sm:px-4"
           aria-label={t("header.add")}
           aria-haspopup="dialog"
           aria-expanded={modal === "add"}
