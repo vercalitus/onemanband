@@ -150,6 +150,7 @@ export function PatientDetailClient() {
   const [exportOpen, setExportOpen] = useState(false)
   const [closeOpen, setCloseOpen] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
+  const [fileTab, setFileTab] = useState<"history" | "documents" | "details">("history")
   const [toast, setToast] = useState<{ open: boolean; message: string }>({
     open: false,
     message: "",
@@ -432,6 +433,7 @@ export function PatientDetailClient() {
           onUpdateBodyMarkTones={updateBodyMarkTones}
           onRemoveBodyMark={removeBodyMark}
           part="brief"
+          onOpenMap={() => setMapOpen(true)}
         />
 
         {/* The sheet and the file, side by side from a tablet held sideways:
@@ -522,7 +524,14 @@ export function PatientDetailClient() {
             aria-label={t("patientChart.timelineTitle")}
             className="min-w-0 overflow-hidden rounded-md border border-hair bg-paper lg:sticky lg:top-4"
           >
-            <Tabs defaultValue="history" className="gap-0">
+            {/* Controlled, and only the chosen panel is rendered. The library's own
+                panels wait on an exit animation to unmount, and where frames are
+                throttled the previous tab stayed on screen under the new one. */}
+            <Tabs
+              value={fileTab}
+              onValueChange={(v) => setFileTab(v as typeof fileTab)}
+              className="gap-0"
+            >
               <div className="border-b border-hair px-3">
                 <TabsList variant="line" className="h-auto w-full flex-wrap justify-start gap-x-3 pb-0">
                   <TabsTrigger value="history" className="min-h-14 px-1">
@@ -536,16 +545,14 @@ export function PatientDetailClient() {
                       </span>
                     )}
                   </TabsTrigger>
-                  <TabsTrigger value="map" className="min-h-14 px-1">
-                    {t("patientChart.tab.bodyMap")}
-                  </TabsTrigger>
                   <TabsTrigger value="details" className="min-h-14 px-1">
                     {t("patientChart.tab.details")}
                   </TabsTrigger>
                 </TabsList>
               </div>
 
-              <TabsContent value="history">
+              {fileTab === "history" && (
+              <TabsContent value="history" keepMounted>
                 <UnifiedTimeline
                   treatmentRecords={treatmentRecords}
                   documentRecords={documentRecords}
@@ -567,8 +574,10 @@ export function PatientDetailClient() {
                   />
                 </div>
               </TabsContent>
+              )}
 
-              <TabsContent value="documents">
+              {fileTab === "documents" && (
+              <TabsContent value="documents" keepMounted>
                 {/* One library, in the file column on every width. It used to
                     sit in a sidebar that only existed on a desktop, so a tablet
                     in the treatment room could not see a single document. */}
@@ -578,26 +587,10 @@ export function PatientDetailClient() {
                   onUploadDocument={live ? uploadDocumentRecord : undefined}
                 />
               </TabsContent>
+              )}
 
-              <TabsContent value="map">
-                {/* The marks in words here; the map itself opens full size. It
-                    was tuned at a tablet's full width, and in this column the
-                    figures would be too small to aim at. */}
-                <div className="grid gap-3 px-5 py-4">
-                  <p className="text-[17px] leading-snug text-mute">
-                    {bodyMarks.length === 0
-                      ? t("patientChart.brief.noMarks")
-                      : t("bodyMap.count", {
-                          n: bodyMarks.reduce((n, m) => n + m.regions.length + m.vertebrae.length, 0),
-                        })}
-                  </p>
-                  <Button variant="outline" onClick={() => setMapOpen(true)} className="justify-self-start">
-                    {t("patientChart.bodyMapOpen")}
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="details">
+              {fileTab === "details" && (
+              <TabsContent value="details" keepMounted>
                 <PatientSmartHeader
                   patient={displayPatient}
                   overrides={contactOverrides}
@@ -625,6 +618,7 @@ export function PatientDetailClient() {
                   />
                 </div>
               </TabsContent>
+              )}
             </Tabs>
           </section>
         </div>

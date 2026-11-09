@@ -124,6 +124,7 @@ export function PatientSmartHeader({
   onUpdateBodyMarkTones,
   onRemoveBodyMark,
   part,
+  onOpenMap,
 }: Props & {
   /**
    * Which piece of the patient's file to draw. The chart puts the briefing
@@ -132,6 +133,8 @@ export function PatientSmartHeader({
    * and a 400px column would undo that.
    */
   part: "brief" | "details" | "map"
+  /** The briefing's map cell opens the map itself: one tap, full size. */
+  onOpenMap?: () => void
 }) {
   const { t, localeTag } = useLocale()
   const paymentClaimed = usePaymentClaims().patients.has(patient.id)
@@ -297,6 +300,9 @@ export function PatientSmartHeader({
           </p>
         </BriefCell>
 
+        {/* The map's cell is the way into the map: what is marked, and one
+            tap opens it full size. It used to take three — a tab, a button,
+            then the sheet. */}
         <BriefCell
           label={
             <>
@@ -307,23 +313,33 @@ export function PatientSmartHeader({
             </>
           }
         >
-          {markLines.length === 0 ? (
-            <p className="text-[17px] leading-snug text-faint italic">{t("patientChart.brief.noMarks")}</p>
-          ) : (
-            <ul className="grid gap-0.5 text-sm leading-snug text-ink">
-              {markLines.slice(0, MAX_MARK_LINES).map((line) => (
-                <li key={line.key} className="line-clamp-2">
-                  <b className="font-bold">{line.kind}</b>
-                  {line.where && <> · {line.where}</>}
-                </li>
-              ))}
-              {markLines.length > MAX_MARK_LINES && (
-                <li className="text-mute">
-                  {t("patientChart.brief.moreMarks", { n: markLines.length - MAX_MARK_LINES })}
-                </li>
-              )}
-            </ul>
-          )}
+          <button
+            type="button"
+            onClick={onOpenMap}
+            className="-mx-2 -my-1 block w-[calc(100%+1rem)] rounded-md px-2 py-1 text-start hover:bg-ground focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt"
+          >
+            {markLines.length === 0 ? (
+              <span className="block text-[17px] leading-snug text-faint italic">{t("patientChart.brief.noMarks")}</span>
+            ) : (
+              <span className="grid gap-0.5 text-sm leading-snug text-ink">
+                {markLines.slice(0, MAX_MARK_LINES).map((line) => (
+                  <span key={line.key} className="line-clamp-2">
+                    <b className="font-bold">{line.kind}</b>
+                    {line.where && <> · {line.where}</>}
+                  </span>
+                ))}
+                {markLines.length > MAX_MARK_LINES && (
+                  <span className="text-mute">
+                    {t("patientChart.brief.moreMarks", { n: markLines.length - MAX_MARK_LINES })}
+                  </span>
+                )}
+              </span>
+            )}
+            <span className="mt-1.5 inline-flex min-h-8 items-center gap-1 text-sm font-bold text-cobalt">
+              {t("patientChart.bodyMapOpen")}
+              <span aria-hidden className="rtl:-scale-x-100">›</span>
+            </span>
+          </button>
         </BriefCell>
       </div>
     </section>
