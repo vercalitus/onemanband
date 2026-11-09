@@ -287,6 +287,10 @@ export function SpineChart({
         <svg
           viewBox={`0 ${y0} ${W} ${y1 - y0}`}
           preserveAspectRatio="xMidYMid meet"
+          // Coordinates are laid out left to right. In a right-to-left page the
+          // text inherited that direction and "end" flipped sides, so a marked
+          // side's name was drawn over the vertebra instead of beside it.
+          direction="ltr"
           className="h-full w-full"
           role="img"
           aria-label={t("bodyMap.stage.spine")}
