@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { StateLegend } from "@/components/ui/state-mark"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { StateMark } from "@/components/ui/state-mark"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
 import { toISODate } from "@/lib/date-helpers"
@@ -453,42 +452,29 @@ export function PatientDetailClient() {
             className="min-w-0 scroll-mt-24 select-none [-webkit-touch-callout:none]"
           >
             <div className="overflow-hidden rounded-md border border-hair bg-paper">
-              <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 border-b border-hair-soft px-4 py-2">
-                <h2 id="session-heading" className="text-[17px] font-bold text-ink">
-                  {t("patientChart.activeSession")}
-                </h2>
-                <span className="inline-flex items-center gap-1.5 text-sm text-mute">
-                  <StateMark state="now" />
-                  {t("patientChart.live")}
-                </span>
-                <span className="ms-auto text-sm tabular-nums text-mute">
-                  {pastPlan
-                    ? t("patientChart.sessionPastPlan", {
-                        current: currentSession,
-                        total: planTarget,
-                      })
-                    : t("patientChart.sessionProgress", {
-                        current: currentSession,
-                        total: planTarget,
-                      })}
-                </span>
-              </div>
+              {/* The plate already says which session this is. */}
+              <h2 id="session-heading" className="sr-only">
+                {t("patientChart.activeSession")}
+              </h2>
 
               <div className="space-y-3 p-4">
-                {/* Above the drawing, not below it. Below, it sat exactly where
-                    a writing wrist rests on a tablet: the wrist pressed Record,
-                    the microphone prompt took the screen mid-word, and the
-                    letter being written was lost. */}
-                <SessionAudio
-                  audioUrl={sessionAudioUrl}
-                  onRecorded={saveSessionAudio}
-                  onDelete={clearSessionAudio}
-                />
-
+                {/* The recorder rides in the canvas toolbar, above the drawing,
+                    never below it. Below, it sat exactly where a writing wrist
+                    rests on a tablet: the wrist pressed Record, the microphone
+                    prompt took the screen mid-word, and the letter being
+                    written was lost. */}
                 <SessionCanvas
                   key={id}
                   initialStrokes={canvasStrokes}
                   onStrokesChange={setCanvasStrokes}
+                  leading={
+                    <SessionAudio
+                      compact
+                      audioUrl={sessionAudioUrl}
+                      onRecorded={saveSessionAudio}
+                      onDelete={clearSessionAudio}
+                    />
+                  }
                 />
 
                 <SessionSpine selected={sessionSpine} onToggle={toggleSessionSpine} />

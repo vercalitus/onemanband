@@ -23,6 +23,11 @@ interface Props {
   /** Called with the full stroke set whenever it changes — persisted by parent. */
   onStrokesChange: (strokes: Stroke[]) => void
   className?: string
+  /**
+   * Shown in the toolbar row, on the side away from the tools — the voice memo.
+   * One row above the sheet instead of three, so the sheet starts higher.
+   */
+  leading?: React.ReactNode
 }
 
 /** How long the pen may rest before the draft is handed to the parent. */
@@ -101,7 +106,7 @@ const WRITING_MODE_VISIBLE = 0.3
 /** Set by the first pen contact in this tab, so later charts start out knowing. */
 let penSeenInThisTab = false
 
-export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Props) {
+export function SessionCanvas({ initialStrokes, onStrokesChange, className, leading }: Props) {
   const { t, isRtl } = useLocale()
 
   /**
@@ -490,11 +495,15 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   }
 
   if (isMobileSmall) {
+    // No sheet on a phone, but the voice memo still works there.
     return (
-      <div className={cn("flex items-center justify-center rounded-md border border-dashed border-hair bg-paper py-10 text-center", className)}>
-        <div>
-          <p className="text-[17px] font-bold text-ink">{t("patientChart.canvas.mobileTitle")}</p>
-          <p className="mt-1 text-sm text-mute">{t("patientChart.canvas.mobileHint")}</p>
+      <div className={cn("flex flex-col gap-2", className)}>
+        {leading}
+        <div className="flex items-center justify-center rounded-md border border-dashed border-hair bg-paper py-10 text-center">
+          <div>
+            <p className="text-[17px] font-bold text-ink">{t("patientChart.canvas.mobileTitle")}</p>
+            <p className="mt-1 text-sm text-mute">{t("patientChart.canvas.mobileHint")}</p>
+          </div>
         </div>
       </div>
     )
@@ -503,7 +512,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
   return (
     <div className={cn("flex flex-col gap-2 select-none", className)}>
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <p
           className={cn(
             "min-w-0 flex-1 text-sm font-medium text-mute",
@@ -512,7 +521,10 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
         >
           {t("patientChart.canvas.toolbarTitle")}
         </p>
-        <div className={cn("flex items-center gap-2", toolsFirst ? "order-1" : "order-2")}>
+        {/* The recorder joins the tools, on the side away from the writing
+            hand — the side nothing rests on. */}
+        <div className={cn("flex flex-wrap items-center gap-2", toolsFirst ? "order-1" : "order-2")}>
+        {leading}
         <button
           type="button"
           onClick={toggleHand}
@@ -550,10 +562,16 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
           not already kept, and a practitioner pressed it expecting the session
           to be recorded and closed — then found the pen still writing. The one
           action that records a session is Complete Session; this says so. */}
-      <p className="text-sm text-mute">{t("patientChart.canvas.draftNote")}</p>
-
-      {/* Canvas */}
+      {/* Canvas. The note sits in its corner and takes no touches: it is
+          words on the paper, not a control a palm could press. */}
       <div className="relative overflow-hidden rounded-md border border-hair bg-paper">
+        <p
+          className="pointer-events-none absolute start-3 top-2 flex items-center gap-1.5 text-[13px] text-mute"
+          aria-hidden
+        >
+          <span className="size-1.5 rounded-full bg-olive" />
+          {t("patientChart.canvas.draftNote")}
+        </p>
         <canvas
           ref={canvasRef}
           onPointerDown={onPointerDown}

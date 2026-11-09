@@ -32,7 +32,16 @@ function formatTime(total: number): string {
  * parent (which stores it in IndexedDB — audio is far too large for
  * localStorage). Playback uses a native <audio> element.
  */
-export function SessionAudio({ audioUrl, onRecorded, onDelete, className }: Props) {
+export function SessionAudio({
+  audioUrl,
+  onRecorded,
+  onDelete,
+  className,
+  compact = false,
+}: Props & {
+  /** In the canvas toolbar row: no box, no title, no hint. */
+  compact?: boolean
+}) {
   const { t } = useLocale()
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -107,16 +116,27 @@ export function SessionAudio({ audioUrl, onRecorded, onDelete, className }: Prop
   }
 
   return (
-    <div className={cn("rounded-md border border-hair bg-paper px-3 py-2", className)}>
+    <div className={cn(!compact && "rounded-md border border-hair bg-paper px-3 py-2", className)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <p className="flex items-center gap-2 text-sm font-medium text-ink">
-          <Mic className="size-5 text-mute" aria-hidden />
-          {t("patientChart.audio.title")}
-        </p>
+        {!compact && (
+          <p className="flex items-center gap-2 text-sm font-medium text-ink">
+            <Mic className="size-5 text-mute" aria-hidden />
+            {t("patientChart.audio.title")}
+          </p>
+        )}
 
         {!recording ? (
-          <Button variant="outline" onClick={start} className="text-sm">
-            <span className="size-3 rounded-full border-2 border-ink" aria-hidden />
+          <Button
+            variant="outline"
+            onClick={start}
+            className="text-sm"
+            aria-label={compact ? t("patientChart.audio.title") : undefined}
+          >
+            {compact ? (
+              <Mic className="size-4" aria-hidden />
+            ) : (
+              <span className="size-3 rounded-full border-2 border-ink" aria-hidden />
+            )}
             {audioUrl ? t("patientChart.audio.reRecord") : t("patientChart.audio.record")}
           </Button>
         ) : (
@@ -132,7 +152,7 @@ export function SessionAudio({ audioUrl, onRecorded, onDelete, className }: Prop
             {formatTime(elapsed)} / {formatTime(MAX_SECONDS)}
           </span>
         ) : (
-          !audioUrl && <span className="text-sm text-mute">{t("patientChart.audio.hint")}</span>
+          !audioUrl && !compact && <span className="text-sm text-mute">{t("patientChart.audio.hint")}</span>
         )}
 
         {audioUrl && !recording && (
