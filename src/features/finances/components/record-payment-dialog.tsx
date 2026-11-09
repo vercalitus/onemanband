@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, CheckCircle2, Loader2, Receipt } from "lucide-react"
+import { AlertTriangle, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { StateMark } from "@/components/ui/state-mark"
 import { clinicIsoDate, DEFAULT_CLINIC_TIMEZONE } from "@/features/automations/lib/clinic-time"
 import { cn } from "@/lib/utils"
 import type { BillingInvoice, PaymentMethod } from "@/types/domain"
@@ -96,13 +97,12 @@ export function RecordPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="gap-5 p-6 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Receipt className="size-4 stroke-[1.8] text-sky-600" aria-hidden />
+          <DialogTitle className="pe-10 text-[22px] leading-tight font-bold text-ink">
             {t("billing.payment.title")}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-[17px] leading-snug text-mute">
             {t("billing.payment.description", {
               patientName: invoice.patientName,
               amount: formatMoney(invoice.amount),
@@ -110,10 +110,10 @@ export function RecordPaymentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <div className="grid gap-5">
           <div className="grid gap-1.5">
             <label
-              className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
+              className="text-sm font-medium text-mute"
               htmlFor="payment-amount"
             >
               {t("billing.payment.amountLabel")}
@@ -123,16 +123,16 @@ export function RecordPaymentDialog({
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="max-w-40 rounded-xl font-mono tabular-nums"
+              className="max-w-44 font-display text-[22px] tabular-nums"
             />
-            <p className="text-[11px] text-slate-500">{t("billing.payment.vatNote")}</p>
+            <p className="text-sm text-mute">{t("billing.payment.vatNote")}</p>
           </div>
 
           <div className="grid gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            <span className="text-sm font-medium text-mute">
               {t("billing.payment.methodLabel")}
             </span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {METHODS.map((m) => (
                 <button
                   key={m}
@@ -140,10 +140,10 @@ export function RecordPaymentDialog({
                   onClick={() => setMethod(m)}
                   aria-pressed={method === m}
                   className={cn(
-                    "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                    "inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium transition-colors outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt",
                     method === m
-                      ? "border-sky-600 bg-sky-600 text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                      ? "border-cobalt bg-cobalt font-bold text-white"
+                      : "border-hair bg-paper text-ink hover:bg-ground",
                   )}
                 >
                   {t(`billing.payment.method.${m}`)}
@@ -154,7 +154,7 @@ export function RecordPaymentDialog({
 
           <div className="grid gap-1.5">
             <label
-              className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
+              className="text-sm font-medium text-mute"
               htmlFor="payment-date"
             >
               {t("billing.payment.dateLabel")}
@@ -164,36 +164,33 @@ export function RecordPaymentDialog({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="max-w-48 rounded-xl"
+              className="max-w-52 tabular-nums"
             />
           </div>
 
           {outcome && (
             <p
+              role={outcome.ok ? "status" : "alert"}
               className={cn(
-                "flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs font-medium",
-                outcome.ok
-                  ? "bg-emerald-50 text-emerald-800"
-                  : outcome.blocked
-                    ? "bg-amber-50 text-amber-800"
-                    : "bg-rose-50 text-rose-800",
+                "flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-[17px] leading-snug font-medium text-ink",
+                outcome.ok ? "border-olive/40 bg-olive-tint" : "border-ink/30 bg-sunk",
               )}
             >
               {outcome.ok ? (
-                <CheckCircle2 className="mt-px size-3.5 shrink-0" aria-hidden />
+                <StateMark state="done" className="mt-1.5" />
               ) : (
-                <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden />
+                <AlertTriangle className="mt-1 size-4 shrink-0 stroke-[2]" aria-hidden />
               )}
               {outcome.message}
             </p>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+        <DialogFooter className="-mx-6 -mb-6 rounded-b-md border-hair bg-paper px-6 py-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={!amountValid || busy} className="gap-2">
+          <Button onClick={submit} disabled={!amountValid || busy} className="h-12 gap-2 px-5">
             {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
             {t("billing.payment.confirm")}
           </Button>

@@ -29,7 +29,7 @@ const LOCALE_LABEL_KEY: Record<Locale, string> = {
 }
 
 /** Header language picker — persists locale + syncs RTL + typography with LocaleProvider */
-export function LocaleSwitcher() {
+export function LocaleSwitcher({ variant = "plate" }: { variant?: "plate" | "rail" }) {
   const { locale, setLocale, t } = useLocale()
 
   return (
@@ -38,6 +38,7 @@ export function LocaleSwitcher() {
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "h-11 shrink-0 gap-1.5 rounded-md border-white/25 bg-transparent px-3 text-white hover:bg-white/10 hover:text-white",
+          variant === "rail" && "w-[76px] border-transparent text-white/80",
         )}
         aria-label={t("locale.menuLabel")}
       >

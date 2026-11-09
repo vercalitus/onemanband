@@ -3,13 +3,16 @@
 import { invoiceReference } from "@/features/finances/lib/invoice-reference"
 import { AlertTriangle, Loader2, RefreshCcw } from "lucide-react"
 
+import { useLocale } from "@/components/providers/locale-provider"
+import { Button } from "@/components/ui/button"
+import { StateMark } from "@/components/ui/state-mark"
 import { PatientNameLink } from "@/features/finances/components/patient-name-link"
-import { cn } from "@/lib/utils"
+import { ROW_BUTTON } from "@/features/finances/components/pending-row"
 import type { BillingInvoice, ProviderIntegration } from "@/types/domain"
 
 /**
  * Billing sidebar: confirms which invoicing provider we're linked to (name +
- * connected chip). Timestamps like “last sync / auto sync” stay out of this
+ * connected state). Timestamps like “last sync / auto sync” stay out of this
  * UI by design — only actionable failures render below.
  */
 export function IntegrationStatus({
@@ -21,109 +24,79 @@ export function IntegrationStatus({
   failedInvoices: BillingInvoice[]
   onRetrySync: (invoiceId: string) => void
 }) {
+  const { t } = useLocale()
   return (
-    <div className="flex flex-col gap-3">
-      <div className="rounded-2xl bg-white p-4 shadow-[0_2px_10px_-4px_rgba(15,23,42,0.08)] ring-1 ring-slate-100">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Invoicing provider
-            </p>
-            <p className="mt-1 truncate text-base font-bold text-slate-900">{integration.provider}</p>
-          </div>
-          {/* Three states, not two. "Drafts only" is a real connection that
-              files real calls and produces no numbered document — reading
-              "Connected" there is how a practitioner takes payment believing a
-              receipt exists. */}
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-              integration.connected
-                ? "bg-emerald-50 text-emerald-700"
-                : integration.draftsOnly
-                  ? "bg-amber-50 text-amber-700"
-                  : "bg-rose-50 text-rose-700",
-            )}
-          >
-            <span
-              className={cn(
-                "size-1.5 rounded-full",
-                integration.connected
-                  ? "bg-emerald-500"
-                  : integration.draftsOnly
-                    ? "bg-amber-500"
-                    : "bg-rose-500",
-              )}
-              aria-hidden
-            />
-            {integration.connected
-              ? "Connected"
-              : integration.draftsOnly
-                ? "Drafts only"
-                : "Disconnected"}
-          </span>
-        </div>
+    <div className="flex flex-col">
+      <div className="flex flex-col gap-1 py-1">
+        <p className="text-sm text-mute">{t("settings.integrations.providerLabel")}</p>
+        <p className="truncate text-[17px] font-bold text-ink">{integration.provider}</p>
+        {/* Three states, not two. "Drafts only" is a real connection that
+            files real calls and produces no numbered document — reading
+            "Connected" there is how a practitioner takes payment believing a
+            receipt exists. Drawn as done / not confirmed / struck. */}
+        <p className="mt-1 flex items-center gap-2 text-sm font-medium text-ink">
+          <StateMark
+            state={integration.connected ? "done" : integration.draftsOnly ? "unsure" : "cancel"}
+          />
+          {integration.connected
+            ? t("settings.integrations.connected")
+            : integration.draftsOnly
+              ? t("settings.integrations.draftsOnly")
+              : t("finances.integration.disconnected")}
+        </p>
       </div>
 
       {failedInvoices.length > 0 ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-[0_2px_10px_-6px_rgba(217,119,6,0.18)]">
+        <div className="mt-4 border-t border-hair pt-4">
           <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-              <AlertTriangle className="size-3.5 stroke-[2]" aria-hidden />
-            </span>
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 stroke-[2] text-ink" aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-amber-900">
-                {failedInvoices.length === 1
-                  ? "1 invoice failed to sync"
-                  : `${failedInvoices.length} invoices failed to sync`}
+              <p className="text-[17px] font-bold text-ink">
+                {t("finances.integration.failed", { count: failedInvoices.length })}
               </p>
-              <p className="mt-0.5 text-[11px] text-amber-700/90">
-                Retry to push them to {integration.provider} again.
+              <p className="mt-0.5 text-sm text-mute">
+                {t("finances.integration.retryHint", { provider: integration.provider })}
               </p>
             </div>
           </div>
 
-          <ul className="mt-3 space-y-1.5">
+          <ul className="mt-2">
             {failedInvoices.map((inv) => (
               <li
                 key={inv.id}
-                className="flex items-center justify-between gap-2 rounded-lg bg-white/70 px-2.5 py-1.5"
+                className="flex min-h-14 items-center justify-between gap-3 border-b border-hair-soft py-1.5 last:border-b-0"
               >
-                <div className="min-w-0 truncate text-xs">
+                <div className="min-w-0 truncate text-sm">
                   {invoiceReference(inv) && (
                     <>
-                      <span className="font-mono font-semibold tabular-nums text-slate-900">
+                      <span className="font-medium tabular-nums text-ink">
                         {invoiceReference(inv)}
                       </span>
-                      <span className="mx-1.5 text-slate-300" aria-hidden>
+                      <span className="mx-1.5 text-faint" aria-hidden>
                         ·
                       </span>
                     </>
                   )}
-                  <span className="text-slate-600">
-                    <PatientNameLink patientId={inv.patientId} className="font-medium no-underline hover:underline">
-                      {inv.patientName}
-                    </PatientNameLink>
-                  </span>
+                  <PatientNameLink patientId={inv.patientId} className="font-medium no-underline hover:underline">
+                    {inv.patientName}
+                  </PatientNameLink>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  className={ROW_BUTTON}
                   onClick={() => onRetrySync(inv.id)}
                   disabled={inv.syncStatus === "pending"}
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors",
-                    inv.syncStatus === "pending"
-                      ? "cursor-wait text-slate-400"
-                      : "text-amber-800 hover:bg-amber-100",
-                  )}
                 >
                   {inv.syncStatus === "pending" ? (
-                    <Loader2 className="size-3 animate-spin stroke-[2.2]" aria-hidden />
+                    <Loader2 className="animate-spin" aria-hidden />
                   ) : (
-                    <RefreshCcw className="size-3 stroke-[2.2]" aria-hidden />
+                    <RefreshCcw aria-hidden />
                   )}
-                  {inv.syncStatus === "pending" ? "Retrying" : "Retry"}
-                </button>
+                  {inv.syncStatus === "pending"
+                    ? t("finances.integration.retrying")
+                    : t("finances.integration.retry")}
+                </Button>
               </li>
             ))}
           </ul>

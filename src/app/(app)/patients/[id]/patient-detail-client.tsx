@@ -1,10 +1,14 @@
 "use client"
 
+import Link from "next/link"
 import { notFound, useParams, useRouter, useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo } from "react"
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
 
+import { PagePlate, PlateDebt, PlateDivider, PlateFact, PlateSpacer } from "@/components/layout/page-plate"
 import { useLocale } from "@/components/providers/locale-provider"
+import { Button } from "@/components/ui/button"
+import { StateMark } from "@/components/ui/state-mark"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
 import { toISODate } from "@/lib/date-helpers"
@@ -13,7 +17,7 @@ import {
   useMergedPatients,
   usePatientExtras,
 } from "@/components/providers/patient-extras-provider"
-import { localizePatient } from "@/lib/i18n/localized-seed"
+import { localizeCompletedSessionTitle, localizePatient } from "@/lib/i18n/localized-seed"
 import { cn } from "@/lib/utils"
 import { BillingToast } from "@/features/finances/components/billing-toast"
 import { PatientSmartHeader } from "@/features/patients/components/patient-smart-header"
@@ -34,7 +38,7 @@ import { usePatientCockpit } from "@/features/patients/lib/use-patient-cockpit"
 export function PatientDetailClient() {
   const params = useParams()
   const router = useRouter()
-  const { t, locale, formatMoney } = useLocale()
+  const { t, locale, localeTag, formatMoney } = useLocale()
   const id =
     typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
@@ -208,7 +212,7 @@ export function PatientDetailClient() {
 
   if (!hydrated) {
     return (
-      <div className="flex items-center justify-center py-20 text-sm text-slate-400">
+      <div className="flex items-center justify-center py-20 text-[17px] text-mute">
         {t("patientChart.loading")}
       </div>
     )
@@ -219,16 +223,12 @@ export function PatientDetailClient() {
   if (listUnavailable) {
     return (
       <div className="mx-auto max-w-md py-20 text-center">
-        <AlertTriangle className="mx-auto mb-3 size-7 text-amber-500" aria-hidden />
-        <p className="text-sm font-semibold text-slate-800">{t("patientChart.loadFailed")}</p>
-        <p className="mt-1 text-sm text-slate-500">{t("patientChart.loadFailedHint")}</p>
-        <button
-          type="button"
-          onClick={refreshLive}
-          className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-        >
+        <AlertTriangle className="mx-auto mb-3 size-7 text-ink" aria-hidden />
+        <p className="text-[17px] font-bold text-ink">{t("patientChart.loadFailed")}</p>
+        <p className="mt-1 text-sm text-mute">{t("patientChart.loadFailedHint")}</p>
+        <Button onClick={refreshLive} className="mt-4">
           {t("patientChart.retry")}
-        </button>
+        </Button>
       </div>
     )
   }
@@ -236,10 +236,26 @@ export function PatientDetailClient() {
   // `patient` is narrowed here too: past this point `notFound()` has already
   // run for anything genuinely missing, and everything below needs both.
   if (stillLoadingPatients || !patient || !displayPatient) {
-    return <div className="py-16 text-center text-sm text-slate-400">{t("public.loading")}</div>
+    return <div className="py-16 text-center text-[17px] text-mute">{t("public.loading")}</div>
   }
 
   const slug = displayPatient.fullName.replace(/\s+/g, "-").toLowerCase()
+
+  /** The most recent visit on record, named the way the timeline names it. */
+  const lastVisit =
+    [
+      ...treatmentRecords
+        .filter((r) => !r.voidedAt)
+        .map((r) => ({ date: r.recordedAt, title: r.title })),
+      ...completedSessions.map((cs) => ({
+        date: cs.completedAt,
+        title: localizeCompletedSessionTitle(cs.title, locale, t),
+      })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] ?? null
+
+  const debt = outstandingDebt ?? 0
+  const currentSession = totalSessionsDone + 1
+  const pastPlan = totalSessionsDone >= planTarget
 
   return (
     <>
@@ -272,32 +288,119 @@ export function PatientDetailClient() {
         }}
       />
 
-      <div className="flex gap-6 pb-28 xl:pb-8">
-        {/* ── Main column ── */}
-        <div className="min-w-0 flex-1 space-y-6 sm:space-y-8">
-          <PatientSmartHeader
-            patient={displayPatient}
-            overrides={contactOverrides}
-            totalSessionsDone={totalSessionsDone}
-            planTarget={planTarget}
-            planIsPersonal={planIsPersonal}
-            onPlanTargetChange={setPlanTarget}
-            clinicalStatus={clinicalStatus}
-            onClinicalStatusChange={setClinicalStatus}
-            onStatusChange={live ? setPatientStatus : undefined}
-            onSaveOverrides={saveContactOverrides}
-            bodyMarks={bodyMarks}
-            bodyMarks3d={bodyMarks3d}
-            onAddBodyMark={addBodyMark}
-            onUpdateBodyMarkNote={updateBodyMarkNote}
-            onUpdateBodyMarkTones={updateBodyMarkTones}
-            onRemoveBodyMark={removeBodyMark}
+      {/* The plate: who this is, the visit, where they are in the plan, what
+          they owe — and the one orange action, closing the session. */}
+      <PagePlate>
+        <div className="min-w-0 max-w-full">
+          <h1 dir="auto" className="truncate font-display text-[40px] leading-[0.95] text-white sm:text-[56px]">
+            {displayPatient.fullName}
+          </h1>
+          <p className="mt-1.5 truncate text-sm text-white/80">
+            {t(`status.patient.${patient.status}`)}
+            {" · "}
+            <bdi className="tabular-nums">{contactOverrides.phone ?? displayPatient.phone}</bdi>
+          </p>
+        </div>
+        {todaysAppointment && (
+          <>
+            <PlateDivider />
+            <PlateFact
+              display
+              label={t("patientChart.plate.visitToday", { end: todaysAppointment.end })}
+            >
+              {todaysAppointment.start}
+            </PlateFact>
+          </>
+        )}
+        <PlateDivider />
+        {/*
+          "Session 12 of 8" is not a sentence. Once the plan has been
+          worked through, the honest thing to say is that it has — the
+          count keeps running, the target stops pretending to bound it.
+        */}
+        <PlateFact
+          display
+          label={
+            pastPlan
+              ? t("patientChart.plate.sessionPastPlan", { total: planTarget })
+              : t("patientChart.plate.session", { total: planTarget })
+          }
+        >
+          {pastPlan ? currentSession : `${currentSession}/${planTarget}`}
+        </PlateFact>
+        <PlateSpacer />
+        {debt > 0 && (
+          <button
+            type="button"
+            onClick={handleIssueInvoice}
+            className="rounded-md focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
+            aria-label={t("patientChart.issueInvoiceDebtAria", {
+              detail: t("patientChart.outstandingDebt", { amount: debt.toLocaleString(localeTag) }),
+            })}
+          >
+            <PlateDebt amount={formatMoney(debt)} label={t("patientChart.plate.debt")} />
+          </button>
+        )}
+        <Button
+          size="lg"
+          onClick={() => setCloseOpen(true)}
+          className="hidden h-14 px-6 focus-visible:outline-white md:inline-flex"
+          aria-label={t("patientChart.completeSessionAria")}
+        >
+          {t("patientChart.close.confirm")}
+        </Button>
+      </PagePlate>
+
+      <div className="space-y-5 pb-40 md:pb-8">
+        {/* Back to the list, and the page's quieter actions. */}
+        <div id="patient-actions" className="flex scroll-mt-24 flex-wrap items-center gap-2">
+          <Link
+            href="/patients"
+            className="-ms-2 inline-flex h-11 items-center gap-2 rounded-md px-2 text-sm font-medium text-mute transition-colors hover:bg-sunk hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt"
+          >
+            <ArrowLeft className="size-4 rtl:rotate-180" aria-hidden />
+            {t("patientChart.breadcrumb")}
+          </Link>
+          <span className="flex-1" aria-hidden />
+          <PatientActionBar
+            outstandingDebt={debt}
+            onCompleteSession={() => setCloseOpen(true)}
+            onIssueInvoice={handleIssueInvoice}
+            patientId={id}
+            patientName={displayPatient.fullName}
+            lastAppointmentType={patientLastAppointmentType}
+            nextSessionNumber={currentSession}
           />
+          <ExportButton
+            onClick={() => setExportOpen(true)}
+            label={t("export.patientRecord")}
+            className="border-hair text-ink [&_svg]:text-mute"
+          />
+        </div>
 
-          <div className="flex justify-end">
-            <ExportButton onClick={() => setExportOpen(true)} label={t("export.patientRecord")} />
-          </div>
+        <PatientSmartHeader
+          patient={displayPatient}
+          overrides={contactOverrides}
+          totalSessionsDone={totalSessionsDone}
+          planTarget={planTarget}
+          planIsPersonal={planIsPersonal}
+          onPlanTargetChange={setPlanTarget}
+          clinicalStatus={clinicalStatus}
+          onClinicalStatusChange={setClinicalStatus}
+          onStatusChange={live ? setPatientStatus : undefined}
+          onSaveOverrides={saveContactOverrides}
+          lastVisit={lastVisit}
+          bodyMarks={bodyMarks}
+          bodyMarks3d={bodyMarks3d}
+          onAddBodyMark={addBodyMark}
+          onUpdateBodyMarkNote={updateBodyMarkNote}
+          onUpdateBodyMarkTones={updateBodyMarkTones}
+          onRemoveBodyMark={removeBodyMark}
+        />
 
+        {/* The sheet, then the file. Side by side only on a wide screen: on a
+            tablet the writing surface keeps the full width it was tuned at. */}
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
           {/*
             Written on with a pen, on a tablet, with a hand resting on the card.
             The canvas blocks the tablet's long-press menu itself, but a palm
@@ -309,40 +412,31 @@ export function PatientDetailClient() {
           <section
             id="active-session"
             aria-labelledby="session-heading"
-            className="scroll-mt-24 select-none [-webkit-touch-callout:none]"
+            className="min-w-0 scroll-mt-24 select-none [-webkit-touch-callout:none]"
           >
-            <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <h2
-                  id="session-heading"
-                  className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
-                >
+            <div className="overflow-hidden rounded-md border border-hair bg-paper">
+              <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 border-b border-hair-soft px-4 py-2">
+                <h2 id="session-heading" className="text-[17px] font-bold text-ink">
                   {t("patientChart.activeSession")}
                 </h2>
-                <div className="flex items-center gap-2">
-                  {/*
-                    "Session 12 of 8" is not a sentence. Once the plan has been
-                    worked through, the honest thing to say is that it has — the
-                    count keeps running, the target stops pretending to bound it.
-                  */}
-                  <span className="font-mono text-[10px] tabular-nums text-slate-400">
-                    {totalSessionsDone >= planTarget
-                      ? t("patientChart.sessionPastPlan", {
-                          current: totalSessionsDone + 1,
-                          total: planTarget,
-                        })
-                      : t("patientChart.sessionProgress", {
-                          current: totalSessionsDone + 1,
-                          total: planTarget,
-                        })}
-                  </span>
-                  <span className="inline-flex h-5 items-center rounded-full bg-emerald-50 px-2 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                    {t("patientChart.live")}
-                  </span>
-                </div>
+                <span className="inline-flex items-center gap-1.5 text-sm text-mute">
+                  <StateMark state="now" />
+                  {t("patientChart.live")}
+                </span>
+                <span className="ms-auto text-sm tabular-nums text-mute">
+                  {pastPlan
+                    ? t("patientChart.sessionPastPlan", {
+                        current: currentSession,
+                        total: planTarget,
+                      })
+                    : t("patientChart.sessionProgress", {
+                        current: currentSession,
+                        total: planTarget,
+                      })}
+                </span>
               </div>
 
-              <div className="space-y-4 p-5">
+              <div className="space-y-3 p-4">
                 {/* Above the drawing, not below it. Below, it sat exactly where
                     a writing wrist rests on a tablet: the wrist pressed Record,
                     the microphone prompt took the screen mid-word, and the
@@ -359,20 +453,20 @@ export function PatientDetailClient() {
                   onStrokesChange={setCanvasStrokes}
                 />
 
-                <div className="rounded-2xl border border-slate-100 bg-slate-50">
+                <div className="rounded-md border border-hair">
                   <button
                     type="button"
                     onClick={() => setNotesOpen((v) => !v)}
-                    className="flex w-full items-center gap-2 px-4 py-3 text-start text-sm font-semibold text-slate-700 transition-colors hover:text-sky-700"
+                    className="flex min-h-12 w-full items-center gap-2 px-4 text-start text-[17px] font-bold text-ink transition-colors hover:bg-ground"
                     aria-expanded={notesOpen}
                     aria-controls="session-notes-panel"
                   >
-                    <StickyNote className="size-4 text-slate-400" aria-hidden />
+                    <StickyNote className="size-5 text-mute" aria-hidden />
                     {t("patientChart.sessionNotes")}
                     {notesOpen ? (
-                      <ChevronUp className="ms-auto size-4 text-slate-400" aria-hidden />
+                      <ChevronUp className="ms-auto size-5 text-mute" aria-hidden />
                     ) : (
-                      <ChevronDown className="ms-auto size-4 text-slate-400" aria-hidden />
+                      <ChevronDown className="ms-auto size-5 text-mute" aria-hidden />
                     )}
                   </button>
 
@@ -383,13 +477,13 @@ export function PatientDetailClient() {
                       notesOpen ? "max-h-[400px]" : "max-h-0",
                     )}
                   >
-                    <div className="border-t border-slate-100 p-4">
+                    <div className="border-t border-hair-soft p-3">
                       <textarea
                         value={sessionNotes}
                         onChange={(e) => setSessionNotes(e.target.value)}
                         placeholder={t("patientChart.sessionNotesPh")}
                         rows={5}
-                        className="w-full resize-none select-text rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 placeholder-slate-400 outline-none transition-[border-color,box-shadow] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 [-webkit-touch-callout:default]"
+                        className="w-full resize-none rounded-md border border-hair bg-paper px-3 py-2.5 text-[17px] leading-relaxed text-ink outline-none select-text placeholder:text-faint focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt [-webkit-touch-callout:default]"
                       />
                     </div>
                   </div>
@@ -398,42 +492,39 @@ export function PatientDetailClient() {
             </div>
           </section>
 
-          <section aria-labelledby="timeline-heading">
-            <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
-              <div className="border-b border-slate-100 px-5 py-4">
-                <h2
-                  id="timeline-heading"
-                  className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
-                >
+          <div className="min-w-0 space-y-5">
+            <section
+              aria-labelledby="timeline-heading"
+              className="overflow-hidden rounded-md border border-hair bg-paper"
+            >
+              <div className="flex min-h-14 items-center border-b border-hair px-5">
+                <h2 id="timeline-heading" className="text-[17px] font-bold text-ink">
                   {t("patientChart.timelineTitle")}
                 </h2>
               </div>
-              <div className="p-5 pb-3">
-                <UnifiedTimeline
-                  treatmentRecords={treatmentRecords}
-                  documentRecords={documentRecords}
-                  financeRecords={financeRecords}
-                  completedSessions={completedSessions}
-                  planTarget={planTarget}
-                  treatmentsAreLive={treatmentsAreLive}
-                  onDeleteTreatment={deleteTreatmentRecord}
-                  onDeleteCompletedSession={deleteCompletedSession}
-                  onVoidTreatment={live ? voidTreatmentRecord : undefined}
-                />
-              </div>
-            </div>
-          </section>
+              <UnifiedTimeline
+                treatmentRecords={treatmentRecords}
+                documentRecords={documentRecords}
+                financeRecords={financeRecords}
+                completedSessions={completedSessions}
+                planTarget={planTarget}
+                treatmentsAreLive={treatmentsAreLive}
+                onDeleteTreatment={deleteTreatmentRecord}
+                onDeleteCompletedSession={deleteCompletedSession}
+                onVoidTreatment={live ? voidTreatmentRecord : undefined}
+              />
+            </section>
 
-          <GeneralNotesCard
-            initialValue={contactOverrides.generalNotes ?? displayPatient.generalNotes ?? ""}
-            onSave={(v) =>
-              saveContactOverrides({ ...contactOverrides, generalNotes: v })
-            }
-          />
+            <GeneralNotesCard
+              initialValue={contactOverrides.generalNotes ?? displayPatient.generalNotes ?? ""}
+              onSave={(v) =>
+                saveContactOverrides({ ...contactOverrides, generalNotes: v })
+              }
+            />
 
-          {/* Below xl the sidebar that holds the library is not rendered, so
-              on a tablet the documents were nowhere on the page. */}
-          <div className="xl:hidden">
+            {/* One library, in the file column on every width. It used to sit
+                in a sidebar that only existed on a desktop, so a tablet in the
+                treatment room could not see a single document. */}
             <PatientLibrary
               documentRecords={documentRecords}
               onDeleteDocument={deleteDocumentRecord}
@@ -441,27 +532,18 @@ export function PatientDetailClient() {
             />
           </div>
         </div>
-
-        <div id="patient-actions" className="scroll-mt-24">
-          <PatientActionBar
-            outstandingDebt={outstandingDebt ?? 0}
-            onCompleteSession={() => setCloseOpen(true)}
-            onIssueInvoice={handleIssueInvoice}
-            patientId={id}
-            patientName={displayPatient.fullName}
-            documentRecords={documentRecords}
-            onDeleteDocument={deleteDocumentRecord}
-            onUploadDocument={live ? uploadDocumentRecord : undefined}
-            lastAppointmentType={patientLastAppointmentType}
-            nextSessionNumber={totalSessionsDone + 1}
-          />
-        </div>
       </div>
 
       <SessionCloseDialog
         open={closeOpen}
         onOpenChange={setCloseOpen}
         sessionNumber={totalSessionsDone + 1}
+        patientName={displayPatient.fullName}
+        contents={{
+          drawing: canvasStrokes.length > 0,
+          notes: !!sessionNotes.trim(),
+          audio: !!sessionAudioUrl,
+        }}
         nextAppointment={nextAppointment}
         defaultAmount={
           getTreatmentPriceIls(
@@ -500,11 +582,11 @@ export function PatientDetailClient() {
       {saveError && (
         <div
           role="alert"
-          className="fixed bottom-6 end-6 z-[100] flex max-w-sm items-start gap-2.5 rounded-xl border border-rose-200/80 bg-white px-4 py-3 shadow-lg ring-1 ring-slate-100"
+          className="fixed end-6 bottom-6 z-[100] flex max-w-sm items-start gap-3 rounded-md border-2 border-signal bg-paper py-3 ps-4 pe-2"
         >
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-600" aria-hidden />
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-ink" aria-hidden />
           <div className="min-w-0">
-            <p className="text-sm font-medium leading-snug text-slate-800">
+            <p className="text-[17px] leading-snug font-medium text-ink">
               {t("patientChart.saveFailed")}
             </p>
             {/* What the database actually said. Without it, "check your
@@ -512,18 +594,19 @@ export function PatientDetailClient() {
                 the real answer — an ambiguous relationship — was in the
                 response all along. It is jargon, and it is meant to be
                 repeated verbatim to whoever fixes it. */}
-            <p className="mt-1 break-words font-mono text-[11px] leading-snug text-slate-500">
+            <p className="mt-1 font-mono text-[13px] leading-snug break-words text-mute">
               {saveError}
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={clearSaveError}
-            className="ms-1 text-xs font-semibold text-slate-400 hover:text-slate-600"
+            className="shrink-0 text-mute"
             aria-label={t("common.cancel")}
           >
-            ✕
-          </button>
+            <X className="size-5" aria-hidden />
+          </Button>
         </div>
       )}
     </>
@@ -556,60 +639,53 @@ function GeneralNotesCard({
   }
 
   return (
-    <section>
-      <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.09)]">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-            {t("patientChart.generalNotes")}
-          </h2>
-          {!editing ? (
-            <button
-              type="button"
-              onClick={enterEdit}
-              className="flex items-center gap-1 rounded-md border border-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition-colors hover:border-sky-200 hover:text-sky-600"
-              aria-label={t("patientChart.editGeneralNotesAria")}
-            >
-              <Pencil className="size-2.5" aria-hidden />
-              {t("common.edit")}
-            </button>
-          ) : (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={save}
-                className="flex items-center gap-1 rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white transition-colors hover:bg-slate-800"
-              >
-                <Check className="size-2.5" aria-hidden />
-                {t("common.save")}
-              </button>
-              <button
-                type="button"
-                onClick={cancel}
-                className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 transition-colors hover:bg-slate-50"
-              >
-                <X className="size-2.5" aria-hidden />
-                {t("common.cancel")}
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="px-5 py-4">
-          {editing ? (
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={4}
-              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 outline-none focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100"
-              placeholder={t("patientChart.generalNotesPh")}
-            />
-          ) : (
-            <p className="text-sm leading-relaxed text-slate-500">
-              {initialValue || (
-                <span className="italic text-slate-400">{t("patientChart.noGeneralNotes")}</span>
-              )}
-            </p>
-          )}
-        </div>
+    <section
+      aria-labelledby="general-notes-heading"
+      className="overflow-hidden rounded-md border border-hair bg-paper"
+    >
+      <div className="flex min-h-14 items-center justify-between gap-2 border-b border-hair-soft px-5 py-1.5">
+        <h2 id="general-notes-heading" className="text-[17px] font-bold text-ink">
+          {t("patientChart.generalNotes")}
+        </h2>
+        {!editing ? (
+          <Button
+            variant="outline"
+            onClick={enterEdit}
+            className="text-sm"
+            aria-label={t("patientChart.editGeneralNotesAria")}
+          >
+            <Pencil aria-hidden />
+            {t("common.edit")}
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={cancel} className="text-sm">
+              <X aria-hidden />
+              {t("common.cancel")}
+            </Button>
+            <Button variant="outline" onClick={save} className="border-cobalt text-sm">
+              <Check aria-hidden />
+              {t("common.save")}
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="px-5 py-4">
+        {editing ? (
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={4}
+            className="w-full resize-none rounded-md border border-hair bg-paper px-3 py-2.5 text-[17px] leading-relaxed text-ink outline-none placeholder:text-faint focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt"
+            placeholder={t("patientChart.generalNotesPh")}
+          />
+        ) : (
+          <p dir="auto" className="text-[17px] leading-relaxed text-ink">
+            {initialValue || (
+              <span className="text-faint italic">{t("patientChart.noGeneralNotes")}</span>
+            )}
+          </p>
+        )}
       </div>
     </section>
   )

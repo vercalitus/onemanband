@@ -1,16 +1,29 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
+import { StateMark, type MarkState } from "@/components/ui/state-mark"
 import { minutesFromHHMM } from "@/lib/appointment-time"
 import { toISODate } from "@/lib/date-helpers"
 import { localizeScheduleRow } from "@/lib/i18n/localized-seed"
-import type { AppointmentType, ScheduleItem } from "@/types/domain"
+import type { AppointmentStatus, ScheduleItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
 
 const WEEK_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+
+/** Each status in the one vocabulary (DESIGN.md) — the same mapping the day and week views use. */
+const STATUS_MARK: Record<AppointmentStatus, MarkState> = {
+  confirmed: "plan",
+  scheduled: "plan",
+  uncertain: "unsure",
+  completed: "done",
+  cancelled: "cancel",
+  no_show: "cancel",
+}
+
+/** How many visits a day cell lists before it says "+n more". */
+const PREVIEW = 2
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -24,7 +37,7 @@ function sortByStart(list: ScheduleItem[]) {
   return [...list].sort((a, b) => minutesFromHHMM(a.start) - minutesFromHHMM(b.start))
 }
 
-/** Month grid — weekday headers + localized appointment chips when locale is Hebrew. */
+/** Month grid on paper: hairline cells, each listing its first visits in the state vocabulary. */
 export function MonthView({
   appointments,
   value,
@@ -39,15 +52,10 @@ export function MonthView({
   onSwitchToDay: () => void
 }) {
   const { locale, t } = useLocale()
-  const typeVisualBase = useAppointmentTypeVisual()
-  const typeVisual = useMemo(() => {
-    const next = { ...typeVisualBase }
-    const keys: AppointmentType[] = ["first", "adjustments", "kupa"]
-    for (const k of keys) next[k] = { ...next[k], label: t(`appt.type.${k}`) }
-    return next
-  }, [typeVisualBase, t])
 
-  const today = useMemo(() => new Date(), [])
+  // Client clock only: the server renders in UTC and would disagree about "today".
+  const [today, setToday] = useState<Date | null>(null)
+  useEffect(() => setToday(new Date()), [])
   const monthStart = useMemo(() => startOfMonth(value), [value])
 
   const cells = useMemo(() => {
@@ -84,25 +92,22 @@ export function MonthView({
   }, [localizedFiltered])
 
   return (
-    <div className="overflow-hidden rounded-lg">
-      <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/60">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="grid min-h-14 shrink-0 grid-cols-7 border-b border-hair">
         {WEEK_KEYS.map((wk) => (
-          <div
-            key={wk}
-            className="px-2 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400"
-          >
+          <div key={wk} className="flex items-center border-s border-hair-soft px-3 text-sm text-mute first:border-s-0">
             {t(`calendar.week.short.${wk}`)}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 grid-rows-6">
+      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6">
         {cells.map((d) => {
           const inMonth = d.getMonth() === monthStart.getMonth()
           const isSelected = isSameDay(d, value)
-          const isToday = isSameDay(d, today)
+          const isToday = today ? isSameDay(d, today) : false
           const dayList = byDate.get(toISODate(d)) ?? []
-          const preview = dayList.slice(0, 2)
+          const preview = dayList.slice(0, PREVIEW)
           const overflow = dayList.length - preview.length
 
           return (
@@ -113,50 +118,45 @@ export function MonthView({
                 onSelectDate(new Date(d))
                 onSwitchToDay()
               }}
+              aria-current={isToday ? "date" : undefined}
+              aria-pressed={isSelected}
               className={cn(
-                "flex min-h-[100px] flex-col items-stretch gap-1.5 border-b border-e border-slate-100 p-2 text-start transition-colors hover:bg-sky-50/40",
-                !inMonth && "bg-slate-50/30 text-slate-300",
-                isSelected && "bg-sky-50/60",
+                "flex min-h-24 min-w-0 flex-col items-stretch gap-1 overflow-hidden border-s border-b border-hair-soft p-2 text-start transition-colors hover:bg-ground focus-visible:z-10 focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-cobalt [&:nth-child(7n+1)]:border-s-0",
+                !inMonth && "bg-ground/60",
+                isSelected && "bg-cobalt-tint hover:bg-cobalt-tint",
+                isToday && !isSelected && "bg-cobalt/[0.035]",
               )}
             >
-              <div className="flex items-center justify-between">
-                <span
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
-                    isToday
-                      ? "bg-sky-600 text-white"
-                      : isSelected
-                        ? "text-sky-700"
-                        : inMonth
-                          ? "text-slate-700"
-                          : "text-slate-300",
-                  )}
-                >
-                  {d.getDate()}
-                </span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                {preview.map((apt) => {
-                  const tone = typeVisual[apt.appointmentType]
-                  return (
-                    <span
-                      key={apt.id}
-                      className={cn(
-                        "truncate rounded px-1 py-0.5 text-[10px] font-medium",
-                        tone.surface,
-                        tone.stripe.replace("border-l-4", "border-l-2"),
-                      )}
-                    >
-                      <span className="font-mono tabular-nums">{apt.start}</span> {apt.patientName}
+              <span
+                className={cn(
+                  "flex items-center gap-1.5 text-[17px] leading-6 tabular-nums",
+                  isToday ? "font-bold text-cobalt" : inMonth ? "font-medium text-ink" : "text-faint",
+                )}
+              >
+                {isToday && <span className="size-2.5 shrink-0 rounded-full bg-signal" aria-hidden />}
+                {d.getDate()}
+              </span>
+              {preview.map((apt) => {
+                const mark = STATUS_MARK[apt.status]
+                return (
+                  <span
+                    key={apt.id}
+                    className={cn(
+                      "flex min-w-0 items-center gap-1.5 text-sm leading-[18px]",
+                      inMonth ? "text-ink" : "text-mute",
+                    )}
+                  >
+                    <StateMark state={mark} className="size-2.5" />
+                    <span className="shrink-0 tabular-nums text-mute">{apt.start}</span>
+                    <span className={cn("truncate", mark === "cancel" && "text-mute line-through")}>
+                      {apt.patientName}
                     </span>
-                  )
-                })}
-                {overflow > 0 ? (
-                  <span className="text-[10px] font-medium text-slate-400">
-                    {t("calendar.moreSuffix", { count: overflow })}
                   </span>
-                ) : null}
-              </div>
+                )
+              })}
+              {overflow > 0 ? (
+                <span className="text-sm text-mute">{t("calendar.moreSuffix", { count: overflow })}</span>
+              ) : null}
             </button>
           )
         })}

@@ -4,6 +4,7 @@ import { FileImage, FileScan, FileText, X, type LucideIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { Button } from "@/components/ui/button"
 import { openDocument } from "@/features/patients/lib/document-repository"
 import { cn } from "@/lib/utils"
 import type { DocumentRecord } from "@/types/domain"
@@ -92,42 +93,41 @@ export function DocumentPreviewModal({ doc, onClose }: Props) {
       aria-label={t("patientChart.docPreview.aria", { name: doc.name })}
     >
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-[rgb(14_22_42/0.52)]"
         onClick={onClose}
         aria-hidden
       />
 
       <div
         className={cn(
-          "relative z-10 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-16px_rgba(15,23,42,0.30)]",
+          "relative z-10 w-full overflow-hidden rounded-md bg-paper shadow-[0_24px_56px_-16px_rgba(14,22,42,0.45)]",
           // A real document needs room to be read; the placeholder does not.
           doc.storagePath ? "max-w-4xl" : "max-w-lg",
         )}
       >
-        <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
-            <Icon className="size-4.5 text-slate-500" aria-hidden />
-          </div>
+        <div className="flex items-center gap-3 border-b border-hair px-5 py-3">
+          <Icon className="size-5 shrink-0 text-mute" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-800">{doc.name}</p>
-            <p className="mt-0.5 text-[11px] text-slate-400">
+            <p className="truncate text-[17px] font-bold text-ink">{doc.name}</p>
+            <p className="mt-0.5 text-sm text-mute">
               {label} · {formatDate(doc.uploadedAt, localeTag)}
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="ms-auto flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+            className="ms-auto text-mute"
             aria-label={t("patientChart.docPreview.closeAria")}
           >
-            <X className="size-4" aria-hidden />
-          </button>
+            <X className="size-5" aria-hidden />
+          </Button>
         </div>
 
         {doc.storagePath ? (
           /* The file itself. A chart is read, not admired — the preview gets
              the height, and the chrome around it stays out of the way. */
-          <div className="h-[70vh] bg-slate-100">
+          <div className="h-[70vh] bg-sunk">
             {url && (
               <iframe
                 src={url}
@@ -141,49 +141,36 @@ export function DocumentPreviewModal({ doc, onClose }: Props) {
             )}
             {!url && (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                <div className="flex size-16 items-center justify-center rounded-2xl border border-slate-100 bg-white">
-                  <Icon className="size-8 text-slate-300" aria-hidden />
-                </div>
-                <p className="text-sm font-medium text-slate-500">
+                <Icon className="size-10 text-faint" aria-hidden />
+                <p className="text-[17px] font-medium text-mute">
                   {busy ? t("patientChart.docPreview.opening") : t("patientChart.docPreview.storedTitle")}
                 </p>
-                {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
+                {error && <p className="text-sm font-bold text-ink">{error}</p>}
               </div>
             )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center">
-            <div className="flex size-16 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50">
-              <Icon className="size-8 text-slate-300" aria-hidden />
-            </div>
-            <p className="text-sm font-medium text-slate-500">
+            <Icon className="size-10 text-faint" aria-hidden />
+            <p className="text-[17px] font-medium text-ink">
               {t("patientChart.docPreview.title")}
             </p>
-            <p className="max-w-xs text-xs leading-relaxed text-slate-400">
+            <p className="max-w-xs text-sm leading-relaxed text-mute">
               {t("patientChart.docPreview.body")}{" "}
-              <span className="font-mono text-slate-500">
+              <span className="font-mono text-ink">
                 {t("patientChart.docPreview.storedAt")} {doc.source}
               </span>
             </p>
           </div>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
-          >
+        <div className="flex justify-end gap-2 border-t border-hair bg-ground px-5 py-3">
+          <Button variant="outline" onClick={onClose}>
             {t("common.close")}
-          </button>
-          <button
-            type="button"
-            disabled={!url}
-            onClick={openInTab}
-            className="rounded-lg border border-slate-200 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-          >
+          </Button>
+          <Button disabled={!url} onClick={openInTab}>
             {t("patientChart.docPreview.openTab")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

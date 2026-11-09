@@ -7,7 +7,10 @@ export type CalendarView = "day" | "week" | "month"
 
 const VIEWS: CalendarView[] = ["day", "week", "month"]
 
-/** Day / Week / Month segment — labels from i18n. */
+/**
+ * Day / Week / Month — a segmented control drawn for the cobalt plate:
+ * the chosen view is a white fill with cobalt text, the others white on cobalt.
+ */
 export function CalendarViewToggle({
   value,
   onChange,
@@ -21,7 +24,7 @@ export function CalendarViewToggle({
     <div
       role="tablist"
       aria-label={t("calendar.aria.calendarView")}
-      className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-0.5"
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-white/25 p-[3px]"
     >
       {VIEWS.map((view) => {
         const active = view === value
@@ -33,10 +36,10 @@ export function CalendarViewToggle({
             aria-selected={active}
             onClick={() => onChange(view)}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-colors",
+              "h-11 min-w-16 rounded-[4px] px-3.5 text-sm transition-colors",
               active
-                ? "bg-white text-sky-700 shadow-sm ring-1 ring-slate-200"
-                : "text-slate-500 hover:text-slate-900",
+                ? "bg-white font-bold text-cobalt"
+                : "font-medium text-white/80 hover:bg-white/10 hover:text-white",
             )}
           >
             {t(`calendar.view.${view}`)}

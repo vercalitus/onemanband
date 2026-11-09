@@ -1,14 +1,21 @@
 "use client"
 
-import { Calendar, Link2, Loader2, Wallet } from "lucide-react"
+import { Link2, Loader2 } from "lucide-react"
 import { useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
+import { StateMark } from "@/components/ui/state-mark"
 import { CalendarSubscription } from "@/features/settings/components/calendar-subscription"
-import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
+import {
+  SettingsField,
+  SettingsSection,
+  SettingsSheet,
+  StateLine,
+  SwitchRow,
+  hintClass,
+  selectClass,
+} from "@/features/settings/components/settings-ui"
 import { cn } from "@/lib/utils"
 import type { InvoiceProvider } from "@/types/domain"
 import type { ClinicSettings } from "@/types/clinic-settings"
@@ -82,26 +89,13 @@ export function IntegrationsTab({
   }
 
   return (
-    <div className="space-y-5">
-      <Card className={elevatedCardClass}>
-        <CardHeader className={darkCardHeaderClass}>
-          <div className="flex items-center gap-2.5">
-            <Wallet className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-            <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">
-                {t("settings.integrations.billingTitle")}
-              </CardTitle>
-              <CardDescription className="text-sky-100/80">
-                {t("settings.integrations.billingDesc")}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className={cn(elevatedCardBodyClass, "grid gap-4")}>
-          <div className="grid gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500" htmlFor="billing-provider">
-              {t("settings.integrations.providerLabel")}
-            </label>
+    <SettingsSheet>
+      <SettingsSection
+        title={t("settings.integrations.billingTitle")}
+        description={t("settings.integrations.billingDesc")}
+      >
+        <div className="grid gap-5">
+          <SettingsField label={t("settings.integrations.providerLabel")} className="max-w-md">
             <select
               id="billing-provider"
               value={integrations.billingProvider}
@@ -111,7 +105,7 @@ export function IntegrationsTab({
                   integrations: { ...integrations, billingProvider: e.target.value as InvoiceProvider },
                 })
               }
-              className="h-10 w-full max-w-md rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              className={selectClass}
             >
               {PROVIDERS.map((p) => (
                 <option key={p} value={p}>
@@ -119,33 +113,19 @@ export function IntegrationsTab({
                 </option>
               ))}
             </select>
-          </div>
-          <p className="max-w-xl rounded-xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
-            {t("settings.integrations.keyNotice")}
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="secondary" disabled={testing} onClick={runTest} className="gap-2">
+          </SettingsField>
+          <p className={cn(hintClass, "max-w-2xl")}>{t("settings.integrations.keyNotice")}</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Button type="button" variant="outline" disabled={testing} onClick={runTest} className="gap-2">
               {testing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Link2 className="size-4" aria-hidden />}
               {t("settings.integrations.testConnection")}
             </Button>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                integrations.billingConnected ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600",
-              )}
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  integrations.billingConnected ? "bg-emerald-500" : "bg-slate-400",
-                )}
-                aria-hidden
-              />
+            <StateLine state={integrations.billingConnected ? "done" : "unsure"}>
               {integrations.billingConnected ? t("settings.integrations.connected") : t("settings.integrations.notVerified")}
-            </span>
+            </StateLine>
           </div>
           {ping && (
-            <dl className="grid max-w-xl gap-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-xs">
+            <dl className="max-w-xl divide-y divide-hair-soft border-y border-hair-soft text-sm">
               <Detail
                 label={t("settings.integrations.pingProvider")}
                 value={ping.live ? ping.provider : t("settings.integrations.simulated")}
@@ -172,43 +152,30 @@ export function IntegrationsTab({
               )}
             </dl>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </SettingsSection>
 
-      <Card className={elevatedCardClass}>
-        <CardHeader className={darkCardHeaderClass}>
-          <div className="flex items-center gap-2.5">
-            <Calendar className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-            <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">{t("settings.integrations.calendarTitle")}</CardTitle>
-              <CardDescription className="text-sky-100/80">{t("settings.integrations.calendarDesc")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className={elevatedCardBodyClass}>
-          {/* The Google switch that used to sit here connected nothing — it
-              flipped a stored boolean no code read. A subscription link that
-              works replaces it. */}
-          <CalendarSubscription />
+      <SettingsSection
+        title={t("settings.integrations.calendarTitle")}
+        description={t("settings.integrations.calendarDesc")}
+      >
+        {/* The Google switch that used to sit here connected nothing — it
+            flipped a stored boolean no code read. A subscription link that
+            works replaces it. */}
+        <CalendarSubscription />
 
-          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={integrations.outlookConnected}
-                aria-label={t("settings.integrations.outlookAria")}
-                onCheckedChange={(outlookConnected) =>
-                  onChange({ ...settings, integrations: { ...integrations, outlookConnected } })
-                }
-              />
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{t("settings.integrations.outlookTitle")}</p>
-                <p className="text-xs text-slate-500">{t("settings.integrations.outlookSub")}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        <SwitchRow
+          className="mt-5"
+          checked={integrations.outlookConnected}
+          ariaLabel={t("settings.integrations.outlookAria")}
+          onCheckedChange={(outlookConnected) =>
+            onChange({ ...settings, integrations: { ...integrations, outlookConnected } })
+          }
+          title={t("settings.integrations.outlookTitle")}
+          sub={t("settings.integrations.outlookSub")}
+        />
+      </SettingsSection>
+    </SettingsSheet>
   )
 }
 
@@ -222,18 +189,11 @@ function Detail({
   tone?: "warning" | "error"
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd
-        className={cn(
-          "text-end font-semibold",
-          tone === "error"
-            ? "text-rose-700"
-            : tone === "warning"
-              ? "text-amber-700"
-              : "text-slate-900",
-        )}
-      >
+    <div className="flex min-h-11 items-center justify-between gap-4 py-2">
+      <dt className="text-mute">{label}</dt>
+      <dd className="flex items-center gap-2 text-end font-medium text-ink">
+        {/* Drafts-only and a failed check are both "not yet real": the dashed ring. */}
+        {tone ? <StateMark state="unsure" /> : null}
         {value}
       </dd>
     </div>

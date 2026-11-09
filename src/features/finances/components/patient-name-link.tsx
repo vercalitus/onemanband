@@ -22,7 +22,7 @@ export function PatientNameLink({
     <Link
       href={`/patients/${patientId}?tab=finances`}
       className={cn(
-        "text-slate-900 underline-offset-2 transition-colors hover:text-sky-700 hover:underline",
+        "rounded-[4px] text-ink underline-offset-3 decoration-1 transition-colors hover:text-cobalt hover:underline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt",
         className,
       )}
     >

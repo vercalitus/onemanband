@@ -1,12 +1,19 @@
 "use client"
 
-import { ClipboardList, Layers, Plus, Stethoscope, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
+import {
+  SettingsSection,
+  SettingsSheet,
+  hintClass,
+  inputClass,
+  labelClass,
+  numericInputClass,
+  selectClass,
+} from "@/features/settings/components/settings-ui"
 import { parseIlsInput } from "@/lib/format-ils"
 import { cn } from "@/lib/utils"
 import type { ClinicSettings, TreatmentColorPreset } from "@/types/clinic-settings"
@@ -49,214 +56,185 @@ export function ClinicalPreferencesTab({
   }
 
   return (
-    <div className="space-y-5">
-      <Card className={elevatedCardClass}>
-        <CardHeader className={darkCardHeaderClass}>
-          <div className="flex items-center gap-2.5">
-            <Stethoscope className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-            <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">
-                {t("settings.clinical.typesTitle")}
-              </CardTitle>
-              <CardDescription className="text-sky-100/80">{t("settings.clinical.typesDesc")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className={elevatedCardBodyClass}>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="w-full min-w-[640px] text-start text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  <th className="px-4 py-3">{t("settings.clinical.thTypeKey")}</th>
-                  <th className="px-4 py-3">{t("settings.clinical.thDisplayName")}</th>
-                  <th className="px-4 py-3">{t("settings.clinical.thDefaultLength")}</th>
-                  <th className="px-4 py-3">{t("settings.clinical.thColour")}</th>
-                  <th className="px-4 py-3 text-end">{t("settings.clinical.thPrice")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {treatmentTypes.map((row, i) => (
-                  <tr key={row.type} className="border-b border-slate-50 last:border-0">
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.type}</td>
-                    <td className="px-4 py-3">
-                      <Input
-                        value={row.label}
-                        onChange={(e) => updateType(i, { label: e.target.value })}
-                        className="h-9 rounded-lg border-slate-200"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          min={5}
-                          max={120}
-                          step={5}
-                          value={row.defaultMinutes}
-                          onChange={(e) => updateType(i, { defaultMinutes: Number(e.target.value) || 5 })}
-                          className="h-9 w-20 rounded-lg border-slate-200 font-mono tabular-nums"
-                        />
-                        <span className="text-xs text-slate-500">{t("settings.clinical.minSuffix")}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={row.colorPreset}
-                        onChange={(e) =>
-                          updateType(i, { colorPreset: e.target.value as TreatmentColorPreset })
-                        }
-                        className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm"
-                      >
-                        {PRESETS.map((p) => (
-                          <option key={p} value={p}>
-                            {t(`settings.color.${p}`)}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-end">
-                      <div className="inline-flex items-center justify-end gap-1">
-                        <Input
-                          aria-label={t("settings.clinical.priceAria", { type: row.type })}
-                          value={String(row.priceIls)}
-                          onChange={(e) =>
-                            updateType(i, { priceIls: Math.max(0, parseIlsInput(e.target.value)) })
-                          }
-                          className="inline-block h-9 w-28 rounded-lg border-slate-200 text-end font-mono tabular-nums"
-                        />
-                        <span className="text-sm font-medium text-slate-600">₪</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className={elevatedCardClass}>
-        <CardHeader className={darkCardHeaderClass}>
-          <div className="flex items-center gap-2.5">
-            <Layers className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-            <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">{t("settings.clinical.plansTitle")}</CardTitle>
-              <CardDescription className="text-sky-100/80">{t("settings.clinical.plansDesc")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className={cn(elevatedCardBodyClass, "space-y-4")}>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div className="grid gap-1.5">
-              <label
-                className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
-                htmlFor="default-sessions"
-              >
-                {t("settings.clinical.defaultPlanLength")}
-              </label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="default-sessions"
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={defaultPlanSessions}
-                  onChange={(e) =>
-                    onChange({
-                      ...settings,
-                      defaultPlanSessions: Math.max(1, Number(e.target.value) || 1),
-                    })
-                  }
-                  className="h-9 w-24 rounded-lg border-slate-200 font-mono tabular-nums"
-                />
-                <span className="text-sm text-slate-600">{t("settings.clinical.sessionsWord")}</span>
-              </div>
-            </div>
-            <Button type="button" variant="secondary" className="gap-1.5 self-start" onClick={addPlan}>
-              <Plus className="size-4" aria-hidden />
-              {t("settings.clinical.addPackage")}
-            </Button>
-          </div>
-
-          <ul className="space-y-3">
-            {carePlans.map((plan) => (
-              <li
-                key={plan.id}
-                className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 lg:flex-row lg:items-center"
-              >
-                <Input
-                  value={plan.name}
-                  onChange={(e) => {
-                    onChange({
-                      ...settings,
-                      carePlans: carePlans.map((p) => (p.id === plan.id ? { ...p, name: e.target.value } : p)),
-                    })
-                  }}
-                  className="h-9 flex-1 rounded-lg border-slate-200 lg:max-w-xs"
-                />
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1">
+    <SettingsSheet>
+      <SettingsSection
+        title={t("settings.clinical.typesTitle")}
+        description={t("settings.clinical.typesDesc")}
+        bodyClassName="-mx-4 overflow-x-auto sm:-mx-6"
+      >
+        <table className="w-full min-w-[640px] text-start">
+          <thead>
+            <tr className="border-y border-hair-soft text-sm font-medium text-mute">
+              <th className="px-4 py-2.5 text-start font-medium sm:ps-6">{t("settings.clinical.thTypeKey")}</th>
+              <th className="px-3 py-2.5 text-start font-medium">{t("settings.clinical.thDisplayName")}</th>
+              <th className="px-3 py-2.5 text-start font-medium">{t("settings.clinical.thDefaultLength")}</th>
+              <th className="px-3 py-2.5 text-start font-medium">{t("settings.clinical.thColour")}</th>
+              <th className="px-4 py-2.5 text-end font-medium sm:pe-6">{t("settings.clinical.thPrice")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-hair-soft">
+            {treatmentTypes.map((row, i) => (
+              <tr key={row.type}>
+                <td className="px-4 py-3 font-mono text-sm text-mute sm:ps-6">{row.type}</td>
+                <td className="px-3 py-3">
+                  <Input
+                    value={row.label}
+                    onChange={(e) => updateType(i, { label: e.target.value })}
+                    className={inputClass}
+                  />
+                </td>
+                <td className="px-3 py-3">
+                  <div className="flex items-center gap-2">
                     <Input
                       type="number"
-                      min={1}
-                      value={plan.sessions}
-                      onChange={(e) => {
-                        const sessions = Math.max(1, Number(e.target.value) || 1)
-                        onChange({
-                          ...settings,
-                          carePlans: carePlans.map((p) => (p.id === plan.id ? { ...p, sessions } : p)),
-                        })
-                      }}
-                      className="h-9 w-20 rounded-lg border-slate-200 font-mono tabular-nums"
+                      min={5}
+                      max={120}
+                      step={5}
+                      value={row.defaultMinutes}
+                      onChange={(e) => updateType(i, { defaultMinutes: Number(e.target.value) || 5 })}
+                      className={cn(numericInputClass, "w-20")}
                     />
-                    <span className="text-xs text-slate-500">{t("settings.clinical.visitsWord")}</span>
+                    <span className="text-sm text-mute">{t("settings.clinical.minSuffix")}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Input
-                      aria-label={t("settings.clinical.totalPriceAria")}
-                      value={String(plan.totalPriceIls)}
-                      onChange={(e) => {
-                        const totalPriceIls = Math.max(0, parseIlsInput(e.target.value))
-                        onChange({
-                          ...settings,
-                          carePlans: carePlans.map((p) =>
-                            p.id === plan.id ? { ...p, totalPriceIls } : p,
-                          ),
-                        })
-                      }}
-                      className="h-9 w-28 rounded-lg border-slate-200 text-end font-mono tabular-nums"
-                    />
-                    <span className="text-xs font-medium text-slate-500">{t("settings.clinical.ilsTotal")}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removePlan(plan.id)}
-                    className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                    aria-label={t("settings.clinical.removePackageAria")}
+                </td>
+                <td className="px-3 py-3">
+                  <select
+                    value={row.colorPreset}
+                    onChange={(e) =>
+                      updateType(i, { colorPreset: e.target.value as TreatmentColorPreset })
+                    }
+                    className={cn(selectClass, "w-auto min-w-28")}
                   >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-              </li>
+                    {PRESETS.map((p) => (
+                      <option key={p} value={p}>
+                        {t(`settings.color.${p}`)}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-4 py-3 text-end sm:pe-6">
+                  <div className="inline-flex items-center justify-end gap-2">
+                    <Input
+                      aria-label={t("settings.clinical.priceAria", { type: row.type })}
+                      value={String(row.priceIls)}
+                      onChange={(e) =>
+                        updateType(i, { priceIls: Math.max(0, parseIlsInput(e.target.value)) })
+                      }
+                      className={cn(numericInputClass, "inline-block w-28 text-end")}
+                    />
+                    <span className="text-sm font-medium text-mute">₪</span>
+                  </div>
+                </td>
+              </tr>
             ))}
-          </ul>
-        </CardContent>
-      </Card>
+          </tbody>
+        </table>
+      </SettingsSection>
 
-      <Card className={elevatedCardClass}>
-        <CardHeader className={darkCardHeaderClass}>
-          <div className="flex items-center gap-2.5">
-            <ClipboardList className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-            <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">{t("settings.clinical.refTitle")}</CardTitle>
-              <CardDescription className="text-sky-100/80">{t("settings.clinical.refDesc")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className={elevatedCardBodyClass}>
-          <p className="text-sm leading-relaxed text-slate-600">{t("settings.clinical.refHint")}</p>
-        </CardContent>
-      </Card>
-    </div>
+      <SettingsSection
+        title={t("settings.clinical.plansTitle")}
+        description={t("settings.clinical.plansDesc")}
+        action={
+          <Button type="button" variant="outline" className="gap-2" onClick={addPlan}>
+            <Plus className="size-4" aria-hidden />
+            {t("settings.clinical.addPackage")}
+          </Button>
+        }
+      >
+        <div className="grid gap-5">
+          <label className="grid gap-1.5" htmlFor="default-sessions">
+            <span className={labelClass}>{t("settings.clinical.defaultPlanLength")}</span>
+            <span className="flex items-center gap-2">
+              <Input
+                id="default-sessions"
+                type="number"
+                min={1}
+                max={99}
+                value={defaultPlanSessions}
+                onChange={(e) =>
+                  onChange({
+                    ...settings,
+                    defaultPlanSessions: Math.max(1, Number(e.target.value) || 1),
+                  })
+                }
+                className={cn(numericInputClass, "w-24")}
+              />
+              <span className="text-sm text-mute">{t("settings.clinical.sessionsWord")}</span>
+            </span>
+          </label>
+
+          {carePlans.length ? (
+            <ul className="-mx-4 divide-y divide-hair-soft border-y border-hair-soft sm:-mx-6">
+              {carePlans.map((plan) => (
+                <li
+                  key={plan.id}
+                  className="flex flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center"
+                >
+                  <Input
+                    value={plan.name}
+                    onChange={(e) => {
+                      onChange({
+                        ...settings,
+                        carePlans: carePlans.map((p) => (p.id === plan.id ? { ...p, name: e.target.value } : p)),
+                      })
+                    }}
+                    className={cn(inputClass, "flex-1 lg:max-w-xs")}
+                  />
+                  <div className="flex flex-wrap items-center gap-3 lg:ms-auto">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        value={plan.sessions}
+                        onChange={(e) => {
+                          const sessions = Math.max(1, Number(e.target.value) || 1)
+                          onChange({
+                            ...settings,
+                            carePlans: carePlans.map((p) => (p.id === plan.id ? { ...p, sessions } : p)),
+                          })
+                        }}
+                        className={cn(numericInputClass, "w-20")}
+                      />
+                      <span className="text-sm text-mute">{t("settings.clinical.visitsWord")}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        aria-label={t("settings.clinical.totalPriceAria")}
+                        value={String(plan.totalPriceIls)}
+                        onChange={(e) => {
+                          const totalPriceIls = Math.max(0, parseIlsInput(e.target.value))
+                          onChange({
+                            ...settings,
+                            carePlans: carePlans.map((p) =>
+                              p.id === plan.id ? { ...p, totalPriceIls } : p,
+                            ),
+                          })
+                        }}
+                        className={cn(numericInputClass, "w-28 text-end")}
+                      />
+                      <span className="text-sm font-medium text-mute">{t("settings.clinical.ilsTotal")}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removePlan(plan.id)}
+                      className="text-mute hover:text-ink"
+                      aria-label={t("settings.clinical.removePackageAria")}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title={t("settings.clinical.refTitle")} description={t("settings.clinical.refDesc")}>
+        <p className={cn(hintClass, "max-w-2xl")}>{t("settings.clinical.refHint")}</p>
+      </SettingsSection>
+    </SettingsSheet>
   )
 }

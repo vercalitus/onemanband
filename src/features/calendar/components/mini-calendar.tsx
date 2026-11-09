@@ -67,34 +67,36 @@ export function MiniCalendar({
   const goNext = () => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-3">
-      <div className="mb-2 flex items-center justify-between">
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={goPrev}
           aria-label={t("calendar.mini.prevMonth")}
-          className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          className="flex size-11 items-center justify-center rounded-md text-mute transition-colors hover:bg-ground hover:text-ink"
         >
-          <ChevronLeft className="size-4" aria-hidden />
+          <ChevronLeft className="size-5 rtl:-scale-x-100" aria-hidden />
         </button>
-        <p className="text-sm font-semibold tracking-tight text-slate-900">{monthTitleFmt.format(viewMonth)}</p>
+        <p className="text-[17px] font-bold text-ink">{monthTitleFmt.format(viewMonth)}</p>
         <button
           type="button"
           onClick={goNext}
           aria-label={t("calendar.mini.nextMonth")}
-          className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          className="flex size-11 items-center justify-center rounded-md text-mute transition-colors hover:bg-ground hover:text-ink"
         >
-          <ChevronRight className="size-4" aria-hidden />
+          <ChevronRight className="size-5 rtl:-scale-x-100" aria-hidden />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+      <div className="grid grid-cols-7 text-center text-sm text-mute">
         {narrowWeekdays.map((d, i) => (
-          <span key={i}>{d}</span>
+          <span key={i} className="py-1">
+            {d}
+          </span>
         ))}
       </div>
 
-      <div className="mt-1 grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7">
         {cells.map((d) => {
           const inMonth = d.getMonth() === viewMonth.getMonth()
           const isSelected = isSameDay(d, value)
@@ -108,20 +110,20 @@ export function MiniCalendar({
               type="button"
               onClick={() => onChange(new Date(d))}
               className={cn(
-                "relative flex h-8 w-full items-center justify-center rounded-lg text-xs font-medium transition-colors",
-                inMonth ? "text-slate-700" : "text-slate-300",
+                "relative flex h-11 w-full items-center justify-center rounded-md text-sm tabular-nums transition-colors",
+                inMonth ? "text-ink" : "text-faint",
                 isSelected
-                  ? "bg-sky-600 text-white shadow-sm hover:bg-sky-700"
+                  ? "bg-cobalt font-bold text-white hover:bg-cobalt-hi"
                   : isToday
-                    ? "ring-1 ring-inset ring-sky-300 text-sky-700 hover:bg-sky-50"
-                    : "hover:bg-slate-100",
+                    ? "font-bold text-cobalt ring-1 ring-inset ring-cobalt hover:bg-cobalt-tint"
+                    : "hover:bg-ground",
               )}
               aria-pressed={isSelected}
               aria-label={d.toLocaleDateString(tag)}
             >
               {d.getDate()}
               {hasEvents && !isSelected ? (
-                <span className="absolute bottom-1 size-1 rounded-full bg-sky-400" aria-hidden />
+                <span className="absolute bottom-1.5 size-1 rounded-full bg-mute" aria-hidden />
               ) : null}
             </button>
           )

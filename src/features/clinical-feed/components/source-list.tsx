@@ -1,7 +1,6 @@
 "use client"
 
-import { BookOpen, BookmarkCheck, Library, Trash2 } from "lucide-react"
-import type { ReactNode } from "react"
+import { Trash2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { cn } from "@/lib/utils"
@@ -11,6 +10,9 @@ import type { ClinicalSource } from "@/types/domain"
  * Vertical list powering the sidebar: Saved → All sources → per-source rows.
  * Clicking Saved scopes the feed to bookmarked articles; All sources restores
  * the full feed before optional per-source narrowing.
+ *
+ * `layout="row"` draws the same choices as one scrolling line of chips, for a
+ * screen too narrow to give the list its own column.
  */
 export function SourceList({
   sources,
@@ -23,6 +25,7 @@ export function SourceList({
   onSelectAllSources,
   onSelectSource,
   onRemoveCustom,
+  layout = "column",
 }: {
   sources: ClinicalSource[]
   articleCountBySource: Map<string, number>
@@ -34,30 +37,43 @@ export function SourceList({
   onSelectAllSources: () => void
   onSelectSource: (id: string) => void
   onRemoveCustom: (id: string) => void
+  layout?: "column" | "row"
 }) {
   const { t } = useLocale()
+  const row = layout === "row"
+
+  const items = [
+    { key: "saved", label: t("clinical.source.saved"), count: savedCount, active: showSavedOnly, onClick: onSelectSaved, divideAfter: true },
+    {
+      key: "all",
+      label: t("clinical.source.allSources"),
+      count: totalCount,
+      active: !showSavedOnly && selectedSourceId === null,
+      onClick: onSelectAllSources,
+      divideAfter: true,
+    },
+  ]
 
   return (
-    <ul className="flex flex-col gap-0.5" role="list">
-      <SourceRow
-        label={t("clinical.source.saved")}
-        count={savedCount}
-        active={showSavedOnly}
-        onClick={onSelectSaved}
-        leading={<BookmarkCheck className="size-4 stroke-[1.8]" aria-hidden />}
-      />
-
-      <li className="my-1 h-px bg-slate-100" aria-hidden />
-
-      <SourceRow
-        label={t("clinical.source.allSources")}
-        count={totalCount}
-        active={!showSavedOnly && selectedSourceId === null}
-        onClick={onSelectAllSources}
-        leading={<Library className="size-4 stroke-[1.8]" aria-hidden />}
-      />
-
-      <li className="my-1 h-px bg-slate-100" aria-hidden />
+    <ul
+      className={cn(
+        row
+          ? "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6"
+          : "flex flex-col gap-0.5",
+      )}
+      role="list"
+    >
+      {items.map((it) => (
+        <SourceRow
+          key={it.key}
+          row={row}
+          label={it.label}
+          count={it.count}
+          active={it.active}
+          onClick={it.onClick}
+          className={!row && it.divideAfter ? "mb-1.5 border-b border-hair pb-1.5" : undefined}
+        />
+      ))}
 
       {sources.map((s) => {
         const active = !showSavedOnly && selectedSourceId === s.id
@@ -65,29 +81,21 @@ export function SourceList({
         return (
           <SourceRow
             key={s.id}
+            row={row}
             label={s.name}
-            sublabel={s.url ? s.url.replace(/^https?:\/\//, "") : undefined}
+            sublabel={!row && s.url ? s.url.replace(/^https?:\/\//, "") : undefined}
             count={count}
             active={active}
             onClick={() => onSelectSource(s.id)}
-            leading={<BookOpen className="size-4 stroke-[1.8]" aria-hidden />}
             trailing={
               s.custom ? (
                 <button
                   type="button"
-                  className={cn(
-                    "ml-1 rounded-md p-1 transition-colors",
-                    active
-                      ? "text-white/60 hover:bg-white/10 hover:text-white"
-                      : "text-slate-300 hover:bg-rose-50 hover:text-rose-600",
-                  )}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-md text-mute transition-colors hover:bg-sunk hover:text-ink"
                   aria-label={t("clinical.source.remove", { name: s.name })}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRemoveCustom(s.id)
-                  }}
+                  onClick={() => onRemoveCustom(s.id)}
                 >
-                  <Trash2 className="size-3.5" aria-hidden />
+                  <Trash2 className="size-4" aria-hidden />
                 </button>
               ) : null
             }
@@ -104,69 +112,62 @@ function SourceRow({
   count,
   active,
   onClick,
-  leading,
   trailing,
+  row,
+  className,
 }: {
   label: string
   sublabel?: string
   count: number
   active: boolean
   onClick: () => void
-  leading?: ReactNode
-  trailing?: ReactNode
+  trailing?: React.ReactNode
+  row: boolean
+  className?: string
 }) {
+  if (row) {
+    return (
+      <li className="flex shrink-0 items-center">
+        <button
+          type="button"
+          onClick={onClick}
+          aria-pressed={active}
+          className={cn(
+            "inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium whitespace-nowrap transition-colors",
+            active ? "border-cobalt bg-cobalt font-bold text-white" : "border-hair bg-paper text-ink hover:bg-ground",
+          )}
+        >
+          {label}
+          <span className={cn("tabular-nums", active ? "text-white/80" : "text-mute")}>{count}</span>
+        </button>
+        {trailing}
+      </li>
+    )
+  }
+
   return (
-    <li>
+    <li className={cn("flex items-center", className)}>
       <button
         type="button"
         onClick={onClick}
         aria-pressed={active}
         className={cn(
-          "group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-start transition-colors",
-          active
-            ? "bg-slate-900 text-white shadow-sm"
-            : "text-slate-700 hover:bg-slate-50",
+          "flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2 text-start transition-colors",
+          // Cobalt is the selected state (DESIGN.md), the same fill the rail and chips use.
+          active ? "bg-cobalt text-white" : "text-ink hover:bg-ground",
         )}
       >
-        <span
-          className={cn(
-            "flex size-6 shrink-0 items-center justify-center rounded-md transition-colors",
-            active ? "bg-white/10 text-sky-300" : "bg-slate-50 text-sky-600 group-hover:bg-white",
-          )}
-          aria-hidden
-        >
-          {leading}
-        </span>
         <span className="min-w-0 flex-1">
-          <span
-            className={cn(
-              "block truncate text-sm",
-              active ? "font-semibold text-white" : "font-medium text-slate-800",
-            )}
-          >
+          <span className={cn("block truncate text-[17px] leading-snug", active ? "font-bold" : "font-medium")}>
             {label}
           </span>
           {sublabel ? (
-            <span
-              className={cn(
-                "block truncate text-[11px]",
-                active ? "text-white/60" : "text-slate-400",
-              )}
-            >
-              {sublabel}
-            </span>
+            <span className={cn("block truncate text-[13px]", active ? "text-white/80" : "text-mute")}>{sublabel}</span>
           ) : null}
         </span>
-        <span
-          className={cn(
-            "shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
-            active ? "bg-white/10 text-white" : "text-slate-400",
-          )}
-        >
-          {count}
-        </span>
-        {trailing}
+        <span className={cn("shrink-0 text-sm tabular-nums", active ? "text-white/80" : "text-mute")}>{count}</span>
       </button>
+      {trailing}
     </li>
   )
 }

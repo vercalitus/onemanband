@@ -491,10 +491,10 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
 
   if (isMobileSmall) {
     return (
-      <div className={cn("flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center", className)}>
+      <div className={cn("flex items-center justify-center rounded-md border border-dashed border-hair bg-paper py-10 text-center", className)}>
         <div>
-          <p className="text-sm font-semibold text-slate-600">{t("patientChart.canvas.mobileTitle")}</p>
-          <p className="mt-1 text-xs text-slate-400">{t("patientChart.canvas.mobileHint")}</p>
+          <p className="text-[17px] font-bold text-ink">{t("patientChart.canvas.mobileTitle")}</p>
+          <p className="mt-1 text-sm text-mute">{t("patientChart.canvas.mobileHint")}</p>
         </div>
       </div>
     )
@@ -506,7 +506,7 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
       <div className="flex items-center gap-2">
         <p
           className={cn(
-            "min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500",
+            "min-w-0 flex-1 text-sm font-medium text-mute",
             toolsFirst ? "order-2 text-end" : "order-1",
           )}
         >
@@ -518,29 +518,29 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
           onClick={toggleHand}
           aria-pressed={hand === "left"}
           title={t("patientChart.canvas.handHint")}
-          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+          className="flex h-11 items-center gap-1.5 rounded-md border border-hair bg-paper px-3 text-sm font-medium text-ink transition-colors hover:bg-ground focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt"
         >
-          <Hand className={cn("size-3.5", hand === "left" && "-scale-x-100")} aria-hidden />
+          <Hand className={cn("size-4", hand === "left" && "-scale-x-100")} aria-hidden />
           {hand === "left" ? t("patientChart.canvas.handLeft") : t("patientChart.canvas.handRight")}
         </button>
         <button
           type="button"
           onClick={handleUndo}
           disabled={counts.undo === 0}
-          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-11 items-center gap-1.5 rounded-md border border-hair bg-paper px-3 text-sm font-medium text-ink transition-colors hover:bg-ground focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={t("patientChart.canvas.undoAria")}
         >
-          <RotateCcw className="size-3.5" aria-hidden />
+          <RotateCcw className="size-4" aria-hidden />
           {t("patientChart.canvas.undo")}
         </button>
         <button
           type="button"
           onClick={handleClear}
           disabled={counts.strokes === 0}
-          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-11 items-center gap-1.5 rounded-md border border-hair bg-paper px-3 text-sm font-medium text-ink transition-colors hover:bg-ground focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={t("patientChart.canvas.clearAria")}
         >
-          <Eraser className="size-3.5" aria-hidden />
+          <Eraser className="size-4" aria-hidden />
           {t("patientChart.canvas.clear")}
         </button>
         </div>
@@ -550,10 +550,10 @@ export function SessionCanvas({ initialStrokes, onStrokesChange, className }: Pr
           not already kept, and a practitioner pressed it expecting the session
           to be recorded and closed — then found the pen still writing. The one
           action that records a session is Complete Session; this says so. */}
-      <p className="text-[11px] text-slate-400">{t("patientChart.canvas.draftNote")}</p>
+      <p className="text-sm text-mute">{t("patientChart.canvas.draftNote")}</p>
 
       {/* Canvas */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[inset_0_1px_4px_rgba(15,23,42,0.04)]">
+      <div className="relative overflow-hidden rounded-md border border-hair bg-paper">
         <canvas
           ref={canvasRef}
           onPointerDown={onPointerDown}

@@ -3,15 +3,21 @@
 import { AlertTriangle, Eye, Mail, MessageCircle, RotateCcw, Smartphone } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
 import { ScheduleEditor } from "@/features/settings/components/automations/schedule-editor"
 import { StepPreview } from "@/features/settings/components/automations/step-preview"
+import {
+  SettingsField,
+  SettingsSection,
+  SettingsSheet,
+  SwitchTarget,
+  chipClass,
+  labelClass,
+  selectClass,
+  textareaClass,
+} from "@/features/settings/components/settings-ui"
 import { VISIBLE_CHANNELS } from "@/features/automations/lib/channels"
 import { defaultSequences } from "@/features/automations/lib/default-sequences"
 import { TEMPLATE_PLACEHOLDERS } from "@/features/automations/lib/template-render"
-import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { cn } from "@/lib/utils"
 import type {
   AutomationAction,
@@ -92,165 +98,141 @@ export function SequenceCard({
   }
 
   return (
-    <Card className={elevatedCardClass}>
-      <CardHeader className={darkCardHeaderClass}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <CardTitle className="text-lg font-bold tracking-tight text-white">
-              {t(`automations.seq.${sequence.id}.name`)}
-            </CardTitle>
-            <CardDescription className="text-sky-100/80">
-              {t(`automations.seq.${sequence.id}.desc`)}
-            </CardDescription>
-          </div>
-          <Switch
+    <SettingsSheet>
+      <SettingsSection
+        title={t(`automations.seq.${sequence.id}.name`)}
+        description={t(`automations.seq.${sequence.id}.desc`)}
+        action={
+          <SwitchTarget
             checked={sequence.enabled}
-            aria-label={`${t("automations.seq.toggleAria")}: ${t(`automations.seq.${sequence.id}.name`)}`}
+            ariaLabel={`${t("automations.seq.toggleAria")}: ${t(`automations.seq.${sequence.id}.name`)}`}
             onCheckedChange={(enabled) => onChange({ ...sequence, enabled })}
           />
-        </div>
-      </CardHeader>
+        }
+      />
 
-      <CardContent className={cn(elevatedCardBodyClass, "space-y-0 p-0")}>
-        <ol className={cn("divide-y divide-slate-100", !sequence.enabled && "opacity-55")}>
-          {sequence.steps.map((step, index) => (
-            <li key={step.id} className="p-4 sm:p-5">
-              <div className="flex items-start gap-3.5">
-                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-sky-600/10 text-xs font-bold tabular-nums text-sky-700">
-                  {index + 1}
-                </span>
+      <ol className={cn("divide-y divide-hair-soft", !sequence.enabled && "opacity-60")}>
+        {sequence.steps.map((step, index) => (
+          <li key={step.id} className="px-4 py-5 sm:px-6">
+            <div className="flex items-start gap-3.5">
+              <span
+                className={cn(
+                  "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold tabular-nums",
+                  step.enabled ? "border-ink text-ink" : "border-faint text-mute",
+                )}
+              >
+                {index + 1}
+              </span>
 
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-900">
-                        {t(`automations.step.${step.id}.name`)}
-                      </p>
-                      {step.sensitive ? (
-                        <Badge
-                          variant="outline"
-                          className="gap-1 border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(171,119,93)]"
-                        >
-                          <AlertTriangle className="size-3" aria-hidden />
-                          {t("automations.step.sensitive")}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <Switch
-                      checked={step.enabled}
-                      aria-label={`${t("automations.step.toggleAria")}: ${t(`automations.step.${step.id}.name`)}`}
-                      onCheckedChange={(enabled) => patchStep(step.id, { enabled })}
-                    />
-                  </div>
-
-                  <ScheduleEditor
-                    schedule={step.schedule}
-                    onChange={(schedule: ScheduleRule) => patchStep(step.id, { schedule })}
-                  />
-
+              <div className="min-w-0 flex-1 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      {t("automations.step.channels")}
-                    </span>
-                    {VISIBLE_CHANNELS.map((channel) => {
-                      const Icon = CHANNEL_ICON[channel]
-                      const on = step.channels.includes(channel)
-                      return (
-                        <button
-                          key={channel}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() =>
-                            patchStep(step.id, {
-                              channels: on
-                                ? step.channels.filter((c) => c !== channel)
-                                : [...step.channels, channel],
-                            })
-                          }
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors",
-                            on
-                              ? "border-sky-600 bg-sky-600 text-white"
-                              : "border-slate-200 bg-white text-slate-500 hover:border-sky-300",
-                          )}
-                        >
-                          <Icon className="size-3.5" aria-hidden />
-                          {t(`automations.channel.${channel}`)}
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {step.channels.includes("email") ? (
-                    <label className="block">
-                      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        {t("automations.step.subject")}
+                    <p className="text-[17px] font-bold text-ink">
+                      {t(`automations.step.${step.id}.name`)}
+                    </p>
+                    {step.sensitive ? (
+                      <span className="inline-flex min-h-6 items-center gap-1 rounded-md border border-hair px-2 text-sm font-medium text-ink">
+                        <AlertTriangle className="size-3.5" aria-hidden />
+                        {t("automations.step.sensitive")}
                       </span>
-                      <input
-                        value={step.template.emailSubject ?? ""}
-                        onChange={(e) =>
+                    ) : null}
+                  </div>
+                  <SwitchTarget
+                    checked={step.enabled}
+                    ariaLabel={`${t("automations.step.toggleAria")}: ${t(`automations.step.${step.id}.name`)}`}
+                    onCheckedChange={(enabled) => patchStep(step.id, { enabled })}
+                  />
+                </div>
+
+                <ScheduleEditor
+                  schedule={step.schedule}
+                  onChange={(schedule: ScheduleRule) => patchStep(step.id, { schedule })}
+                />
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={cn(labelClass, "me-1")}>{t("automations.step.channels")}</span>
+                  {VISIBLE_CHANNELS.map((channel) => {
+                    const Icon = CHANNEL_ICON[channel]
+                    const on = step.channels.includes(channel)
+                    return (
+                      <button
+                        key={channel}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() =>
                           patchStep(step.id, {
-                            template: { ...step.template, emailSubject: e.target.value },
+                            channels: on
+                              ? step.channels.filter((c) => c !== channel)
+                              : [...step.channels, channel],
                           })
                         }
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-                      />
-                    </label>
-                  ) : null}
+                        className={chipClass}
+                      >
+                        <Icon className="size-4" aria-hidden />
+                        {t(`automations.channel.${channel}`)}
+                      </button>
+                    )
+                  })}
+                </div>
 
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      {t("automations.step.message")}
-                    </span>
-                    <textarea
-                      rows={3}
-                      value={step.template.body}
+                {step.channels.includes("email") ? (
+                  <SettingsField label={t("automations.step.subject")}>
+                    <input
+                      value={step.template.emailSubject ?? ""}
                       onChange={(e) =>
                         patchStep(step.id, {
-                          template: { ...step.template, body: e.target.value },
+                          template: { ...step.template, emailSubject: e.target.value },
                         })
                       }
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-relaxed text-slate-800 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                      className={selectClass}
                     />
-                  </label>
+                  </SettingsField>
+                ) : null}
 
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      {t("automations.step.buttons")}
-                    </span>
-                    {ACTIONS_FOR_TRIGGER[sequence.trigger].map((action) => {
-                      const on = step.actions.includes(action)
-                      return (
-                        <button
-                          key={action}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() =>
-                            patchStep(step.id, {
-                              actions: on
-                                ? step.actions.filter((a) => a !== action)
-                                : [...step.actions, action],
-                            })
-                          }
-                          className={cn(
-                            "rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors",
-                            on
-                              ? "border-sky-600 bg-sky-600 text-white"
-                              : "border-slate-200 bg-white text-slate-500 hover:border-sky-300",
-                          )}
-                        >
-                          {t(`automations.action.${action}`)}
-                        </button>
-                      )
-                    })}
-                  </div>
+                <SettingsField label={t("automations.step.message")}>
+                  <textarea
+                    rows={3}
+                    value={step.template.body}
+                    onChange={(e) =>
+                      patchStep(step.id, {
+                        template: { ...step.template, body: e.target.value },
+                      })
+                    }
+                    className={textareaClass}
+                  />
+                </SettingsField>
 
-                  <details className="group/preview">
-                    <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-sky-700 hover:text-sky-800">
-                      <Eye className="size-3.5" aria-hidden />
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={cn(labelClass, "me-1")}>{t("automations.step.buttons")}</span>
+                  {ACTIONS_FOR_TRIGGER[sequence.trigger].map((action) => {
+                    const on = step.actions.includes(action)
+                    return (
+                      <button
+                        key={action}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() =>
+                          patchStep(step.id, {
+                            actions: on
+                              ? step.actions.filter((a) => a !== action)
+                              : [...step.actions, action],
+                          })
+                        }
+                        className={chipClass}
+                      >
+                        {t(`automations.action.${action}`)}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="flex flex-wrap items-start gap-x-6">
+                  <details className="group/preview min-w-0 flex-1">
+                    <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-cobalt underline-offset-3 hover:underline">
+                      <Eye className="size-4" aria-hidden />
                       {t("automations.preview.toggle")}
                     </summary>
-                    <div className="mt-3">
+                    <div className="mt-2">
                       <StepPreview step={step} />
                     </div>
                   </details>
@@ -259,27 +241,27 @@ export function SequenceCard({
                     <button
                       type="button"
                       onClick={() => resetStep(step.id)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800"
+                      className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-mute hover:text-ink"
                     >
-                      <RotateCcw className="size-3.5" aria-hidden />
+                      <RotateCcw className="size-4" aria-hidden />
                       {t("automations.step.reset")}
                     </button>
                   ) : null}
                 </div>
               </div>
-            </li>
-          ))}
-        </ol>
+            </div>
+          </li>
+        ))}
+      </ol>
 
-        <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 sm:px-5">
-          <p className="text-xs leading-relaxed text-slate-500">
-            {t("automations.step.placeholders")}{" "}
-            <span className="font-mono text-slate-600">
-              {TEMPLATE_PLACEHOLDERS.map((p) => `{${p}}`).join("  ")}
-            </span>
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+      <div className="px-4 py-3 sm:px-6">
+        <p className="text-sm leading-relaxed text-mute">
+          {t("automations.step.placeholders")}{" "}
+          <span className="font-mono text-ink" dir="ltr">
+            {TEMPLATE_PLACEHOLDERS.map((p) => `{${p}}`).join("  ")}
+          </span>
+        </p>
+      </div>
+    </SettingsSheet>
   )
 }

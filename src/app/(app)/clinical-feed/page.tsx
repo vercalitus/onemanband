@@ -1,21 +1,16 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Library, Newspaper, Plus, Search } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 
+import { PagePlate, PlateDivider, PlateLabel } from "@/components/layout/page-plate"
 import { useLocale } from "@/components/providers/locale-provider"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AddSourceDialog } from "@/features/clinical-feed/components/add-source-dialog"
 import { FeedCard } from "@/features/clinical-feed/components/feed-card"
 import { SourceList } from "@/features/clinical-feed/components/source-list"
 import { useClinicalFeed } from "@/features/clinical-feed/lib/use-clinical-feed"
-import {
-  darkCardHeaderClass,
-  elevatedCardBodyClass,
-  elevatedCardClass,
-} from "@/lib/clinic-card-styles"
-import { cn } from "@/lib/utils"
 
 export default function ClinicalFeedPage() {
   const { locale, t } = useLocale()
@@ -85,108 +80,99 @@ export default function ClinicalFeedPage() {
     selectAllSources()
   }
 
-  return (
-    <div className="grid gap-6 md:gap-8 xl:grid-cols-[260px_1fr]">
-      <aside className="space-y-4">
-        <Card className={elevatedCardClass}>
-          <CardHeader className={cn(darkCardHeaderClass, "gap-2 py-3")}>
-            <div className="flex min-w-0 items-center gap-2.5">
-              <Library className="size-5 shrink-0 stroke-[1.6] text-sky-400" aria-hidden />
-              <CardTitle className="text-base font-bold tracking-tight text-white">{t("clinical.sourcesTitle")}</CardTitle>
-            </div>
-            <CardAction>
-              <button
-                type="button"
-                onClick={() => setAddOpen(true)}
-                aria-label={t("clinical.addSourceAria")}
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/70 bg-transparent px-2.5 py-1",
-                  "text-xs font-semibold text-white transition-colors hover:border-white hover:bg-white/10",
-                )}
-              >
-                <Plus className="size-3.5 stroke-[2.2]" aria-hidden />
-                {t("clinical.addShort")}
-              </button>
-            </CardAction>
-          </CardHeader>
+  const sourceListProps = {
+    sources,
+    articleCountBySource,
+    totalCount,
+    selectedSourceId,
+    showSavedOnly,
+    savedCount,
+    onSelectSaved: selectSavedOnly,
+    onSelectAllSources: selectAllSources,
+    onSelectSource: selectSource,
+    onRemoveCustom: removeCustomSource,
+  }
 
-          <CardContent className={cn(elevatedCardBodyClass, "py-3")}>
-            <SourceList
-              sources={sources}
-              articleCountBySource={articleCountBySource}
-              totalCount={totalCount}
-              selectedSourceId={selectedSourceId}
-              showSavedOnly={showSavedOnly}
-              savedCount={savedCount}
-              onSelectSaved={selectSavedOnly}
-              onSelectAllSources={selectAllSources}
-              onSelectSource={selectSource}
-              onRemoveCustom={removeCustomSource}
-            />
-          </CardContent>
-        </Card>
+  const addSourceButton = (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={() => setAddOpen(true)}
+      aria-label={t("clinical.addSourceAria")}
+      className="gap-2 text-sm"
+    >
+      <Plus className="size-4" aria-hidden />
+      {t("clinical.addShort")}
+    </Button>
+  )
+
+  return (
+    <div className="mx-auto grid max-w-[1120px] gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
+      <PagePlate>
+        <div className="flex min-w-0 flex-col">
+          {/* Which feed this is, when the title names a source or the saved list. */}
+          {headerTitle !== t("clinical.title.feed") ? <PlateLabel>{t("clinical.title.feed")}</PlateLabel> : null}
+          <h1 className="mt-0.5 truncate font-display text-[40px] leading-[0.95] text-white sm:text-[56px]">
+            {headerTitle}
+          </h1>
+        </div>
+        <PlateDivider />
+        <p className="max-w-[260px] text-sm leading-snug text-white/80">{subtitle}</p>
+      </PagePlate>
+
+      {/* Sources: their own column beside the list on a wide screen, a line
+          of chips above it on a narrow one. */}
+      <aside className="hidden lg:block">
+        <div className="mb-2 flex min-h-11 items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-mute">{t("clinical.sourcesTitle")}</h2>
+          {addSourceButton}
+        </div>
+        <SourceList {...sourceListProps} />
       </aside>
 
-      <section className="min-w-0">
-        <Card className={elevatedCardClass}>
-          <CardHeader className={cn(darkCardHeaderClass, "flex-col gap-3 py-4")}>
-            <div className="flex w-full flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <Newspaper className="size-5 shrink-0 stroke-[1.6] text-sky-400" aria-hidden />
-                  <CardTitle className="truncate text-xl font-bold tracking-tight text-white">{headerTitle}</CardTitle>
-                </div>
-                <span className="text-xs font-medium text-white/60 sm:truncate">{subtitle}</span>
-              </div>
+      <section className="min-w-0 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-1 basis-60">
+            <Search
+              className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-mute"
+              aria-hidden
+            />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("clinical.search.placeholder")}
+              className="border-hair ps-9"
+              aria-label={t("clinical.search.placeholder")}
+            />
+          </div>
+          <div className="lg:hidden">{addSourceButton}</div>
+        </div>
 
-              <div className="relative w-full sm:w-[min(100%,18rem)]">
-                <Search
-                  className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-white/60"
-                  aria-hidden
-                />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={t("clinical.search.placeholder")}
-                  className={cn(
-                    "h-9 rounded-xl border border-white bg-transparent ps-9 text-sm text-white shadow-none",
-                    "placeholder:text-white/60",
-                    "focus-visible:border-white focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-0 focus-visible:ring-offset-transparent",
-                  )}
-                  aria-label={t("clinical.search.placeholder")}
-                />
-              </div>
-            </div>
-          </CardHeader>
+        <div className="lg:hidden">
+          <SourceList {...sourceListProps} layout="row" />
+        </div>
 
-          <CardContent className={cn(elevatedCardBodyClass, "bg-slate-50/60 py-6")}>
-            {filteredArticles.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
-                <p className="text-sm text-slate-500">{emptyMessage}</p>
-                {(query.trim() || selectedSourceId || showSavedOnly) && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="mt-3 text-sm font-medium text-sky-700 hover:text-sky-900"
-                  >
-                    {t("clinical.clearFilters")}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid gap-6 sm:grid-cols-2 sm:gap-7 xl:grid-cols-3 xl:gap-8">
-                {filteredArticles.map((article) => (
-                  <FeedCard
-                    key={article.id}
-                    article={article}
-                    saved={isSaved(article.id)}
-                    onToggleSaved={() => toggleSaved(article.id)}
-                  />
-                ))}
-              </div>
+        {filteredArticles.length === 0 ? (
+          <div className="rounded-md border border-hair bg-paper px-6 py-12 text-center">
+            <p className="text-[17px] text-mute">{emptyMessage}</p>
+            {(query.trim() || selectedSourceId || showSavedOnly) && (
+              <Button type="button" variant="link" onClick={clearFilters} className="mt-2">
+                {t("clinical.clearFilters")}
+              </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        ) : (
+          <div className="divide-y divide-hair-soft rounded-md border border-hair bg-paper">
+            {filteredArticles.map((article) => (
+              <FeedCard
+                key={article.id}
+                article={article}
+                saved={isSaved(article.id)}
+                onToggleSaved={() => toggleSaved(article.id)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <AddSourceDialog open={addOpen} onOpenChange={setAddOpen} onSave={addSource} />

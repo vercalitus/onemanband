@@ -1,19 +1,18 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Inbox, Mail, MessageCircle, Play, Smartphone, Trash2 } from "lucide-react"
+import { Mail, MessageCircle, Play, Smartphone, Trash2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { StateLegend, StateMark, type MarkState } from "@/components/ui/state-mark"
 import {
   AUTOMATION_STORE_EVENT,
   clearStore,
   listOutbox,
 } from "@/features/automations/lib/automation-store"
 import { runTick } from "@/features/automations/lib/dispatcher"
-import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
+import { SettingsSection, SettingsSheet } from "@/features/settings/components/settings-ui"
 import { cn } from "@/lib/utils"
 import type { MessageChannel, OutboxMessage, OutboxStatus } from "@/types/automation"
 
@@ -23,12 +22,17 @@ const CHANNEL_ICON: Record<MessageChannel, typeof Mail> = {
   sms: Smartphone,
 }
 
-const STATUS_CHROME: Record<OutboxStatus, string> = {
-  pending: "border-sky-200 bg-sky-50 text-sky-700",
-  simulated: "border-violet-200 bg-violet-50 text-violet-700",
-  sent: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  failed: "border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(171,119,93)]",
-  cancelled: "border-slate-200 bg-slate-50 text-slate-500",
+/**
+ * Outbox states in the one state vocabulary. `simulated` is a real terminal
+ * state, not a success, so it is drawn as unconfirmed rather than done; a
+ * failure is the one row somebody has to act on.
+ */
+const STATUS_MARK: Record<OutboxStatus, MarkState> = {
+  pending: "plan",
+  simulated: "unsure",
+  sent: "done",
+  failed: "now",
+  cancelled: "cancel",
 }
 
 /**
@@ -85,78 +89,75 @@ export function MessageQueueCard() {
     )
 
   return (
-    <Card className={elevatedCardClass}>
-      <CardHeader className={darkCardHeaderClass}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Inbox className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-            <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">
-                {t("automations.queue.title")}
-              </CardTitle>
-              <CardDescription className="text-sky-100/80">
-                {t("automations.queue.desc")}
-              </CardDescription>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={tick} disabled={busy} className="gap-1.5">
-              <Play className="size-3.5" aria-hidden />
+    <SettingsSheet>
+      <SettingsSection
+        title={t("automations.queue.title")}
+        description={t("automations.queue.desc")}
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button variant="outline" onClick={tick} disabled={busy} className="gap-2 text-sm">
+              <Play className="size-4" aria-hidden />
               {t("automations.queue.runNow")}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={reset}
-              className="gap-1.5 text-sky-100 hover:text-white"
-            >
-              <Trash2 className="size-3.5" aria-hidden />
+            <Button variant="ghost" onClick={reset} className="gap-2 text-sm text-mute hover:text-ink">
+              <Trash2 className="size-4" aria-hidden />
               {t("automations.queue.clear")}
             </Button>
           </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className={cn(elevatedCardBodyClass, "space-y-3")}>
-        {lastRun ? <p className="text-sm font-medium text-slate-600">{lastRun}</p> : null}
+        }
+      >
+        {lastRun ? <p className="mb-3 text-sm font-medium text-ink">{lastRun}</p> : null}
 
         {ordered.length === 0 ? (
-          <p className="text-sm leading-relaxed text-slate-500">{t("automations.queue.empty")}</p>
+          <p className="text-sm leading-snug text-mute">{t("automations.queue.empty")}</p>
         ) : (
-          <ul className="space-y-2">
-            {ordered.map((message) => {
-              const Icon = CHANNEL_ICON[message.channel]
-              return (
-                <li
-                  key={message.id}
-                  className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Icon className="size-4 shrink-0 text-slate-400" aria-hidden />
-                    <span className="text-sm font-semibold text-slate-900">
-                      {message.patientName || message.to}
-                    </span>
-                    <Badge variant="outline" className={STATUS_CHROME[message.status]}>
-                      {t(`automations.queue.status.${message.status}`)}
-                    </Badge>
-                    <span className="ms-auto font-mono text-xs tabular-nums text-slate-500">
-                      {fmt(message.scheduledFor)}
-                    </span>
-                  </div>
-                  <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                    {message.body}
-                  </p>
-                  {message.error ? (
-                    <p className="mt-1.5 text-xs font-medium text-[rgb(171,119,93)]">
-                      {message.error}
+          <>
+            <StateLegend
+              className="mb-3"
+              items={[
+                { state: "plan", label: t("automations.queue.status.pending") },
+                { state: "done", label: t("automations.queue.status.sent") },
+                { state: "unsure", label: t("automations.queue.status.simulated") },
+                { state: "now", label: t("automations.queue.status.failed") },
+                { state: "cancel", label: t("automations.queue.status.cancelled") },
+              ]}
+            />
+            <ul className="-mx-4 divide-y divide-hair-soft border-y border-hair-soft sm:-mx-6">
+              {ordered.map((message) => {
+                const Icon = CHANNEL_ICON[message.channel]
+                return (
+                  <li key={message.id} className="px-4 py-3.5 sm:px-6">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <StateMark state={STATUS_MARK[message.status]} />
+                      <span className="text-[17px] font-medium text-ink">
+                        {message.patientName || message.to}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-sm text-mute",
+                          message.status === "cancelled" && "line-through",
+                        )}
+                      >
+                        {t(`automations.queue.status.${message.status}`)}
+                      </span>
+                      <span className="ms-auto inline-flex items-center gap-2 text-sm tabular-nums text-mute">
+                        <Icon className="size-4 shrink-0" aria-hidden />
+                        {fmt(message.scheduledFor)}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-ink">
+                      {message.body}
                     </p>
-                  ) : null}
-                </li>
-              )
-            })}
-          </ul>
+                    {message.error ? (
+                      <p className="mt-1.5 text-sm font-medium text-ink">{message.error}</p>
+                    ) : null}
+                  </li>
+                )
+              })}
+            </ul>
+          </>
         )}
-      </CardContent>
-    </Card>
+      </SettingsSection>
+    </SettingsSheet>
   )
 }

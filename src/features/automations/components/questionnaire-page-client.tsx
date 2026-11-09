@@ -89,8 +89,8 @@ export function QuestionnairePageClient({ token }: { token: string }) {
   if (stage === "loading") {
     return (
       <PublicShell clinicName={clinicName} title={t("public.questionnaire.title")}>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="size-4 animate-spin text-sky-600" aria-hidden />
+        <div className="flex items-center gap-2 text-[17px] text-mute">
+          <Loader2 className="size-5 animate-spin text-cobalt" aria-hidden />
           {t("public.loading")}
         </div>
       </PublicShell>
@@ -129,15 +129,13 @@ export function QuestionnairePageClient({ token }: { token: string }) {
         session: questionnaire?.sessionNumber ?? 0,
       })}
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
+        <div className="divide-y divide-hair-soft rounded-md border border-hair bg-paper">
         {PROGRESS_QUESTIONS.map((question) => (
-          <div
-            key={question.id}
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-          >
-            <p className="mb-3 text-sm font-semibold text-slate-900">
+          <div key={question.id} className="px-4 py-5 sm:px-5">
+            <p className="mb-3 text-[17px] leading-snug font-bold text-ink">
               {t(question.labelKey)}
-              {question.required ? <span className="text-[rgb(171,119,93)]"> *</span> : null}
+              {question.required ? <span aria-hidden> *</span> : null}
             </p>
 
             {question.kind === "scale" ? (
@@ -153,11 +151,12 @@ export function QuestionnairePageClient({ token }: { token: string }) {
                     key={optionKey}
                     type="button"
                     onClick={() => setValues((prev) => ({ ...prev, [question.id]: optionKey }))}
+                    aria-pressed={values[question.id] === optionKey}
                     className={cn(
-                      "rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+                      "min-h-12 rounded-md border px-4 text-[17px] transition-colors",
                       values[question.id] === optionKey
-                        ? "border-sky-600 bg-sky-600 text-white"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-sky-300",
+                        ? "border-cobalt bg-cobalt font-bold text-white"
+                        : "border-hair bg-paper font-medium text-ink hover:bg-sunk",
                     )}
                   >
                     {t(optionKey)}
@@ -169,22 +168,27 @@ export function QuestionnairePageClient({ token }: { token: string }) {
                 rows={3}
                 value={values[question.id] ?? ""}
                 onChange={(e) => setValues((prev) => ({ ...prev, [question.id]: e.target.value }))}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                aria-label={t(question.labelKey)}
+                className="w-full rounded-md border border-hair bg-paper px-3 py-2.5 text-[17px] leading-relaxed text-ink outline-none focus-visible:border-cobalt focus-visible:ring-3 focus-visible:ring-cobalt/20"
               />
             )}
           </div>
         ))}
+        </div>
 
         {error ? (
-          <p className="text-sm font-medium text-[rgb(171,119,93)]" role="alert">
+          <p
+            className="rounded-md border border-signal bg-signal-tint px-3 py-2 text-[17px] text-ink"
+            role="alert"
+          >
             {error}
           </p>
         ) : null}
 
-        <Button className="h-11 w-full text-base" onClick={submit}>
+        <Button size="lg" className="w-full" onClick={submit}>
           {t("public.questionnaire.submit")}
         </Button>
-        <p className="text-xs leading-relaxed text-slate-500">
+        <p className="text-sm leading-relaxed text-mute">
           {t("public.questionnaire.privacy")}
         </p>
       </div>
@@ -207,7 +211,8 @@ function ScaleInput({
 
   return (
     <div role="radiogroup" aria-label={ariaLabel}>
-      <div className="flex flex-wrap gap-1.5">
+      {/* Six to a row on a phone: eleven 44px targets do not fit on one line. */}
+      <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-11">
         {options.map((n) => (
           <button
             key={n}
@@ -216,17 +221,17 @@ function ScaleInput({
             aria-checked={value === String(n)}
             onClick={() => onChange(String(n))}
             className={cn(
-              "size-9 rounded-lg border text-sm font-semibold tabular-nums transition-colors",
+              "h-12 rounded-md border text-[17px] tabular-nums transition-colors",
               value === String(n)
-                ? "border-sky-600 bg-sky-600 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-sky-300",
+                ? "border-cobalt bg-cobalt font-bold text-white"
+                : "border-hair bg-paper font-medium text-ink hover:bg-sunk",
             )}
           >
             {n}
           </button>
         ))}
       </div>
-      <div className="mt-1.5 flex justify-between text-xs text-slate-500">
+      <div className="mt-2 flex justify-between text-sm text-mute">
         <span>{t("questionnaire.scale.low")}</span>
         <span>{t("questionnaire.scale.high")}</span>
       </div>

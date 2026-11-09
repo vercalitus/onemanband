@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { Button } from "@/components/ui/button"
 import { groupSlotsByDate, type FreeSlot } from "@/features/automations/lib/availability"
 import { cn } from "@/lib/utils"
 
@@ -31,7 +30,7 @@ export function SlotPicker({
 
   if (!days.length) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
+      <div className="rounded-md border border-hair bg-paper p-5 text-[17px] leading-relaxed text-mute">
         {emptyLabel}
       </div>
     )
@@ -43,48 +42,49 @@ export function SlotPicker({
     )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-          {t("public.slots.pickDay")}
-        </p>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {days.map((day) => (
-            <button
-              key={day.date}
-              type="button"
-              onClick={() => setActiveDate(day.date)}
-              className={cn(
-                "shrink-0 rounded-xl border px-3.5 py-2.5 text-sm font-semibold transition-colors",
-                selectedDay?.date === day.date
-                  ? "border-sky-600 bg-sky-600 text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-sky-300",
-              )}
-            >
-              <span className="block">{dayLabel(day.date)}</span>
-              <span className="block text-xs font-medium opacity-75">
-                {t("public.slots.count", { count: day.slots.length })}
-              </span>
-            </button>
-          ))}
+        <p className="mb-2 text-sm font-medium text-mute">{t("public.slots.pickDay")}</p>
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6">
+          {days.map((day) => {
+            const on = selectedDay?.date === day.date
+            return (
+              <button
+                key={day.date}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setActiveDate(day.date)}
+                className={cn(
+                  "flex min-h-14 shrink-0 flex-col justify-center rounded-md border px-3.5 py-2 text-start transition-colors",
+                  on ? "border-cobalt bg-cobalt text-white" : "border-hair bg-paper text-ink hover:bg-sunk",
+                )}
+              >
+                <span className={cn("block text-[17px] leading-tight", on ? "font-bold" : "font-medium")}>
+                  {dayLabel(day.date)}
+                </span>
+                <span className={cn("block text-sm tabular-nums", on ? "text-white/80" : "text-mute")}>
+                  {t("public.slots.count", { count: day.slots.length })}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {selectedDay ? (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            {t("public.slots.pickTime")}
-          </p>
+          <p className="mb-2 text-sm font-medium text-mute">{t("public.slots.pickTime")}</p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {selectedDay.slots.map((slot) => (
-              <Button
+              <button
                 key={`${slot.date}-${slot.start}`}
-                variant="outline"
-                className="h-11 border-slate-200 font-mono tabular-nums text-slate-800 hover:border-sky-300"
+                type="button"
+                className="h-12 rounded-md border border-hair bg-paper text-[17px] font-medium tabular-nums text-ink transition-colors hover:border-cobalt hover:bg-cobalt-tint focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt"
                 onClick={() => onPick(slot)}
+                dir="ltr"
               >
                 {slot.start}
-              </Button>
+              </button>
             ))}
           </div>
         </div>

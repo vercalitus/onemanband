@@ -1,6 +1,9 @@
 "use client"
 
+import { HeaderActions } from "@/components/layout/header-actions"
+import { LocaleSwitcher } from "@/components/layout/locale-switcher"
 import { SidebarNavList } from "@/components/layout/sidebar-nav-list"
+import { SignOutButton } from "@/components/layout/sign-out-button"
 import { useClinicProfile } from "@/components/layout/use-clinic-profile"
 import { useLocale } from "@/components/providers/locale-provider"
 
@@ -29,9 +32,19 @@ export function AppSidebar() {
         )}
       </div>
 
+      {/* Search and add sit above the sections: they are tools for every
+          screen, and up here they leave the plate to the page's facts. */}
+      <HeaderActions variant="rail" />
+      <span className="my-2 h-px w-12 bg-white/25" aria-hidden />
+
       <nav className="flex w-full flex-1 flex-col items-center gap-1" aria-label={t("mobile.drawerAria")}>
         <SidebarNavList variant="rail" />
       </nav>
+
+      <div className="mt-1 flex flex-col items-center gap-1">
+        <LocaleSwitcher variant="rail" />
+        <SignOutButton variant="rail" />
+      </div>
     </aside>
   )
 }

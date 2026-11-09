@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Mic, Square, Trash2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 /** Hard cap on a single recording, in seconds. */
@@ -106,39 +107,32 @@ export function SessionAudio({ audioUrl, onRecorded, onDelete, className }: Prop
   }
 
   return (
-    <div className={cn("rounded-2xl border border-slate-100 bg-slate-50 p-4", className)}>
-      <div className="flex items-center gap-2">
-        <Mic className="size-4 text-slate-400" aria-hidden />
-        <p className="text-sm font-semibold text-slate-700">{t("patientChart.audio.title")}</p>
+    <div className={cn("rounded-md border border-hair bg-paper px-3 py-2", className)}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <p className="flex items-center gap-2 text-sm font-medium text-ink">
+          <Mic className="size-5 text-mute" aria-hidden />
+          {t("patientChart.audio.title")}
+        </p>
+
+        {!recording ? (
+          <Button variant="outline" onClick={start} className="text-sm">
+            <span className="size-3 rounded-full border-2 border-ink" aria-hidden />
+            {audioUrl ? t("patientChart.audio.reRecord") : t("patientChart.audio.record")}
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={stop} className="border-2 border-signal text-sm">
+            <Square className="size-4 fill-current" aria-hidden />
+            {t("patientChart.audio.stop")}
+          </Button>
+        )}
+
         {recording ? (
-          <span className="ms-auto flex items-center gap-2 font-mono text-xs tabular-nums text-rose-600">
-            <span className="inline-block size-2 animate-pulse rounded-full bg-rose-500" aria-hidden />
+          <span className="flex items-center gap-2 text-sm font-medium tabular-nums text-ink">
+            <span className="inline-block size-2.5 animate-pulse rounded-full bg-signal" aria-hidden />
             {formatTime(elapsed)} / {formatTime(MAX_SECONDS)}
           </span>
         ) : (
-          <span className="ms-auto text-[11px] text-slate-400">{t("patientChart.audio.hint")}</span>
-        )}
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {!recording ? (
-          <button
-            type="button"
-            onClick={start}
-            className="flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100"
-          >
-            <Mic className="size-3.5" aria-hidden />
-            {audioUrl ? t("patientChart.audio.reRecord") : t("patientChart.audio.record")}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={stop}
-            className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100"
-          >
-            <Square className="size-3.5" aria-hidden />
-            {t("patientChart.audio.stop")}
-          </button>
+          !audioUrl && <span className="text-sm text-mute">{t("patientChart.audio.hint")}</span>
         )}
 
         {audioUrl && !recording && (
@@ -146,22 +140,23 @@ export function SessionAudio({ audioUrl, onRecorded, onDelete, className }: Prop
             <audio
               controls
               src={audioUrl}
-              className="h-9 min-w-0 flex-1"
+              className="h-11 min-w-0 flex-1"
               aria-label={t("patientChart.audio.playbackAria")}
             />
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="icon"
               onClick={onDelete}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-700"
+              className="text-mute"
               aria-label={t("patientChart.audio.deleteAria")}
             >
-              <Trash2 className="size-3.5" aria-hidden />
-            </button>
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
           </>
         )}
       </div>
 
-      {error && <p className="mt-2 text-xs font-medium text-rose-600">{error}</p>}
+      {error && <p className="mt-2 text-sm font-medium text-ink">{error}</p>}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, CalendarClock, CalendarPlus, Check, Loader2, Receipt } from "lucide-react"
+import { AlertTriangle, CalendarClock, CalendarPlus, Check, Loader2, Receipt, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+import { StateMark } from "@/components/ui/state-mark"
 import { cn } from "@/lib/utils"
 import type { CloseSessionOutcome } from "@/features/patients/lib/use-close-session"
 import type { PaymentMethod, ScheduleItem } from "@/types/domain"
@@ -50,6 +50,8 @@ export function SessionCloseDialog({
   open,
   onOpenChange,
   sessionNumber,
+  patientName,
+  contents,
   nextAppointment,
   defaultAmount,
   outstandingDebt,
@@ -61,6 +63,10 @@ export function SessionCloseDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   sessionNumber: number
+  /** Shown above the session number; the sheet is about one person. */
+  patientName?: string
+  /** What the session being closed holds, listed as what goes into the record. */
+  contents?: { drawing: boolean; notes: boolean; audio: boolean }
   /** The patient's next booking, or null when they are leaving without one. */
   nextAppointment: ScheduleItem | null
   /** List price for this treatment type — the starting point, not the answer. */
@@ -160,34 +166,53 @@ export function SessionCloseDialog({
       )} · ${nextAppointment.start}`
     : null
 
+  const recordItems = contents
+    ? [
+        { key: "drawing", on: contents.drawing, yes: "patientChart.close.rec.drawing", no: "patientChart.close.rec.noDrawing" },
+        { key: "notes", on: contents.notes, yes: "patientChart.close.rec.notes", no: "patientChart.close.rec.noNotes" },
+        { key: "audio", on: contents.audio, yes: "patientChart.close.rec.audio", no: "patientChart.close.rec.noAudio" },
+      ]
+    : null
+
   return (
     <Dialog open={open} onOpenChange={busy ? () => {} : onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Check className="size-4 stroke-[1.8] text-emerald-600" aria-hidden />
-            {t("patientChart.close.title")}
-          </DialogTitle>
-          <DialogDescription>
-            {t("patientChart.close.subtitle", { n: sessionNumber })}
+      <DialogContent showCloseButton={false} className="gap-0 overflow-hidden p-0 sm:max-w-[600px]">
+        {/* The dialog's own plate: which session this is, in display type. */}
+        <DialogHeader className="on-cobalt flex min-h-24 flex-row items-center gap-5 bg-cobalt px-6 py-3 text-start text-white">
+          <div className="min-w-0">
+            <p className="truncate text-sm text-white/80">
+              {patientName
+                ? t("patientChart.close.heading", { name: patientName })
+                : t("patientChart.close.title")}
+            </p>
+            <DialogTitle className="mt-0.5 font-display text-[40px] leading-[0.95] font-normal text-white tabular-nums sm:text-[56px]">
+              {t("patientChart.close.sessionN", { n: sessionNumber })}
+            </DialogTitle>
+          </div>
+          <span className="hidden w-px self-stretch bg-white/25 sm:block" aria-hidden />
+          <DialogDescription className="hidden max-w-[200px] text-sm leading-snug text-white/80 sm:block">
+            {t("patientChart.close.order")}
           </DialogDescription>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+            disabled={busy}
+            className="ms-auto border-white/25 bg-transparent text-white hover:bg-white/10 focus-visible:outline-white"
+            aria-label={t("common.close")}
+          >
+            <X className="size-5" aria-hidden />
+          </Button>
         </DialogHeader>
 
         {outcome ? (
-          <div className="grid gap-2 py-2">
+          <div className="grid divide-y divide-hair-soft px-6 py-2 text-[17px] text-ink">
             {outcome.billingMessage && (
-              <p
-                className={cn(
-                  "flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs font-medium",
-                  outcome.billingFailed
-                    ? "bg-amber-50 text-amber-800"
-                    : "bg-emerald-50 text-emerald-800",
-                )}
-              >
+              <p className="flex min-h-12 items-start gap-3 py-3">
                 {outcome.billingFailed ? (
-                  <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden />
+                  <AlertTriangle className="mt-0.5 size-5 shrink-0 text-ink" aria-hidden />
                 ) : (
-                  <Check className="mt-px size-3.5 shrink-0" aria-hidden />
+                  <Check className="mt-0.5 size-5 shrink-0 text-olive" aria-hidden />
                 )}
                 {outcome.billingMessage}
               </p>
@@ -197,156 +222,141 @@ export function SessionCloseDialog({
                 one outcome where something is owed and someone will be
                 chased. */}
             {outcome.chargeLeftOpen && (
-              <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                <Receipt className="mt-px size-3.5 shrink-0" aria-hidden />
+              <p className="flex min-h-12 items-start gap-3 py-3">
+                <Receipt className="mt-0.5 size-5 shrink-0 text-ink" aria-hidden />
                 {t("patientChart.close.chargeOpen", { amount: formatMoney(parsed) })}
               </p>
             )}
             {outcome.invitedToBook && (
-              <p className="flex items-start gap-1.5 rounded-lg bg-sky-50 px-3 py-2 text-xs font-medium text-sky-800">
-                <CalendarClock className="mt-px size-3.5 shrink-0" aria-hidden />
+              <p className="flex min-h-12 items-start gap-3 py-3">
+                <CalendarClock className="mt-0.5 size-5 shrink-0 text-cobalt" aria-hidden />
                 {t("patientChart.close.invited")}
               </p>
             )}
           </div>
         ) : (
-          <div className="grid gap-4">
-            {needsAcknowledgement && (
-              <button
-                type="button"
-                onClick={() => setAcknowledged((v) => !v)}
-                aria-pressed={acknowledged}
-                className={cn(
-                  "flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-start transition-colors",
-                  acknowledged ? "border-amber-300 bg-amber-50" : "border-amber-200 bg-amber-50/60",
-                )}
-              >
-                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
-                <span className="min-w-0 flex-1">
-                  {recentlyRecorded && (
-                    <span className="block text-xs font-semibold text-amber-900">
-                      {t("patientChart.close.recentWarning", { n: minutesSinceLast ?? 0 })}
-                    </span>
+          <div className="max-h-[calc(100dvh-14rem)] overflow-y-auto">
+            {/* What this visit leaves behind. */}
+            <section className="border-b border-hair-soft px-6 py-5">
+              <h2 className="mb-2.5 text-[17px] font-bold text-ink">
+                {t("patientChart.close.recordTitle")}
+              </h2>
+              {recordItems && (
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {recordItems.map((item) =>
+                    item.on ? (
+                      <span
+                        key={item.key}
+                        className="flex min-h-11 items-center gap-2 rounded-[4px] bg-olive-tint px-3 text-sm font-medium text-ink"
+                      >
+                        <Check className="size-4 shrink-0 text-olive" aria-hidden />
+                        {t(item.yes)}
+                      </span>
+                    ) : (
+                      <span
+                        key={item.key}
+                        className="flex min-h-11 items-center rounded-[4px] border border-dashed border-hair px-3 text-sm text-mute"
+                      >
+                        {t(item.no)}
+                      </span>
+                    ),
                   )}
-                  {sessionIsEmpty && (
-                    <span className="block text-xs font-semibold text-amber-900">
-                      {t("patientChart.close.emptyWarning")}
-                    </span>
-                  )}
-                  <span className="mt-1.5 flex items-center gap-2 text-xs font-medium text-slate-700">
-                    <span
-                      className={cn(
-                        "flex size-4 shrink-0 items-center justify-center rounded border",
-                        acknowledged ? "border-amber-600 bg-amber-600" : "border-slate-300 bg-white",
-                      )}
-                    >
-                      {acknowledged && <Check className="size-3 text-white" aria-hidden />}
-                    </span>
-                    {t("patientChart.close.recordAnyway")}
-                  </span>
-                </span>
-              </button>
-            )}
-
-            {/* What the diary already knows. Never a question. */}
-            <div
-              className={cn(
-                "flex items-start gap-2 rounded-xl border px-3 py-2.5",
-                nextAppointment
-                  ? "border-slate-200 bg-slate-50"
-                  : "border-sky-200 bg-sky-50/70",
+                </div>
               )}
-            >
-              <CalendarClock
-                className={cn(
-                  "mt-0.5 size-4 shrink-0",
-                  nextAppointment ? "text-slate-400" : "text-sky-600",
-                )}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-slate-700">
-                  {nextAppointment
-                    ? t("patientChart.close.nextBooked", { when: when ?? "" })
-                    : t("patientChart.close.nextNone")}
-                </p>
-                {!nextAppointment && (
-                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-                    {t("patientChart.close.nextNoneHint")}
-                  </p>
-                )}
-              </div>
-              {!nextAppointment && (
+
+              {needsAcknowledgement && (
                 <button
                   type="button"
-                  onClick={onScheduleNext}
-                  className="flex shrink-0 items-center gap-1 rounded-lg border border-sky-200 bg-white px-2 py-1 text-[11px] font-semibold text-sky-700 transition-colors hover:bg-sky-50"
-                >
-                  <CalendarPlus className="size-3" aria-hidden />
-                  {t("patientChart.close.scheduleNow")}
-                </button>
-              )}
-            </div>
-
-            {/* The charge for this visit, at whatever it actually was. */}
-            <div className="grid gap-1.5">
-              <label
-                className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
-                htmlFor="close-amount"
-              >
-                {t("patientChart.close.chargeLabel")}
-              </label>
-              <Input
-                id="close-amount"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="max-w-40 rounded-xl font-mono tabular-nums"
-              />
-              {outstandingDebt > 0 && (
-                <p className="text-[11px] text-slate-500">
-                  {t("patientChart.close.previousDebt", {
-                    amount: formatMoney(outstandingDebt),
-                  })}
-                </p>
-              )}
-            </div>
-
-            {/* The one thing the app cannot know. */}
-            <div className="grid gap-2">
-              <button
-                type="button"
-                onClick={() => setPaid((v) => !v)}
-                aria-pressed={paid}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-start transition-colors",
-                  paid
-                    ? "border-emerald-200 bg-emerald-50/70"
-                    : "border-slate-200 bg-white hover:bg-slate-50",
-                )}
-              >
-                <span
+                  onClick={() => setAcknowledged((v) => !v)}
+                  aria-pressed={acknowledged}
                   className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-md border",
-                    paid ? "border-emerald-600 bg-emerald-600" : "border-slate-300 bg-white",
+                    "mt-3 flex w-full items-start gap-3 rounded-md border-2 px-3 py-3 text-start transition-colors",
+                    acknowledged ? "border-cobalt bg-cobalt-tint" : "border-signal bg-paper hover:bg-ground",
                   )}
                 >
-                  {paid && <Check className="size-3.5 text-white" aria-hidden />}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-slate-800">
-                    {t("patientChart.close.paid")}
+                  <AlertTriangle className="mt-0.5 size-5 shrink-0 text-ink" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    {recentlyRecorded && (
+                      <span className="block text-[17px] leading-snug font-bold text-ink">
+                        {t("patientChart.close.recentWarning", { n: minutesSinceLast ?? 0 })}
+                      </span>
+                    )}
+                    {sessionIsEmpty && (
+                      <span className="block text-[17px] leading-snug font-bold text-ink">
+                        {t("patientChart.close.emptyWarning")}
+                      </span>
+                    )}
+                    <span className="mt-2 flex min-h-6 items-center gap-2.5 text-sm font-medium text-ink">
+                      <span
+                        className={cn(
+                          "flex size-6 shrink-0 items-center justify-center rounded-[4px] border-2",
+                          acknowledged ? "border-cobalt bg-cobalt" : "border-ink/40 bg-paper",
+                        )}
+                      >
+                        {acknowledged && <Check className="size-4 text-white" aria-hidden />}
+                      </span>
+                      {t("patientChart.close.recordAnyway")}
+                    </span>
                   </span>
-                  <span className="block text-[11px] leading-snug text-slate-500">
-                    {paid
-                      ? t("patientChart.close.paidHint")
-                      : t("patientChart.close.unpaidHint")}
+                </button>
+              )}
+            </section>
+
+            {/* The charge for this visit, at whatever it actually was. */}
+            <section className="border-b border-hair-soft px-6 py-5">
+              <h2 className="mb-2.5 text-[17px] font-bold text-ink">
+                <label htmlFor="close-amount">{t("patientChart.close.chargeLabel")}</label>
+              </h2>
+              <div className="grid items-start gap-4 sm:grid-cols-[200px_minmax(0,1fr)]">
+                <div className="flex h-[76px] items-center gap-1.5 rounded-md border-2 border-ink px-4 focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-cobalt">
+                  <span className="text-[22px] font-bold text-mute" aria-hidden>
+                    ₪
                   </span>
-                </span>
-              </button>
+                  <input
+                    id="close-amount"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    dir="ltr"
+                    aria-invalid={!amountValid || undefined}
+                    className="w-full min-w-0 border-0 bg-transparent p-0 font-display text-[48px] leading-none tabular-nums text-ink outline-none"
+                  />
+                </div>
+
+                {/* The one thing the app cannot know. */}
+                <div>
+                  <div
+                    role="group"
+                    aria-label={t("patientChart.close.paymentAria")}
+                    className="flex gap-0.5 rounded-md border border-hair bg-paper p-[3px]"
+                  >
+                    {([true, false] as const).map((value) => (
+                      <button
+                        key={String(value)}
+                        type="button"
+                        onClick={() => setPaid(value)}
+                        aria-pressed={paid === value}
+                        className={cn(
+                          "min-h-12 flex-1 rounded-[4px] px-3 text-[17px] font-medium transition-colors",
+                          paid === value ? "bg-cobalt font-bold text-white" : "text-mute hover:bg-ground",
+                        )}
+                      >
+                        {value ? t("patientChart.close.paid") : t("patientChart.close.notYet")}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-sm leading-snug text-mute">
+                    {paid ? t("patientChart.close.paidHint") : t("patientChart.close.unpaidHint")}
+                  </p>
+                </div>
+              </div>
 
               {paid && (
-                <div className="flex flex-wrap gap-1.5">
+                <div
+                  role="group"
+                  aria-label={t("patientChart.close.methodAria")}
+                  className="mt-3 flex flex-wrap gap-2"
+                >
                   {METHODS.map((m) => (
                     <button
                       key={m}
@@ -354,10 +364,10 @@ export function SessionCloseDialog({
                       onClick={() => setMethod(m)}
                       aria-pressed={method === m}
                       className={cn(
-                        "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                        "min-h-11 rounded-md border px-3 text-sm font-medium transition-colors",
                         method === m
-                          ? "border-sky-600 bg-sky-600 text-white"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                          ? "border-cobalt bg-cobalt font-bold text-white"
+                          : "border-hair bg-paper text-ink hover:bg-ground",
                       )}
                     >
                       {t(`billing.payment.method.${m}`)}
@@ -365,16 +375,48 @@ export function SessionCloseDialog({
                   ))}
                 </div>
               )}
-            </div>
+
+              {outstandingDebt > 0 && (
+                <p className="mt-3 text-sm leading-snug text-mute">
+                  {t("patientChart.close.previousDebt", {
+                    amount: formatMoney(outstandingDebt),
+                  })}
+                </p>
+              )}
+            </section>
+
+            {/* What the diary already knows. Never a question. */}
+            <section className="flex items-center gap-4 px-6 py-5">
+              <StateMark state={nextAppointment ? "plan" : "unsure"} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[17px] font-bold text-ink">
+                  {nextAppointment
+                    ? t("patientChart.close.nextBooked", { when: when ?? "" })
+                    : t("patientChart.close.nextNone")}
+                </p>
+                {!nextAppointment && (
+                  <p className="mt-0.5 text-sm leading-snug text-mute">
+                    {t("patientChart.close.nextNoneHint")}
+                  </p>
+                )}
+              </div>
+              {!nextAppointment && (
+                <Button variant="outline" onClick={onScheduleNext} className="shrink-0 text-sm">
+                  <CalendarPlus aria-hidden />
+                  {t("patientChart.close.scheduleNow")}
+                </Button>
+              )}
+            </section>
           </div>
         )}
 
         {!outcome && (
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+          <DialogFooter className="m-0 flex-row justify-end gap-2 rounded-none border-t border-hair bg-ground px-6 py-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
               {t("common.cancel")}
             </Button>
             <Button
+              size="lg"
               onClick={submit}
               disabled={!amountValid || busy || (needsAcknowledgement && !acknowledged)}
               className="gap-2"

@@ -1,8 +1,8 @@
 "use client"
 
-import { CheckCircle2 } from "lucide-react"
 import { useEffect } from "react"
 
+import { StateMark } from "@/components/ui/state-mark"
 import { cn } from "@/lib/utils"
 
 /**
@@ -30,12 +30,11 @@ export function BillingToast({
     <div
       role="status"
       className={cn(
-        "pointer-events-none fixed bottom-6 right-6 z-[100] flex max-w-sm items-start gap-2.5 rounded-xl border border-emerald-200/80 bg-white px-4 py-3 shadow-lg",
-        "ring-1 ring-slate-100",
+        "pointer-events-none fixed bottom-6 end-6 z-[100] flex max-w-sm items-center gap-3 rounded-md border border-hair bg-paper px-4 py-3",
       )}
     >
-      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden />
-      <p className="text-sm font-medium leading-snug text-slate-800">{message}</p>
+      <StateMark state="done" />
+      <p className="text-[17px] font-medium leading-snug text-ink">{message}</p>
     </div>
   )
 }

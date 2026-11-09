@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { Loader2, Settings2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Loader2 } from "lucide-react"
 
+import { PagePlate, PlateLabel, PlateSpacer } from "@/components/layout/page-plate"
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -16,9 +17,25 @@ import { useClinicSettings } from "@/features/settings/lib/use-clinic-settings"
 import { cn } from "@/lib/utils"
 
 export default function SettingsPage() {
-  const { t, isRtl } = useLocale()
+  const { t } = useLocale()
   const { settings, setSettings, isDirty, save, discard, hydrated } = useClinicSettings()
   const [saving, setSaving] = useState(false)
+
+  /**
+   * Whether the plate is still on screen. The plate scrolls away with the page
+   * (see the app layout), and a change is usually made far down a tab — so once
+   * it has gone, the same save comes back as a bar at the foot. Only one of the
+   * two is ever shown: one orange button per screen.
+   */
+  const topRef = useRef<HTMLDivElement>(null)
+  const [plateInView, setPlateInView] = useState(true)
+  useEffect(() => {
+    const el = topRef.current
+    if (!el || typeof IntersectionObserver === "undefined") return
+    const io = new IntersectionObserver(([entry]) => setPlateInView(entry.isIntersecting))
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hydrated])
 
   const handleSave = () => {
     setSaving(true)
@@ -30,8 +47,8 @@ export default function SettingsPage() {
 
   if (!hydrated) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
-        <Loader2 className="size-5 animate-spin text-sky-600" aria-hidden />
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-mute">
+        <Loader2 className="size-5 animate-spin text-cobalt" aria-hidden />
         <span className="ms-2">{t("settings.loading")}</span>
       </div>
     )
@@ -49,87 +66,88 @@ export default function SettingsPage() {
     { id: "security", labelKey: "settings.tab.security" as const },
   ]
 
+  const saveButton = (
+    <Button type="button" onClick={handleSave} disabled={saving} className="min-w-[140px] gap-2">
+      {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+      {t("settings.save")}
+    </Button>
+  )
+
   return (
-    <div className={cn("space-y-6", isDirty && "pb-24")}>
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2.5">
-          <Settings2 className="size-6 text-sky-600" aria-hidden />
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{t("settings.title")}</h1>
+    <div className={cn("relative mx-auto max-w-[1040px] space-y-6", isDirty && "pb-24")}>
+      <PagePlate>
+        <div className="flex min-w-0 flex-col">
+          {settings.profile.clinicName ? <PlateLabel>{settings.profile.clinicName}</PlateLabel> : null}
+          <h1 className="mt-0.5 truncate font-display text-[40px] leading-[0.95] text-white sm:text-[56px]">
+            {t("settings.title")}
+          </h1>
         </div>
-        <p className="max-w-2xl text-sm leading-relaxed text-slate-600">{t("settings.subtitle")}</p>
-      </header>
+        <PlateSpacer />
+        {isDirty ? (
+          <div className="flex flex-wrap items-center gap-3" role="region" aria-label={t("settings.saveBar.region")}>
+            <PlateLabel now>{t("settings.saveBar.hint")}</PlateLabel>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={discard}
+              className="border-white/25 bg-transparent text-white hover:bg-white/10"
+            >
+              {t("settings.discard")}
+            </Button>
+            {plateInView ? saveButton : null}
+          </div>
+        ) : null}
+      </PagePlate>
+
+      <div ref={topRef} aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px" />
+      <p className="max-w-2xl text-sm leading-snug text-mute">{t("settings.subtitle")}</p>
 
       <Tabs defaultValue="profile" className="flex flex-col gap-6">
-        <TabsList variant="line" className="w-full min-w-0 justify-start gap-0 border-b border-slate-200 bg-transparent p-0">
+        <TabsList variant="line" className="w-full min-w-0 justify-start gap-0 border-b border-hair p-0">
           {tabCfg.map((tab) => (
-            <TabsTrigger
-              key={tab.id}
-              value={tab.id}
-              className="rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 py-2.5 text-sm font-semibold text-slate-500 data-active:border-sky-600 data-active:text-slate-900 data-active:shadow-none"
-            >
+            <TabsTrigger key={tab.id} value={tab.id} className="px-3 lg:px-4">
               {t(tab.labelKey)}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent
-          value="profile"
-          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
-        >
+        <TabsContent value="profile" className="mt-0 outline-none">
           <ProfilePracticeTab settings={settings} onChange={setSettings} />
         </TabsContent>
-        <TabsContent
-          value="integrations"
-          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
-        >
+        <TabsContent value="integrations" className="mt-0 outline-none">
           <IntegrationsTab settings={settings} onChange={setSettings} />
         </TabsContent>
-        <TabsContent
-          value="clinical"
-          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
-        >
+        <TabsContent value="clinical" className="mt-0 outline-none">
           <ClinicalPreferencesTab settings={settings} onChange={setSettings} />
         </TabsContent>
-        <TabsContent
-          value="notifications"
-          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
-        >
+        <TabsContent value="notifications" className="mt-0 outline-none">
           <NotificationsTab settings={settings} onChange={setSettings} />
         </TabsContent>
-        <TabsContent
-          value="data"
-          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
-        >
+        <TabsContent value="data" className="mt-0 outline-none">
           <DataExportTab />
         </TabsContent>
-        <TabsContent
-          value="security"
-          className="mt-0 outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
-        >
+        <TabsContent value="security" className="mt-0 outline-none">
           <SecurityTab />
         </TabsContent>
       </Tabs>
 
-      {isDirty ? (
+      {isDirty && !plateInView ? (
         <div
-          className={cn(
-            "pointer-events-none fixed inset-x-0 bottom-0 z-50",
-            isRtl ? "lg:pe-72" : "lg:ps-72",
-          )}
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-50 md:ps-[88px]"
           role="region"
           aria-label={t("settings.saveBar.region")}
         >
-          <div className="pointer-events-auto border-t border-slate-200/90 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:px-6">
+          <div className="pointer-events-auto border-t border-hair bg-paper px-4 py-3 sm:px-6">
             <div className="mx-auto flex max-w-[1040px] flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-medium text-slate-600">{t("settings.saveBar.hint")}</p>
+              <p className="flex items-center gap-2 text-sm font-medium text-ink">
+                <span className="size-2.5 shrink-0 rounded-full bg-signal" aria-hidden />
+                {t("settings.saveBar.hint")}
+              </p>
               <div className="flex items-center gap-2">
-                <Button type="button" variant="ghost" onClick={discard} className="text-slate-600">
+                <Button type="button" variant="outline" onClick={discard}>
                   {t("settings.discard")}
                 </Button>
-                <Button type="button" onClick={handleSave} disabled={saving} className="min-w-[140px] gap-2">
-                  {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-                  {t("settings.save")}
-                </Button>
+                {saveButton}
               </div>
             </div>
           </div>

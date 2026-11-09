@@ -18,12 +18,6 @@ import type {
   ProjectedCalendarVisit,
 } from "@/types/domain"
 
-const TYPE_TONE: Record<BillingTreatmentType, string> = {
-  first: "bg-violet-500",
-  adjustments: "bg-emerald-500",
-  kupa: "bg-amber-500",
-}
-
 /** Insights drawer — currency + copy follow locale; progress bars align in RTL. */
 export function InsightsPanel({ invoices }: { invoices: BillingInvoice[] }) {
   const { locale, isRtl, formatMoney, t } = useLocale()
@@ -91,40 +85,37 @@ export function InsightsPanel({ invoices }: { invoices: BillingInvoice[] }) {
   const typeCount = rows.filter((r) => r.revenue > 0).length
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl bg-slate-50 p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-          {t("insights.paidThisMonth")}
-        </p>
-        <p className="mt-2 font-mono text-3xl font-semibold tabular-nums text-slate-900">
+    <div className="divide-y divide-hair">
+      <section className="pb-6">
+        <p className="text-sm text-mute">{t("insights.paidThisMonth")}</p>
+        <p className="mt-1 font-display text-[40px] leading-none tabular-nums text-ink">
           {formatMoney(monthly)}
         </p>
-        <p className="mt-1 text-xs text-slate-500">{t("insights.acrossTypes", { count: typeCount })}</p>
+        <p className="mt-2 text-sm text-mute">{t("insights.acrossTypes", { count: typeCount })}</p>
       </section>
 
-      <section>
-        <h3 className="font-heading text-sm font-semibold tracking-tight text-slate-900">
-          {t("insights.revenueByType")}
-        </h3>
-        <p className="mt-0.5 text-xs text-slate-500">{t("insights.revenueByTypeSub")}</p>
+      <section className="py-6">
+        <h3 className="text-[17px] font-bold text-ink">{t("insights.revenueByType")}</h3>
+        <p className="mt-0.5 text-sm text-mute">{t("insights.revenueByTypeSub")}</p>
 
-        <ul className="mt-4 space-y-3.5">
+        {/* One colour for every type: the type is named in text, never coded
+            in colour (DESIGN.md), and the bar's length is the whole message. */}
+        <ul className="mt-4 space-y-4">
           {rows.map((row) => {
             const widthPct = Math.max(2, Math.round((row.revenue / maxRevenue) * 100))
             return (
               <li key={row.type}>
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium text-slate-800">{row.label}</p>
-                  <p className="font-mono text-sm font-semibold tabular-nums text-slate-900">
+                  <p className="text-[17px] text-ink">{row.label}</p>
+                  <p className="text-[17px] font-bold tabular-nums text-ink">
                     {formatMoney(row.revenue)}
-                    <span className="ms-2 text-[11px] font-normal text-slate-400">{row.share}%</span>
+                    <span className="ms-2 text-sm font-normal text-mute">{row.share}%</span>
                   </p>
                 </div>
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-[2px] bg-sunk">
                   <div
                     className={cn(
-                      "h-full rounded-full transition-[width] duration-300 ease-out",
-                      TYPE_TONE[row.type],
+                      "h-full rounded-[2px] bg-cobalt transition-[width] duration-300 ease-out",
                       isRtl && "ms-auto",
                     )}
                     style={{ width: `${widthPct}%` }}
@@ -137,20 +128,18 @@ export function InsightsPanel({ invoices }: { invoices: BillingInvoice[] }) {
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-          {t("insights.projectedRevenue")}
-        </p>
-        <p className="mt-2 font-mono text-3xl font-semibold tabular-nums text-slate-900">
+      <section className="py-6">
+        <p className="text-sm text-mute">{t("insights.projectedRevenue")}</p>
+        <p className="mt-1 font-display text-[40px] leading-none tabular-nums text-ink">
           {formatMoney(projectedTotal)}
         </p>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+        <p className="mt-2 text-sm leading-relaxed text-mute">
           {t("insights.projectedBlurb", { count: projectedCount, range: rangeLabel })}
         </p>
       </section>
 
-      <section className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-xs text-slate-500">
-        <p className="font-semibold text-slate-700">{t("insights.roadmap.title")}</p>
+      <section className="pt-6 text-sm text-mute">
+        <p className="font-medium text-ink">{t("insights.roadmap.title")}</p>
         <p className="mt-1 leading-relaxed">{t("insights.roadmap.body")}</p>
       </section>
     </div>

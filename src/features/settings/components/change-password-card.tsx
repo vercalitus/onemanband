@@ -1,11 +1,19 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { CheckCircle2, KeyRound, Loader2 } from "lucide-react"
+import { KeyRound, Loader2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  AttentionNote,
+  SettingsField,
+  SettingsSection,
+  StateLine,
+  hintClass,
+  inputClass,
+} from "@/features/settings/components/settings-ui"
 import { isSupabaseConfigured } from "@/lib/env"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
@@ -108,28 +116,14 @@ export function ChangePasswordCard() {
     setDone(true)
   }
 
-  const card = "rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
-  const label = "text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
-  const field = "h-11 rounded-xl border-slate-200"
-
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-heading text-lg font-semibold text-slate-900">
-          {t("security.password.title")}
-        </h2>
-        <p className="text-sm leading-relaxed text-slate-600">{t("security.password.subtitle")}</p>
-      </div>
-
+    <SettingsSection title={t("security.password.title")} description={t("security.password.subtitle")}>
       {!configured ? (
-        <div className={`${card} text-sm text-slate-600`}>{t("security.password.unavailable")}</div>
+        <p className={hintClass}>{t("security.password.unavailable")}</p>
       ) : (
-        <form onSubmit={handleSubmit} className={card}>
-          <div className="grid gap-3">
-            <div className="grid gap-1.5">
-              <label htmlFor="password-current" className={label}>
-                {t("security.password.current")}
-              </label>
+        <form onSubmit={handleSubmit} className="max-w-md">
+          <div className="grid gap-5">
+            <SettingsField label={t("security.password.current")}>
               <Input
                 id="password-current"
                 type="password"
@@ -138,13 +132,13 @@ export function ChangePasswordCard() {
                 dir="ltr"
                 value={values.current}
                 onChange={(e) => set("current", e.target.value)}
-                className={field}
+                className={inputClass}
               />
-            </div>
-            <div className="grid gap-1.5">
-              <label htmlFor="password-next" className={label}>
-                {t("security.password.next")}
-              </label>
+            </SettingsField>
+            <SettingsField
+              label={t("security.password.next")}
+              hint={t("security.password.hint", { min: MIN_LENGTH })}
+            >
               <Input
                 id="password-next"
                 type="password"
@@ -153,16 +147,10 @@ export function ChangePasswordCard() {
                 dir="ltr"
                 value={values.next}
                 onChange={(e) => set("next", e.target.value)}
-                className={field}
+                className={inputClass}
               />
-              <p className="text-xs text-slate-500">
-                {t("security.password.hint", { min: MIN_LENGTH })}
-              </p>
-            </div>
-            <div className="grid gap-1.5">
-              <label htmlFor="password-confirm" className={label}>
-                {t("security.password.confirm")}
-              </label>
+            </SettingsField>
+            <SettingsField label={t("security.password.confirm")}>
               <Input
                 id="password-confirm"
                 type="password"
@@ -171,31 +159,24 @@ export function ChangePasswordCard() {
                 dir="ltr"
                 value={values.confirm}
                 onChange={(e) => set("confirm", e.target.value)}
-                className={field}
+                className={inputClass}
               />
-            </div>
+            </SettingsField>
           </div>
 
-          {error && (
-            <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>
-          )}
+          {error && <AttentionNote className="mt-4">{error}</AttentionNote>}
           {done && (
-            <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              <CheckCircle2 className="size-4 shrink-0" />
-              {t("security.password.success")}
+            <p className="mt-4" role="status">
+              <StateLine state="done">{t("security.password.success")}</StateLine>
             </p>
           )}
 
-          <Button
-            type="submit"
-            disabled={busy}
-            className="mt-4 h-11 rounded-xl bg-sky-600 font-semibold text-white hover:bg-sky-700"
-          >
+          <Button type="submit" disabled={busy} className="mt-5 gap-2">
             {busy ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
             {t("security.password.submit")}
           </Button>
         </form>
       )}
-    </div>
+    </SettingsSection>
   )
 }

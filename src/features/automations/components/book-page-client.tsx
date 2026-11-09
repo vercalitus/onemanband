@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { FileUp, Loader2, X } from "lucide-react"
+import { ArrowLeft, FileUp, Loader2, X } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { StateMark } from "@/components/ui/state-mark"
 import { PublicNotice, PublicShell } from "@/features/automations/components/public-shell"
 import { SlotPicker } from "@/features/automations/components/slot-picker"
 import { randomId, upsertIntake } from "@/features/automations/lib/automation-store"
@@ -14,7 +15,6 @@ import { useBusySlots } from "@/features/automations/lib/use-busy-slots"
 import { markTokenUsed } from "@/features/automations/lib/automation-store"
 import { resolvePublicToken } from "@/features/automations/lib/public-token"
 import { readClinicSettings } from "@/lib/clinic-settings-storage"
-import { cn } from "@/lib/utils"
 import type { AppointmentType } from "@/types/domain"
 import type { ClinicSettings } from "@/types/clinic-settings"
 import type { PatientIntake } from "@/types/automation"
@@ -22,7 +22,7 @@ import type { PatientIntake } from "@/types/automation"
 type Stage = "loading" | "invalid" | "disabled" | "details" | "slot" | "done"
 
 const CONTROL =
-  "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+  "h-12 w-full rounded-md border border-hair bg-paper px-3 text-[17px] text-ink outline-none focus-visible:border-cobalt focus-visible:ring-3 focus-visible:ring-cobalt/20"
 
 /**
  * Patient self-registration and first booking.
@@ -181,8 +181,8 @@ export function BookPageClient({ token }: { token: string }) {
   if (stage === "loading") {
     return (
       <PublicShell clinicName={clinicName} title={t("public.book.title")}>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="size-4 animate-spin text-sky-600" aria-hidden />
+        <div className="flex items-center gap-2 text-[17px] text-mute">
+          <Loader2 className="size-5 animate-spin text-cobalt" aria-hidden />
           {t("public.loading")}
         </div>
       </PublicShell>
@@ -229,7 +229,8 @@ export function BookPageClient({ token }: { token: string }) {
         subtitle={t("public.book.slotSubtitle")}
       >
         <SlotPicker slots={slots} onPick={submit} emptyLabel={t("public.slots.none")} />
-        <Button variant="ghost" className="mt-4 text-slate-600" onClick={() => setStage("details")}>
+        <Button variant="outline" className="mt-6 gap-2" onClick={() => setStage("details")}>
+          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
           {t("public.back")}
         </Button>
       </PublicShell>
@@ -242,7 +243,7 @@ export function BookPageClient({ token }: { token: string }) {
       title={t("public.book.title")}
       subtitle={t("public.book.subtitle")}
     >
-      <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="space-y-5 rounded-md border border-hair bg-paper p-4 sm:p-5">
         <Field label={t("public.book.fullName")} required>
           <Input
             value={fullName}
@@ -284,7 +285,7 @@ export function BookPageClient({ token }: { token: string }) {
             <select
               value={type}
               onChange={(e) => setType(e.target.value as AppointmentType)}
-              className={cn(CONTROL, "appearance-none")}
+              className={CONTROL}
             >
               {allowedTypes.map((row) => (
                 <option key={row.type} value={row.type}>
@@ -299,7 +300,7 @@ export function BookPageClient({ token }: { token: string }) {
             value={visitReason}
             onChange={(e) => setVisitReason(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            className="w-full rounded-md border border-hair bg-paper px-3 py-2.5 text-[17px] leading-relaxed text-ink outline-none focus-visible:border-cobalt focus-visible:ring-3 focus-visible:ring-cobalt/20"
           />
         </Field>
 
@@ -311,16 +312,19 @@ export function BookPageClient({ token }: { token: string }) {
         />
 
         {error ? (
-          <p className="text-sm font-medium text-[rgb(171,119,93)]" role="alert">
+          <p
+            className="rounded-md border border-signal bg-signal-tint px-3 py-2 text-[17px] text-ink"
+            role="alert"
+          >
             {error}
           </p>
         ) : null}
 
-        <Button className="h-11 w-full text-base" onClick={goToSlots}>
+        <Button size="lg" className="w-full" onClick={goToSlots}>
           {t("public.book.continue")}
         </Button>
       </div>
-      <p className="mt-4 text-xs leading-relaxed text-slate-500">{t("public.book.privacy")}</p>
+      <p className="mt-4 text-sm leading-relaxed text-mute">{t("public.book.privacy")}</p>
     </PublicShell>
   )
 }
@@ -336,9 +340,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+      <span className="mb-1.5 block text-sm font-medium text-mute">
         {label}
-        {required ? <span className="text-[rgb(171,119,93)]"> *</span> : null}
+        {required ? <span aria-hidden> *</span> : null}
       </span>
       {children}
     </label>
@@ -401,18 +405,18 @@ function DocumentPicker({
 
   return (
     <div>
-      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+      <span className="mb-1.5 block text-sm font-medium text-mute">
         {t("public.book.documents")}
-        {required ? <span className="text-[rgb(171,119,93)]"> *</span> : null}
+        {required ? <span aria-hidden> *</span> : null}
       </span>
-      <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-3.5 py-3 text-sm text-slate-600 transition-colors hover:border-sky-400">
-        <FileUp className="size-4 text-sky-600" aria-hidden />
+      <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-md border border-dashed border-ink/30 bg-ground px-3.5 py-3 text-[17px] text-ink transition-colors hover:border-cobalt focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-cobalt">
+        <FileUp className="size-5 shrink-0 text-cobalt" aria-hidden />
         {uploading > 0 ? t("public.book.uploading") : t("public.book.documentsHint")}
         <input
           type="file"
           multiple
           accept="image/*,.pdf"
-          className="hidden"
+          className="sr-only"
           disabled={uploading > 0}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? [])
@@ -422,23 +426,29 @@ function DocumentPicker({
         />
       </label>
       {failed ? (
-        <p className="mt-2 text-sm font-medium text-[rgb(171,119,93)]" role="alert">
+        <p
+          className="mt-2 rounded-md border border-signal bg-signal-tint px-3 py-2 text-sm text-ink"
+          role="alert"
+        >
           {t("public.book.uploadFailed", { name: failed })}
         </p>
       ) : null}
       {documents.length ? (
-        <ul className="mt-2 space-y-1.5">
+        <ul className="mt-2 divide-y divide-hair-soft rounded-md border border-hair">
           {documents.map((doc, i) => (
             <li
               key={`${doc.path || doc.name}-${i}`}
-              className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              className="flex items-center justify-between gap-2 ps-3 text-[17px] text-ink"
             >
-              <span className="truncate">{doc.name}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <StateMark state="done" />
+                <span className="truncate">{doc.name}</span>
+              </span>
               <button
                 type="button"
                 aria-label={`${t("public.book.removeDocument")}: ${doc.name}`}
                 onClick={() => onChange(documents.filter((_, idx) => idx !== i))}
-                className="shrink-0 text-slate-400 hover:text-slate-700"
+                className="flex size-11 shrink-0 items-center justify-center text-mute hover:text-ink"
               >
                 <X className="size-4" aria-hidden />
               </button>

@@ -81,24 +81,19 @@ function LoginForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-sm rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl"
+      className="w-full max-w-sm rounded-md border border-hair bg-paper p-6 sm:p-7"
     >
-      <div className="mb-6 flex flex-col items-center gap-2 text-center">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
-          <ShieldCheck className="size-6 stroke-[1.6]" />
-        </span>
-        <h1 className="font-heading text-xl font-semibold tracking-tight text-slate-900">
-          {t("login.title")}
-        </h1>
-        <p className="text-sm text-slate-500">{t("login.subtitle")}</p>
+      <div className="mb-6">
+        <h1 className="text-[22px] leading-tight font-bold text-ink">{t("login.title")}</h1>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-mute">
+          <ShieldCheck className="size-4 shrink-0" aria-hidden />
+          {t("login.subtitle")}
+        </p>
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-5">
         <div className="grid gap-1.5">
-          <label
-            htmlFor="login-email"
-            className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
-          >
+          <label htmlFor="login-email" className="text-sm font-medium text-mute">
             {t("login.email")}
           </label>
           <Input
@@ -116,14 +111,11 @@ function LoginForm() {
             spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-11 rounded-xl border-slate-200"
+            className="border-hair"
           />
         </div>
         <div className="grid gap-1.5">
-          <label
-            htmlFor="login-password"
-            className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
-          >
+          <label htmlFor="login-password" className="text-sm font-medium text-mute">
             {t("login.password")}
           </label>
           {/* A provisioned account arrives with a long random password that has
@@ -138,14 +130,14 @@ function LoginForm() {
               dir="ltr"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-11 rounded-xl border-slate-200 pe-11"
+              className="border-hair pe-11"
             />
             <button
               type="button"
               onClick={() => setRevealed((v) => !v)}
               aria-label={revealed ? t("login.hidePassword") : t("login.showPassword")}
               aria-pressed={revealed}
-              className="absolute inset-y-0 end-0 flex w-11 items-center justify-center text-slate-400 transition-colors hover:text-slate-600"
+              className="absolute inset-y-0 end-0 flex w-11 items-center justify-center text-mute transition-colors hover:text-ink"
             >
               {revealed ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
             </button>
@@ -153,25 +145,25 @@ function LoginForm() {
         </div>
       </div>
 
-      <div className="mt-2.5 flex justify-end">
+      <div className="mt-1 flex justify-end">
         <button
           type="button"
           onClick={handleForgot}
           disabled={busy}
-          className="text-xs font-medium text-slate-500 transition-colors hover:text-sky-700 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center text-sm font-medium text-cobalt underline-offset-3 hover:underline disabled:opacity-50"
         >
           {t("login.forgot")}
         </button>
       </div>
 
       {sent && (
-        <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-center text-sm text-sky-700">
+        <p className="mt-3 rounded-md bg-cobalt-tint px-3 py-2 text-sm text-ink" role="status">
           {t("login.forgot.sent")}
         </p>
       )}
 
       {error && (
-        <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-center text-sm text-rose-600">
+        <p className="mt-3 rounded-md border border-signal bg-signal-tint px-3 py-2 text-sm text-ink" role="alert">
           {error}
         </p>
       )}
@@ -179,7 +171,8 @@ function LoginForm() {
       <Button
         type="submit"
         disabled={busy}
-        className="mt-5 h-11 w-full rounded-xl bg-sky-600 font-semibold text-white hover:bg-sky-700"
+        size="lg"
+        className="mt-5 w-full"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
         {t("login.submit")}
@@ -190,10 +183,24 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Suspense fallback={null}>
-        <LoginForm />
-      </Suspense>
-    </main>
+    <div className="flex min-h-screen flex-col bg-ground">
+      {/* The cobalt band the app opens with, and its mark, so signing in
+          already looks like the place it leads to. */}
+      <header className="on-cobalt bg-cobalt">
+        <div className="mx-auto flex min-h-24 max-w-sm items-center px-4">
+          <span
+            className="flex size-12 items-center justify-center rounded-md border-2 border-white font-display text-[22px] leading-none text-white"
+            aria-hidden
+          >
+            ob
+          </span>
+        </div>
+      </header>
+      <main className="flex flex-1 items-start justify-center px-4 pt-10 pb-16 sm:pt-16">
+        <Suspense fallback={null}>
+          <LoginForm />
+        </Suspense>
+      </main>
+    </div>
   )
 }

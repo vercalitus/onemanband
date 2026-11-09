@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Copy, Link2, RefreshCw } from "lucide-react"
+import { Check, Copy, Lock, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -72,52 +72,41 @@ export function CalendarSubscription() {
   if (state === "unavailable") return null
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-      <div className="flex items-start gap-3">
-        <Link2 className="mt-0.5 size-4 shrink-0 text-sky-600" aria-hidden />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900">
-            {t("settings.calendarFeed.title")}
-          </p>
-          <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-            {t("settings.calendarFeed.how")}
-          </p>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <input
-              readOnly
-              dir="ltr"
-              value={url ?? ""}
-              onFocus={(e) => e.currentTarget.select()}
-              className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 font-mono text-xs text-slate-700"
-              aria-label={t("settings.calendarFeed.title")}
-            />
-            <Button
-              type="button"
-              onClick={copy}
-              disabled={!url}
-              className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-xs font-semibold text-white hover:bg-sky-700"
-            >
-              {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-              {copied ? t("settings.calendarFeed.copied") : t("settings.calendarFeed.copy")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={replace}
-              disabled={replacing || !url}
-              className="h-9 gap-1.5 rounded-lg border-slate-200 px-3 text-xs font-semibold text-slate-700"
-            >
-              <RefreshCw className="size-3.5" aria-hidden />
-              {t("settings.calendarFeed.replace")}
-            </Button>
-          </div>
-
-          <p className="mt-2.5 text-xs leading-relaxed text-amber-700">
-            {t("settings.calendarFeed.warning")}
-          </p>
-        </div>
+    <div className="grid gap-3">
+      <div>
+        <p className="text-[17px] leading-snug font-medium text-ink">{t("settings.calendarFeed.title")}</p>
+        <p className="mt-1 max-w-2xl text-sm leading-snug text-mute">{t("settings.calendarFeed.how")}</p>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          readOnly
+          dir="ltr"
+          value={url ?? ""}
+          onFocus={(e) => e.currentTarget.select()}
+          className="h-11 min-w-0 flex-1 basis-64 rounded-md border border-hair bg-ground px-3 font-mono text-sm text-ink outline-none focus-visible:border-cobalt focus-visible:ring-3 focus-visible:ring-cobalt/20"
+          aria-label={t("settings.calendarFeed.title")}
+        />
+        <Button type="button" variant="outline" onClick={copy} disabled={!url} className="gap-2 text-sm">
+          {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+          {copied ? t("settings.calendarFeed.copied") : t("settings.calendarFeed.copy")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={replace}
+          disabled={replacing || !url}
+          className="gap-2 text-sm"
+        >
+          <RefreshCw className="size-4" aria-hidden />
+          {t("settings.calendarFeed.replace")}
+        </Button>
+      </div>
+
+      <p className="flex max-w-2xl items-start gap-2 text-sm leading-snug text-ink">
+        <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+        {t("settings.calendarFeed.warning")}
+      </p>
     </div>
   )
 }

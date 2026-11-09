@@ -5,6 +5,7 @@ import { HeaderBarDate } from "@/components/layout/header-bar-date"
 import { HeaderActions } from "@/components/layout/header-actions"
 import { LocaleSwitcher } from "@/components/layout/locale-switcher"
 import { MobileNav } from "@/components/layout/mobile-nav"
+import { PlateProvider, PlateSlot } from "@/components/layout/page-plate"
 import { SignOutButton } from "@/components/layout/sign-out-button"
 import { AddTaskProvider } from "@/components/providers/add-task-provider"
 import { GlobalAddPatientProvider } from "@/components/providers/global-add-patient-provider"
@@ -21,12 +22,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           landscape a 96px band held in place is an eighth of the screen. */}
       <header className="on-cobalt bg-cobalt text-white">
         <div className="flex min-h-24 w-full min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+          {/* Phone only: the menu and the tools get a row of their own above
+              the page's facts. From tablet width up they live in the rail. */}
+          <div className="order-first flex w-full items-center gap-2 md:hidden">
             <MobileNav />
-            <HeaderBarDate />
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
+            <span className="flex-1" aria-hidden />
             <HeaderActions />
             <LocaleSwitcher />
             {/*
@@ -41,6 +41,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
              */}
             <SignOutButton />
           </div>
+
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-x-6 gap-y-2 md:w-auto md:flex-1">
+            <PlateSlot fallback={<HeaderBarDate />} />
+          </div>
         </div>
       </header>
 
@@ -49,6 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   )
 
   return (
+    <PlateProvider>
     <TodosProvider>
       <AddTaskProvider>
         <PatientExtrasProvider>
@@ -70,5 +75,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </PatientExtrasProvider>
       </AddTaskProvider>
     </TodosProvider>
+    </PlateProvider>
   )
 }

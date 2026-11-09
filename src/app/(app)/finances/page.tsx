@@ -1,23 +1,20 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import {
-  BarChart3,
-  Banknote,
-  FileDown,
-  FileText,
-  Percent,
-  Plug,
-  Receipt,
-  Search,
-  Wallet,
-} from "lucide-react"
+import { BarChart3, FileDown, FileText, Search } from "lucide-react"
 
+import {
+  PagePlate,
+  PlateDebt,
+  PlateDivider,
+  PlateFact,
+} from "@/components/layout/page-plate"
 import { useLocale } from "@/components/providers/locale-provider"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidePanel } from "@/components/ui/side-panel"
+import { StateLegend } from "@/components/ui/state-mark"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BillingToast } from "@/features/finances/components/billing-toast"
 import { HistoryRow } from "@/features/finances/components/history-row"
@@ -27,6 +24,7 @@ import { KpiCard } from "@/features/finances/components/kpi-card"
 import {
   PendingInvoiceRow,
   PendingVisitRow,
+  ROW_BUTTON,
 } from "@/features/finances/components/pending-row"
 import { RecordPaymentDialog } from "@/features/finances/components/record-payment-dialog"
 import {
@@ -38,16 +36,11 @@ import {
 } from "@/features/finances/lib/derive-billing"
 import { downloadHistoryCsv, printHistoryForPdf } from "@/features/finances/lib/export-history"
 import { useBilling } from "@/features/finances/lib/use-billing"
-import {
-  darkCardHeaderClass,
-  elevatedCardBodyClass,
-  elevatedCardClass,
-} from "@/lib/clinic-card-styles"
 import { PREVIOUS_MONTH_REVENUE } from "@/lib/mock-finances"
 import { cn } from "@/lib/utils"
 
 export default function BillingPage() {
-  const { t, formatMoney, isRtl } = useLocale()
+  const { t, formatMoney } = useLocale()
   const allPatients = useMergedPatients()
   const {
     invoices,
@@ -153,227 +146,184 @@ export default function BillingPage() {
   const pendingCount = uninvoicedVisits.length + pendingInvoices.length
   const filteredPendingCount = filteredPendingVisits.length + filteredPendingInvoices.length
 
+  const searchField = (value: string, onChange: (v: string) => void, label: string) => (
+    <div className="relative w-full min-w-0 sm:max-w-md">
+      <Search
+        className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-faint"
+        aria-hidden
+      />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={label}
+        className="ps-10"
+        aria-label={label}
+      />
+    </div>
+  )
+
   return (
-    <div className="space-y-6 sm:space-y-7">
-      {/* KPI strip */}
-      <section className="grid gap-4 md:grid-cols-3">
+    <div className="space-y-6">
+      {/* The plate carries the three figures the page already computes. The
+          debt is outlined in orange only while there is one to collect. */}
+      <PagePlate>
         <KpiCard
-          label={t("finances.kpi.outstanding")}
-          value={formatMoney(outstanding)}
-          icon={Wallet}
-          context={t("finances.kpi.invoicesAwaiting", { count: pendingInvoices.length })}
-        />
-        <KpiCard
+          display
           label={t("finances.kpi.monthlyRevenue")}
           value={formatMoney(monthlyRevenue)}
-          icon={Banknote}
           delta={monthlyDelta}
           context={
             liveLedger
               ? undefined
               : t("finances.kpi.vsLastMonth", { amount: formatMoney(PREVIOUS_MONTH_REVENUE) })
           }
-          contextMonospace
         />
+        <PlateDivider />
+        {outstanding > 0 ? (
+          <PlateDebt
+            amount={formatMoney(outstanding)}
+            label={t("finances.kpi.outstanding")}
+            sub={t("finances.kpi.invoicesAwaiting", { count: pendingInvoices.length })}
+          />
+        ) : (
+          <PlateFact label={t("finances.kpi.outstanding")}>{formatMoney(outstanding)}</PlateFact>
+        )}
         <KpiCard
           label={t("finances.kpi.collectionRate")}
           value={collectionRate === null ? "—" : `${collectionRate}%`}
-          icon={Percent}
           context={t("finances.kpi.paidCollectible")}
-          footer={
-            collectionRate === null ? null : (
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={cn(
-                    "h-full rounded-full bg-sky-500 transition-all",
-                    isRtl && "ms-auto",
-                  )}
-                  style={{ width: `${collectionRate}%` }}
-                  aria-hidden
-                />
-              </div>
-            )
-          }
         />
-      </section>
+      </PagePlate>
 
-      {/* Advanced Insights trigger */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setInsightsOpen(true)}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5",
-            "text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-sky-200 hover:text-sky-700",
-          )}
-        >
-          <BarChart3 className="size-3.5 stroke-[2]" aria-hidden />
-          {t("finances.advancedInsights")}
-        </button>
-      </div>
+      <h1 className="sr-only">{t("finances.card.invoices")}</h1>
 
-      {/* Main: invoices + invoicing provider link (no last-sync noise) */}
-      <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
-        <Card className={elevatedCardClass}>
-          <CardHeader className={cn(darkCardHeaderClass, "gap-3 py-4")}>
-            <div className="flex items-center gap-2.5">
-              <Receipt className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-              <CardTitle className="text-xl font-bold tracking-tight text-white">
-                {t("finances.card.invoices")}
-              </CardTitle>
-              <span className="text-xs font-medium text-white/50">
-                {pendingCount === 0
-                  ? t("finances.card.pendingSummary.none")
-                  : t("finances.card.pendingSummary.some", { count: pendingCount })}
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className={cn(elevatedCardBodyClass, "bg-slate-50/60 py-6")}>
-            <Tabs defaultValue="pending" className="gap-5">
-              <TabsList className="bg-white shadow-[0_1px_3px_-1px_rgba(15,23,42,0.06)] ring-1 ring-slate-100">
-                <TabsTrigger value="pending">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <section className="min-w-0 rounded-md border border-hair bg-paper">
+          <Tabs defaultValue="pending" className="gap-0">
+            <div className="flex min-h-16 items-end gap-3 border-b border-hair px-4 sm:px-6">
+              <TabsList variant="line" className="h-auto w-auto flex-1 gap-4 pb-0">
+                <TabsTrigger value="pending" className="min-h-14 px-1">
                   {t("finances.tab.pending")}
-                  <span className="ms-1.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                    {pendingCount}
-                  </span>
+                  <span className="text-sm font-medium tabular-nums text-mute">{pendingCount}</span>
                 </TabsTrigger>
-                <TabsTrigger value="history">
+                <TabsTrigger value="history" className="min-h-14 px-1">
                   {t("finances.tab.history")}
-                  <span className="ms-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                  <span className="text-sm font-medium tabular-nums text-mute">
                     {historyInvoices.length}
                   </span>
                 </TabsTrigger>
               </TabsList>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(ROW_BUTTON, "mb-2.5 self-center")}
+                onClick={() => setInsightsOpen(true)}
+              >
+                <BarChart3 aria-hidden />
+                {t("finances.advancedInsights")}
+              </Button>
+            </div>
 
-              <TabsContent value="pending" className="space-y-3">
-                <div className="relative max-w-md">
-                  <Search
-                    className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-                    aria-hidden
+            <TabsContent value="pending">
+              <div className="border-b border-hair-soft px-4 py-4 sm:px-6">
+                {searchField(pendingQuery, setPendingQuery, t("finances.search.pending"))}
+              </div>
+
+              <div>
+                {filteredPendingVisits.map((visit) => (
+                  <PendingVisitRow
+                    key={visit.id}
+                    visit={visit}
+                    patientBalance={balanceByPatient.get(visit.patientId) ?? 0}
+                    onGenerate={() => generateInvoice(visit.id)}
                   />
-                  <Input
-                    value={pendingQuery}
-                    onChange={(e) => setPendingQuery(e.target.value)}
-                    placeholder={t("finances.search.pending")}
-                    className="h-10 rounded-xl border-slate-200 bg-white ps-9 text-sm"
-                    aria-label={t("finances.search.pending")}
+                ))}
+                {filteredPendingInvoices.map((inv) => (
+                  <PendingInvoiceRow
+                    key={inv.id}
+                    invoice={inv}
+                    patientBalance={balanceByPatient.get(inv.patientId) ?? 0}
+                    onSendReminder={() => sendReminder(inv.id)}
+                    onMarkPaid={() => setSettlingId(inv.id)}
                   />
+                ))}
+                {pendingCount === 0 && (
+                  <EmptyState title={t("finances.empty.caughtUp.title")} body={t("finances.empty.caughtUp.body")} />
+                )}
+                {pendingCount > 0 && filteredPendingCount === 0 && (
+                  <EmptyState
+                    title={t("finances.empty.noMatches.title")}
+                    body={t("finances.empty.pendingNoMatch", { q: pendingQuery.trim() })}
+                  />
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="history">
+              <div className="flex flex-col gap-3 border-b border-hair-soft px-4 py-4 sm:flex-row sm:items-center sm:px-6">
+                {searchField(historyQuery, setHistoryQuery, t("finances.search.history"))}
+                <div className="flex shrink-0 flex-wrap gap-2 sm:ms-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={ROW_BUTTON}
+                    onClick={() => downloadHistoryCsv(filteredHistory)}
+                  >
+                    <FileDown aria-hidden />
+                    {t("finances.export.csv")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={ROW_BUTTON}
+                    onClick={() => printHistoryForPdf(filteredHistory)}
+                  >
+                    <FileText aria-hidden />
+                    {t("finances.export.pdf")}
+                  </Button>
                 </div>
+              </div>
 
-                <div className="space-y-2.5">
-                  {filteredPendingVisits.map((visit) => (
-                    <PendingVisitRow
-                      key={visit.id}
-                      visit={visit}
-                      patientBalance={balanceByPatient.get(visit.patientId) ?? 0}
-                      onGenerate={() => generateInvoice(visit.id)}
-                    />
-                  ))}
-                  {filteredPendingInvoices.map((inv) => (
-                    <PendingInvoiceRow
+              <div>
+                {filteredHistory.length === 0 ? (
+                  <EmptyState
+                    title={t("finances.empty.noMatches.title")}
+                    body={
+                      historyQuery.trim()
+                        ? t("finances.empty.historyNoMatch", { q: historyQuery.trim() })
+                        : t("finances.empty.historyEmpty")
+                    }
+                  />
+                ) : (
+                  filteredHistory.map((inv) => (
+                    <HistoryRow
                       key={inv.id}
                       invoice={inv}
                       patientBalance={balanceByPatient.get(inv.patientId) ?? 0}
-                      onSendReminder={() => sendReminder(inv.id)}
-                      onMarkPaid={() => setSettlingId(inv.id)}
                     />
-                  ))}
-                  {pendingCount === 0 && (
-                    <EmptyState title={t("finances.empty.caughtUp.title")} body={t("finances.empty.caughtUp.body")} />
-                  )}
-                  {pendingCount > 0 && filteredPendingCount === 0 && (
-                    <EmptyState
-                      title={t("finances.empty.noMatches.title")}
-                      body={t("finances.empty.pendingNoMatch", { q: pendingQuery.trim() })}
-                    />
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="history" className="space-y-3">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-                  <div className="relative min-w-0 max-w-md flex-1">
-                    <Search
-                      className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-                      aria-hidden
-                    />
-                    <Input
-                      value={historyQuery}
-                      onChange={(e) => setHistoryQuery(e.target.value)}
-                      placeholder={t("finances.search.history")}
-                      className="h-10 rounded-xl border-slate-200 bg-white ps-9 text-sm"
-                      aria-label={t("finances.search.history")}
-                    />
-                  </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => downloadHistoryCsv(filteredHistory)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2",
-                        "text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50",
-                      )}
-                    >
-                      <FileDown className="size-3.5 stroke-[2]" aria-hidden />
-                      Export CSV
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printHistoryForPdf(filteredHistory)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2",
-                        "text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50",
-                      )}
-                    >
-                      <FileText className="size-3.5 stroke-[2]" aria-hidden />
-                      {t("finances.export.pdf")}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  {filteredHistory.length === 0 ? (
-                    <EmptyState
-                      title={t("finances.empty.noMatches.title")}
-                      body={
-                        historyQuery.trim()
-                          ? t("finances.empty.historyNoMatch", { q: historyQuery.trim() })
-                          : t("finances.empty.historyEmpty")
-                      }
-                    />
-                  ) : (
-                    filteredHistory.map((inv) => (
-                      <HistoryRow
-                        key={inv.id}
-                        invoice={inv}
-                        patientBalance={balanceByPatient.get(inv.patientId) ?? 0}
-                      />
-                    ))
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        <aside className="flex flex-col gap-5">
-          <Card className={elevatedCardClass}>
-            <CardHeader className={cn(darkCardHeaderClass, "py-4")}>
-              <div className="flex items-center gap-2.5">
-                <Plug className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-                <CardTitle className="text-base font-bold tracking-tight text-white">
-                  {t("finances.card.integration")}
-                </CardTitle>
+                  ))
+                )}
               </div>
-            </CardHeader>
-            <CardContent className={cn(elevatedCardBodyClass, "py-4")}>
-              <IntegrationStatus
-                integration={integration}
-                failedInvoices={failedSyncInvoices}
-                onRetrySync={retrySync}
-              />
-            </CardContent>
-          </Card>
+            </TabsContent>
+          </Tabs>
+
+          <StateLegend
+            className="border-t border-hair px-4 py-3 sm:px-6"
+            items={[
+              { state: "done", label: t("history.status.paid") },
+              { state: "plan", label: t("finances.pending.awaiting") },
+              { state: "cancel", label: t("history.status.void") },
+            ]}
+          />
+        </section>
+
+        <aside className="rounded-md border border-hair bg-paper p-5">
+          <h2 className="mb-3 text-[17px] font-bold text-ink">{t("finances.card.integration")}</h2>
+          <IntegrationStatus
+            integration={integration}
+            failedInvoices={failedSyncInvoices}
+            onRetrySync={retrySync}
+          />
         </aside>
       </div>
 
@@ -421,9 +371,9 @@ export default function BillingPage() {
 
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center">
-      <p className="text-sm font-semibold text-slate-800">{title}</p>
-      <p className="mt-1 text-xs text-slate-500">{body}</p>
+    <div className="px-6 py-12 text-center">
+      <p className="text-[17px] font-bold text-ink">{title}</p>
+      <p className="mt-1 text-sm text-mute">{body}</p>
     </div>
   )
 }

@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Braces, Database, Sheet } from "lucide-react"
+import { Braces, Database, Lock, Sheet } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ExportDialog } from "@/features/exports/components/export-dialog"
 import {
   appointmentColumns,
@@ -17,7 +16,7 @@ import {
   type ExportOptions,
 } from "@/features/exports/lib/build-exports"
 import { loadExportSource } from "@/features/exports/lib/export-source"
-import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
+import { SettingsSection, SettingsSheet, hintClass, labelClass } from "@/features/settings/components/settings-ui"
 import { datedFilename, downloadCsv, downloadJson } from "@/lib/file-export"
 import { cn } from "@/lib/utils"
 
@@ -60,27 +59,18 @@ export function DataExportTab() {
   }
 
   return (
-    <div className="space-y-5">
-      <Card className={elevatedCardClass}>
-        <CardHeader className={darkCardHeaderClass}>
-          <div className="flex items-center gap-2.5">
-            <Database className="size-5 stroke-[1.6] text-sky-400" aria-hidden />
-            <div>
-              <CardTitle className="text-lg font-bold tracking-tight text-white">
-                {t("export.tab.title")}
-              </CardTitle>
-              <CardDescription className="text-sky-100/80">{t("export.tab.desc")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className={cn(elevatedCardBodyClass, "space-y-4")}>
-          <p className="text-sm leading-relaxed text-slate-600">{t("export.tab.body")}</p>
-          <Button onClick={() => setOpen(true)} className="h-11 gap-2">
+    <div>
+      <SettingsSheet>
+        <SettingsSection title={t("export.tab.title")} description={t("export.tab.desc")}>
+          <p className="max-w-2xl text-[17px] leading-relaxed text-ink">{t("export.tab.body")}</p>
+          {/* Outline, not the orange primary: a bulk extraction is a deliberate,
+              rare act, and the page's one orange button is the save. */}
+          <Button variant="outline" onClick={() => setOpen(true)} className="mt-5 gap-2">
             <Database className="size-4" aria-hidden />
             {t("export.tab.open")}
           </Button>
-        </CardContent>
-      </Card>
+        </SettingsSection>
+      </SettingsSheet>
 
       <ExportDialog
         open={open}
@@ -91,7 +81,7 @@ export function DataExportTab() {
         {(options) => (
           <div className="space-y-3">
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <p className={cn(labelClass, "mb-2")}>
                 {t("export.spreadsheets")}
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -100,9 +90,9 @@ export function DataExportTab() {
                     key={key}
                     variant="outline"
                     onClick={() => void exportDataset(key, options)}
-                    className="h-10 justify-start gap-2 border-slate-200 text-slate-800"
+                    className="justify-start gap-2"
                   >
-                    <Sheet className="size-4 text-sky-600" aria-hidden />
+                    <Sheet className="size-4 text-cobalt" aria-hidden />
                     {t(`export.dataset.${key}`)}
                   </Button>
                 ))}
@@ -115,17 +105,17 @@ export function DataExportTab() {
                   <Button
                     variant="outline"
                     onClick={() => void exportDataset("treatments", options)}
-                    className="h-10 justify-start gap-2 border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(140,92,68)]"
+                    className="justify-start gap-2 border-ink"
                   >
-                    <Sheet className="size-4" aria-hidden />
+                    <Lock className="size-4" aria-hidden />
                     {t("export.dataset.treatments")}
                   </Button>
                 )}
               </div>
             </div>
 
-            <div className="border-t border-slate-100 pt-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            <div className="border-t border-hair-soft pt-3">
+              <p className={cn(labelClass, "mb-2")}>
                 {t("export.backup")}
               </p>
               <Button
@@ -135,12 +125,12 @@ export function DataExportTab() {
                   downloadJson(buildFullBackup(options, source), datedFilename("clinic-backup", "json"))
                   setOpen(false)
                 }}
-                className="h-10 w-full justify-start gap-2 border-slate-200 text-slate-800"
+                className="w-full justify-start gap-2"
               >
-                <Braces className="size-4 text-sky-600" aria-hidden />
+                <Braces className="size-4 text-cobalt" aria-hidden />
                 {t("export.backupButton")}
               </Button>
-              <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+              <p className={cn(hintClass, "mt-1.5")}>
                 {t("export.backupHint")}
               </p>
             </div>

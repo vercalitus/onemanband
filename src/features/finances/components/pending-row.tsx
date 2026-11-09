@@ -1,9 +1,11 @@
 "use client"
 
 import { invoiceReference, joinSubtitle } from "@/features/finances/lib/invoice-reference"
-import { AlertTriangle, BellRing, FilePlus, RefreshCcw } from "lucide-react"
+import { BellRing, FilePlus, RefreshCcw } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { Button } from "@/components/ui/button"
+import { StateMark, type MarkState } from "@/components/ui/state-mark"
 import { BalanceBadge } from "@/features/finances/components/balance-badge"
 import { PatientNameLink } from "@/features/finances/components/patient-name-link"
 import { localeToBcp47 } from "@/lib/format-locale"
@@ -11,10 +13,13 @@ import { cn } from "@/lib/utils"
 import type { BillingInvoice, UninvoicedVisit } from "@/types/domain"
 import type { Locale } from "@/lib/i18n/types"
 
+/** A row's one button: 44px, 14px, paper and hairline (the mockups' `.btn.sm`). */
+export const ROW_BUTTON = "h-11 gap-1.5 px-3 text-sm"
+
 /**
  * Pending list combines two row types:
  *   1) Uninvoiced visit  → CTA "Generate Invoice"
- *   2) Issued / overdue invoice → CTA "Send Reminder" (+ "Mark Paid" secondary)
+ *   2) Issued / overdue invoice → CTA "Mark Paid" (+ "Send Reminder" as an icon)
  *
  * Wrapped in one component so the Pending tab stays a single visual list.
  */
@@ -32,26 +37,24 @@ export function PendingVisitRow({
 
   return (
     <Row
-      tone="action"
+      mark="plan"
       patientId={visit.patientId}
       patientName={visit.patientName}
       subtitle={`${treatmentLabel} · ${t("finances.pending.visitWord")} ${formatVisitDate(visit.visitDate, locale)}`}
-      amountLabel={t("finances.pending.suggested")}
-      amount={visit.suggestedDisplayAmount}
+      // Not yet a debt — no charge has been raised — so the amount is plain,
+      // labelled as the price list's suggestion rather than outlined as owed.
+      amount={<span className="text-[17px] font-bold tabular-nums text-ink">{visit.suggestedDisplayAmount}</span>}
+      meta={
+        <>
+          {t("finances.pending.suggested")} · {t("finances.pending.needsInvoice")}
+        </>
+      }
       balance={patientBalance}
-      meta={<span className="text-amber-600">{t("finances.pending.needsInvoice")}</span>}
       action={
-        <button
-          type="button"
-          onClick={onGenerate}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-1.5",
-            "text-xs font-semibold text-white shadow-sm transition-colors hover:bg-sky-700",
-          )}
-        >
-          <FilePlus className="size-3.5 stroke-[2]" aria-hidden />
+        <Button type="button" variant="outline" className={ROW_BUTTON} onClick={onGenerate}>
+          <FilePlus aria-hidden />
           {t("finances.pending.generate")}
-        </button>
+        </Button>
       }
     />
   )
@@ -73,7 +76,7 @@ export function PendingInvoiceRow({
   const treatmentLabel = t(`billing.treatment.${invoice.treatmentType}`)
   return (
     <Row
-      tone={overdue ? "warning" : "neutral"}
+      mark="plan"
       patientId={invoice.patientId}
       patientName={invoice.patientName}
       subtitle={joinSubtitle([
@@ -81,107 +84,115 @@ export function PendingInvoiceRow({
         treatmentLabel,
         `${t("finances.pending.issued")} ${formatRelative(toIso(invoice.issuedAt))}`,
       ])}
-      amountLabel={overdue ? t("finances.pending.overdueLabel") : t("finances.pending.pendingLabel")}
-      amount={invoice.displayAmount}
-      balance={patientBalance}
+      amount={<OwedTag>{invoice.displayAmount}</OwedTag>}
       meta={
         overdue ? (
-          <span className="inline-flex items-center gap-1 text-amber-600">
-            <AlertTriangle className="size-3 stroke-[2.2]" aria-hidden />
-            {t("finances.pending.pastDue")}
-          </span>
+          <span className="font-medium text-ink">{t("finances.pending.overdueLabel")}</span>
         ) : invoice.syncStatus === "failed" ? (
-          <span className="inline-flex items-center gap-1 text-rose-600">
-            <RefreshCcw className="size-3 stroke-[2.2]" aria-hidden />
+          <span className="inline-flex items-center gap-1 font-medium text-ink">
+            <RefreshCcw className="size-3.5 stroke-[2]" aria-hidden />
             {t("finances.pending.syncFailed")}
           </span>
         ) : (
-          <span className="text-slate-400">{t("finances.pending.awaiting")}</span>
+          t("finances.pending.awaiting")
         )
       }
+      balance={patientBalance}
       action={
-        <div className="flex items-center gap-1.5">
-          <button
+        <div className="flex items-center gap-2">
+          {/* The row's one labelled action is the payment. The reminder is a
+              second, lesser verb — it stays reachable, as an icon. */}
+          <Button
             type="button"
-            onClick={onMarkPaid}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5",
-              "text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50",
-            )}
-          >
-            {t("finances.pending.markPaid")}
-          </button>
-          <button
-            type="button"
+            variant="outline"
+            size="icon"
             onClick={onSendReminder}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5",
-              "text-xs font-semibold text-white shadow-sm transition-colors hover:bg-slate-800",
-            )}
+            aria-label={t("finances.pending.sendReminder")}
+            title={t("finances.pending.sendReminder")}
           >
-            <BellRing className="size-3.5 stroke-[2]" aria-hidden />
-            {t("finances.pending.sendReminder")}
-          </button>
+            <BellRing aria-hidden />
+          </Button>
+          <Button type="button" variant="outline" className={ROW_BUTTON} onClick={onMarkPaid}>
+            {t("finances.pending.markPaid")}
+          </Button>
         </div>
       }
     />
   )
 }
 
-function Row({
-  tone,
+/** An amount still owed: the small orange outline from the dashboard. */
+export function OwedTag({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex min-h-8 items-center rounded-[4px] border-[1.5px] border-signal px-2 text-[17px] font-bold whitespace-nowrap tabular-nums text-ink",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+/**
+ * One hairline row on paper: state mark · who · amount · the action. Below
+ * `sm` the action drops to its own line rather than crushing the name.
+ */
+export function Row({
+  mark,
   patientId,
   patientName,
   subtitle,
-  amountLabel,
   amount,
-  balance,
   meta,
+  balance,
   action,
+  muted,
 }: {
-  tone: "neutral" | "warning" | "action"
+  mark: MarkState
   patientId: string
   patientName: string
   subtitle: string
-  amountLabel: string
-  amount: string
-  balance: number
+  amount: React.ReactNode
   meta: React.ReactNode
-  action: React.ReactNode
+  balance?: number
+  action?: React.ReactNode
+  muted?: boolean
 }) {
-  const indicatorTone =
-    tone === "warning" ? "bg-amber-400" : tone === "action" ? "bg-sky-400" : "bg-slate-300"
   return (
     <div
       className={cn(
-        "group flex flex-wrap items-center gap-4 rounded-xl bg-white px-4 py-3.5",
-        "shadow-[0_1px_4px_-2px_rgba(15,23,42,0.06)] ring-1 ring-slate-100 transition-shadow hover:shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]",
+        "grid min-h-[72px] grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-2 border-b border-hair-soft px-4 py-3 last:border-b-0 sm:px-6",
+        action && "sm:grid-cols-[12px_minmax(0,1fr)_auto_auto] sm:gap-x-5",
       )}
     >
-      <span className={cn("h-9 w-0.5 shrink-0 rounded-full", indicatorTone)} aria-hidden />
+      <StateMark state={mark} />
 
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <PatientNameLink
             patientId={patientId}
-            className="truncate text-sm font-bold no-underline hover:underline"
+            className={cn(
+              "truncate text-[17px] font-bold no-underline hover:underline",
+              muted && "font-medium text-mute line-through decoration-1",
+            )}
           >
             {patientName}
           </PatientNameLink>
-          <BalanceBadge balance={balance} />
+          {balance !== undefined && <BalanceBadge balance={balance} />}
         </div>
-        <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>
+        <p className="mt-0.5 truncate text-sm text-mute">{subtitle}</p>
       </div>
 
-      <div className="flex shrink-0 flex-col items-end text-end">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-          {amountLabel}
-        </p>
-        <p className="font-mono text-base font-semibold tabular-nums text-slate-900">{amount}</p>
-        <p className="mt-0.5 text-[11px]">{meta}</p>
+      <div className="flex flex-col items-end gap-1 text-end">
+        {amount}
+        <span className="text-sm text-mute">{meta}</span>
       </div>
 
-      <div className="flex w-full shrink-0 justify-end sm:w-auto">{action}</div>
+      {action && (
+        <div className="col-span-full flex justify-end sm:col-span-1">{action}</div>
+      )}
     </div>
   )
 }

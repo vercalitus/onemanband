@@ -1,26 +1,20 @@
 "use client"
 
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Bell,
-  CalendarCheck2,
-  CircleCheckBig,
-  Coins,
-  Gauge,
-  ListTodo,
-  Plus,
-  TrendingUp,
-  TriangleAlert,
-  Wallet,
-  X,
-} from "lucide-react"
+import { CalendarDays, Plus, TriangleAlert, X } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  PagePlate,
+  PlateDebt,
+  PlateDivider,
+  PlateFact,
+  PlateSpacer,
+} from "@/components/layout/page-plate"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { StateLegend, StateMark } from "@/components/ui/state-mark"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,21 +34,14 @@ import {
   fetchDismissals,
   pruneDismissals,
 } from "@/features/dashboard/lib/dismissed-signals"
-import { darkCardHeaderClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { setDashboardVisitCount } from "@/lib/dashboard-visit-count"
 import { toISODate } from "@/lib/date-helpers"
+import { localeToBcp47 } from "@/lib/format-locale"
+import { minutesFromHHMM } from "@/lib/appointment-time"
 import { usePulseMetrics } from "@/features/dashboard/lib/use-pulse-metrics"
 import { localizeTodoTitle } from "@/lib/i18n/localized-seed"
 import type { TodoItem } from "@/types/domain"
 import { cn } from "@/lib/utils"
-
-const trendIcon = {
-  up: ArrowUpRight,
-  down: ArrowDownRight,
-  steady: CircleCheckBig,
-}
-
-const pulseIconChrome = "bg-sky-100 text-sky-600"
 
 /**
  * Rows shown per board section before it folds.
@@ -73,33 +60,6 @@ const addMinutesToHHMM = (hhmm: string, minutes: number) => {
   const total = h * 60 + m + minutes
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
 }
-
-const metricAccent = {
-  visits: {
-    icon: CalendarCheck2,
-    iconClass: pulseIconChrome,
-    cardClass: "border-slate-100 bg-white",
-    shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
-  },
-  capacity: {
-    icon: Gauge,
-    iconClass: pulseIconChrome,
-    cardClass: "border-slate-100 bg-white",
-    shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
-  },
-  revenue: {
-    icon: Coins,
-    iconClass: pulseIconChrome,
-    cardClass: "border-slate-100 bg-white",
-    shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
-  },
-  debt: {
-    icon: Wallet,
-    iconClass: pulseIconChrome,
-    cardClass: "border-slate-100 bg-white",
-    shadow: "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]",
-  },
-} as const
 
 /**
  * The one button on "visit not closed", which asks its question.
@@ -121,7 +81,7 @@ function VisitOutcomeMenu({
   const { t } = useLocale()
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="shrink-0 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800">
+      <DropdownMenuTrigger className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0")}>
         {label}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="min-w-[12rem] p-1.5">
@@ -165,45 +125,49 @@ function TodoRow({
   const isFault = item.tone === "fault"
 
   return (
-    <div
-      className={`flex items-center gap-3 rounded-xl border p-3.5 transition-all duration-200 hover:-translate-y-px ${
-        done
-          ? "border-slate-100 bg-slate-50/90"
-          : isFault
-            ? "border-rose-200 bg-rose-50/70 shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]"
-            : item.overdue
-              ? "border-[rgb(248,228,214)] bg-[rgb(255,247,242)] shadow-[0_20px_60px_rgb(46_74_66_/_0.02)]"
-              : "border-slate-200/70 bg-white"
-      }`}
-    >
+    <div className="flex min-h-[60px] items-center gap-3 border-b border-hair-soft py-2.5 ps-4 pe-2 sm:ps-6">
       {onDismiss ? (
-        <span
-          className={`flex size-4 shrink-0 items-center justify-center ${isFault ? "text-rose-500" : "text-sky-500"}`}
-          aria-hidden
-        >
-          {isFault ? <TriangleAlert className="size-4" /> : <Bell className="size-4" />}
+        // A fault is the software failing; an overdue row is the clinic's
+        // "act now". Everything else needs no mark — the sentence says it.
+        <span className="flex w-5 shrink-0 justify-center" aria-hidden>
+          {isFault ? (
+            <TriangleAlert className="size-5 text-destructive" />
+          ) : item.overdue ? (
+            <StateMark state="now" />
+          ) : null}
         </span>
       ) : (
-        <label className="flex shrink-0 cursor-pointer items-center">
+        <label className="-ms-3 flex size-11 shrink-0 cursor-pointer items-center justify-center">
           <input
             type="checkbox"
             checked={done}
             onChange={() => onToggleComplete(item.id)}
-            className="size-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/30"
+            className="size-5 rounded-[4px] border-2 border-ink accent-cobalt"
             aria-label={markDoneAria}
           />
         </label>
       )}
 
       <div className="min-w-0 flex-1">
-        <p className={`font-medium ${done ? "text-slate-400 line-through" : "text-slate-900"}`}>{title}</p>
-        <p className={`text-xs ${done ? "text-slate-400" : isFault ? "text-rose-700/80" : "text-slate-500"}`}>
+        <p className={cn("text-[17px] leading-snug", done ? "text-mute line-through decoration-1" : "text-ink")}>
+          {title}
+          {isFault && <span className="sr-only"> ({t("dashboard.badge.fault")})</span>}
+          {item.overdue && !done && !isFault && <span className="sr-only"> ({t("dashboard.badge.attention")})</span>}
+        </p>
+        <p
+          className={cn(
+            "text-sm",
+            done ? "text-faint" : isFault ? "text-destructive" : item.overdue ? "font-medium text-ink" : "text-mute",
+          )}
+        >
           {/* A signal's second line is a sentence — "Connect it under
               Settings" — and "Due Connect it under Settings" is not. The
               prefix belongs to tasks, which carry a due date. */}
+          {/* A signal's line already says it is overdue ("15d overdue"),
+              so only a task gets the prefix. */}
           {!dueTrimmed
             ? t("dashboard.todo.noDue")
-            : item.kind === "reactive" && !item.overdue
+            : item.kind === "reactive"
               ? dueTrimmed
               : `${item.overdue && !done ? t("dashboard.todo.overduePrefix") : t("dashboard.todo.duePrefix")} ${dueTrimmed}`}
         </p>
@@ -286,32 +250,20 @@ function TodoRow({
               )
           }}
           className={cn(
-            "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors",
-            isFault
-              ? "bg-rose-600 text-white hover:bg-rose-700"
-              : "bg-slate-900 text-white hover:bg-slate-800",
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "shrink-0",
+            isFault && "border-destructive/50 text-destructive",
           )}
         >
           {t(item.action.labelKey)}
         </button>
       )}
 
-      {isFault && (
-        <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
-          {t("dashboard.badge.fault")}
-        </Badge>
-      )}
-      {item.overdue && !done && !isFault && (
-        <Badge variant="outline" className="border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-[rgb(171,119,93)]">
-          {t("dashboard.badge.attention")}
-        </Badge>
-      )}
-
       {onDismiss && (
         <button
           type="button"
           onClick={() => onDismiss(item.id)}
-          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white hover:text-slate-700"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-faint transition-colors hover:bg-sunk hover:text-ink"
           aria-label={`${t("dashboard.todo.dismiss")}: ${title}`}
           title={t("dashboard.todo.dismiss")}
         >
@@ -336,12 +288,15 @@ function BoardSection({
   items,
   onToggleComplete,
   onDismiss,
+  action,
 }: {
   label: string
   emptyLabel: string
   items: TodoItem[]
   onToggleComplete: (id: string) => void
   onDismiss?: (id: string) => void
+  /** One control beside the section's name, e.g. "Add task". */
+  action?: React.ReactNode
 }) {
   const { t } = useLocale()
   const [expanded, setExpanded] = useState(false)
@@ -350,13 +305,17 @@ function BoardSection({
   const shown = expanded ? items : items.slice(0, SECTION_VISIBLE)
 
   return (
-    <div className="space-y-2">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
-      <div className="space-y-3">
+    <section>
+      <div className="flex min-h-14 items-end gap-3 px-4 pb-2 sm:px-6">
+        <h3 className="flex items-baseline gap-2 text-[17px] font-bold text-ink">
+          {label}
+          <span className="text-sm font-medium tabular-nums text-mute">{items.length}</span>
+        </h3>
+        {action && <div className="ms-auto">{action}</div>}
+      </div>
+      <div className="border-t border-hair-soft">
         {shown.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 px-3 py-4 text-center text-xs text-slate-500">
-            {emptyLabel}
-          </p>
+          <p className="px-4 py-4 text-sm text-mute sm:px-6">{emptyLabel}</p>
         ) : (
           shown.map((item) => (
             <TodoRow
@@ -372,18 +331,18 @@ function BoardSection({
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="w-full rounded-lg py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-50"
+            className="min-h-11 w-full text-sm font-medium text-cobalt underline-offset-3 hover:underline"
           >
             {expanded ? t("dashboard.todo.showLess") : t("dashboard.todo.showAll", { count: hidden })}
           </button>
         )}
       </div>
-    </div>
+    </section>
   )
 }
 
 export function DashboardOverview() {
-  const { locale, t } = useLocale()
+  const { locale, t, visitsToday } = useLocale()
   const { appointments: dayAppointments } = useScheduleDay()
   const { todos, toggleComplete, signalsAreLive } = useTodos()
   const { openAddTask } = useAddTask()
@@ -397,6 +356,34 @@ export function DashboardOverview() {
       dayAppointments.filter((a) => a.date === today && a.status !== "cancelled").length,
     )
   }, [dayAppointments])
+
+  /**
+   * The clock, read after mount (the server's is UTC — see DayCalendarView) and
+   * once a minute after that. It decides which visit the plate calls "next".
+   */
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => {
+    setNow(new Date())
+    const timer = window.setInterval(() => setNow(new Date()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const today = useMemo(() => {
+    if (!now) return null
+    const iso = toISODate(now)
+    const minutes = now.getHours() * 60 + now.getMinutes()
+    const visits = dayAppointments.filter((a) => a.date === iso && a.status !== "cancelled")
+    const next = [...visits]
+      .filter((a) => a.status !== "completed" && a.status !== "no_show" && minutesFromHHMM(a.start) >= minutes)
+      .sort((a, b) => minutesFromHHMM(a.start) - minutesFromHHMM(b.start))[0]
+    const tag = localeToBcp47(locale)
+    return {
+      count: visits.length,
+      next,
+      weekday: now.toLocaleDateString(tag, { weekday: "long" }),
+      dayMonth: now.toLocaleDateString(tag, { day: "numeric", month: "short" }),
+    }
+  }, [now, dayAppointments, locale])
 
   const localizedTodos = useMemo(
     () => todos.map((item) => localizeTodoTitle(item, locale, (k) => t(k))),
@@ -476,141 +463,127 @@ export function DashboardOverview() {
     [localizedTodos, dismissed],
   )
 
+  const metric = (id: string) => pulseMetrics.find((m) => m.id === id)
+  const visitsMetric = metric("visits")
+  const debtMetric = metric("debt")
+
   return (
-    <div>
-      <section className="grid gap-6 md:gap-7 xl:grid-cols-[1.45fr_1fr]">
-        <Card className={`min-h-0 xl:min-h-[540px] ${elevatedCardClass}`}>
-          <CardHeader className={cn(darkCardHeaderClass, "py-3")}>
-            <div className="flex items-center gap-2.5">
-              <CalendarCheck2 className="size-5 stroke-[1.6] text-sky-400" />
-              <CardTitle className="text-xl font-bold tracking-tight text-white">{t("dashboard.todayClinic")}</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">
-            <DayCalendarView appointments={dayAppointments} />
-          </CardContent>
-        </Card>
-
-        <Card className={elevatedCardClass}>
-          <CardHeader className={darkCardHeaderClass}>
-            <div className="flex items-center gap-2.5">
-              <ListTodo className="size-5 stroke-[1.6] text-sky-400" />
-              <CardTitle className="text-xl font-bold tracking-tight text-white">{t("dashboard.todoBoard")}</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5 px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">
-            <BoardSection
-              label={t("dashboard.todo.reactive")}
-              emptyLabel={t("dashboard.todo.noReactive")}
-              items={attention}
-              onToggleComplete={toggleComplete}
-              onDismiss={(id) => void dismissSignal(id)}
-            />
-
-            <div className="border-t border-slate-100 pt-5">
-              <BoardSection
-                label={t("dashboard.todo.active")}
-                emptyLabel={t("dashboard.todo.noActive")}
-                items={active}
-                onToggleComplete={toggleComplete}
-              />
-            </div>
-
-            <div className="flex justify-center border-t border-slate-100 pt-5 pb-1">
-              <button
-                type="button"
-                onClick={openAddTask}
-                className="inline-flex items-center gap-1.5 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
-                aria-label={t("dashboard.todo.add")}
+    <>
+      {/* The day on the plate: the date, who is next, and the two numbers a
+          practice runs on. The rest of the old "pulse" cards was decoration. */}
+      <PagePlate>
+        {today && (
+          <>
+            <PlateFact label={today.weekday} display>
+              {today.dayMonth}
+            </PlateFact>
+            <PlateDivider />
+            {today.next ? (
+              <PlateFact
+                label={`${t("dashboard.plate.next")} · ${today.next.patientName}`}
+                now
+                display
+                className="max-w-[16rem]"
               >
-                <span>{t("dashboard.todo.add")}</span>
-                <Plus className="size-4 shrink-0 stroke-[2] text-sky-600" aria-hidden />
-              </button>
-            </div>
-
-            {completed.length > 0 && (
-              <div className="border-t border-slate-100 pt-5">
-                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  {t("dashboard.todo.completed")}
-                </p>
-                <div className="mt-2 space-y-3">
-                  {completed.map((item) => (
-                    <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />
-                  ))}
-                </div>
-              </div>
+                {today.next.start}
+              </PlateFact>
+            ) : (
+              <PlateFact label={t("dashboard.plate.next")}>{t("dashboard.plate.noNext")}</PlateFact>
             )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <div className="mt-12 border-t border-slate-200/75 pt-8">
-        <h2 className="mb-5 text-center text-[1.625rem] font-bold leading-snug tracking-tight text-slate-900">
-          {t("dashboard.pulse.title")}
-        </h2>
-        <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
-          {pulseMetrics.map((metric) => {
-            const TrendIcon = trendIcon[metric.trend]
-            const accent = metricAccent[metric.id as keyof typeof metricAccent]
-            const AccentIcon = accent.icon
-            const trendTone =
-              metric.trend === "down"
-                ? "border border-sky-200/80 bg-sky-100/90 text-sky-900"
-                : "border border-sky-100 bg-sky-50 text-sky-800"
-
-            return (
-              <Card
-                key={metric.id}
-                className={`group min-h-[156px] overflow-hidden rounded-3xl transition-all duration-300 hover:-translate-y-0.5 ${accent.cardClass} ${accent.shadow}`}
-              >
-                <CardHeader className="relative gap-5">
-                  <div className="flex items-center justify-between">
-                    <CardDescription className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                      {metric.label}
-                    </CardDescription>
-                    <span className={`inline-flex size-8 items-center justify-center rounded-full ${accent.iconClass}`}>
-                      <AccentIcon className="size-4 stroke-[1.7]" />
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <CardTitle className="font-mono text-[2.25rem] font-bold tracking-[-0.05em] tabular-nums text-slate-900">
-                      {metric.value}
-                    </CardTitle>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] ${trendTone}`}
-                    >
-                      <TrendIcon className="size-3 stroke-[1.8]" />
-                      {metric.delta}
-                    </span>
-                  </div>
-                </CardHeader>
-              </Card>
-            )
-          })}
-        </section>
-
-        {clinicPulseItems.length > 0 && (
-        <section className="mt-8 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] transition-all duration-200 md:p-6">
-          <div className="mb-4 flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
-              <TrendingUp className="size-5 stroke-[1.6]" />
-            </span>
-            <h3 className="text-lg font-bold tracking-tight text-slate-900">{t("dashboard.observations.title")}</h3>
-          </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-            {clinicPulseItems.map((item) => (
-              <div
-                key={item.title}
-                className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-colors duration-200 md:border-slate-100 md:bg-white"
-              >
-                <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-500">{item.body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+            <PlateDivider />
+            {visitsMetric && <PlateFact label={visitsMetric.label}>{visitsMetric.value}</PlateFact>}
+            {debtMetric && <PlateDebt amount={debtMetric.value} label={debtMetric.label} />}
+            <PlateSpacer />
+            {today.next && (
+              <Link href={`/patients/${today.next.patientId}`} className={buttonVariants({ size: "lg" })}>
+                {t("dashboard.plate.openChart")}
+              </Link>
+            )}
+          </>
         )}
+      </PagePlate>
+
+      {/* Full bleed under the plate: the day on paper, the board on ground,
+          one hairline between them — no cards. */}
+      <div className="-mx-4 -mt-6 -mb-3 grid sm:-mx-6 md:-mt-8 lg:min-h-[calc(100dvh-6rem)] lg:grid-cols-[minmax(0,1fr)_420px]">
+        <section className="flex min-w-0 flex-col bg-paper" aria-labelledby="today-clinic">
+          <div className="flex min-h-16 items-center gap-3 border-b border-hair px-4 sm:px-6">
+            <h2 id="today-clinic" className="flex items-baseline gap-2 text-[17px] font-bold text-ink">
+              {t("dashboard.todayClinic")}
+              {today && <span className="text-sm font-medium tabular-nums text-mute">{visitsToday(today.count)}</span>}
+            </h2>
+            <Link href="/calendar" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "ms-auto")}>
+              <CalendarDays className="size-4" aria-hidden />
+              {t("nav.calendar")}
+            </Link>
+          </div>
+          <DayCalendarView
+            appointments={dayAppointments}
+            heightClassName="h-auto lg:h-[calc(100dvh-6rem-4rem-3.25rem)]"
+          />
+          <StateLegend
+            className="mt-auto border-t border-hair px-4 py-3 sm:px-6"
+            items={[
+              { state: "done", label: t("appt.status.completed") },
+              { state: "plan", label: t("appt.status.scheduled") },
+              { state: "unsure", label: t("appt.status.uncertain") },
+              { state: "cancel", label: t("appt.status.cancelled") },
+              { state: "now", label: t("dashboard.timeline.now") },
+            ]}
+          />
+        </section>
+
+        <section
+          className="min-w-0 border-t border-hair bg-ground pb-8 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:border-s lg:border-t-0"
+          aria-label={t("dashboard.todoBoard")}
+        >
+          <BoardSection
+            label={t("dashboard.todo.reactive")}
+            emptyLabel={t("dashboard.todo.noReactive")}
+            items={attention}
+            onToggleComplete={toggleComplete}
+            onDismiss={(id) => void dismissSignal(id)}
+          />
+
+          <BoardSection
+            label={t("dashboard.todo.active")}
+            emptyLabel={t("dashboard.todo.noActive")}
+            items={active}
+            onToggleComplete={toggleComplete}
+            action={
+              <Button type="button" variant="outline" size="sm" onClick={openAddTask}>
+                <Plus className="size-4" aria-hidden />
+                {t("dashboard.todo.add")}
+              </Button>
+            }
+          />
+
+          {completed.length > 0 && (
+            <section>
+              <h3 className="px-4 pt-6 pb-2 text-[17px] font-bold text-ink sm:px-6">{t("dashboard.todo.completed")}</h3>
+              <div className="border-t border-hair-soft">
+                {completed.map((item) => (
+                  <TodoRow key={item.id} item={item} onToggleComplete={toggleComplete} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {clinicPulseItems.length > 0 && (
+            <section className="mt-6">
+              <h3 className="px-4 pb-2 text-[17px] font-bold text-ink sm:px-6">{t("dashboard.observations.title")}</h3>
+              <div className="border-t border-hair-soft">
+                {clinicPulseItems.map((item) => (
+                  <div key={item.title} className="border-b border-hair-soft px-4 py-3 sm:px-6">
+                    <p className="text-[17px] font-medium text-ink">{item.title}</p>
+                    <p className="mt-1 text-sm text-mute">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </section>
       </div>
-    </div>
+    </>
   )
 }

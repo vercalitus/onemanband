@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Clock3, XIcon } from "lucide-react"
+import { XIcon } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useMergedPatients } from "@/components/providers/patient-extras-provider"
@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import { StateMark } from "@/components/ui/state-mark"
 import type { AppointmentStatus, AppointmentType, ScheduleItem } from "@/types/domain"
 import {
   MAX_APPOINTMENT_MINUTES,
@@ -64,10 +64,10 @@ const DURATION_QUICK = [5, 10, 15, 30, 45, 60] as const
 const SUGGEST_DAYS_BEFORE = 3
 const SUGGEST_DAYS_AFTER = 7
 
-const LABEL = "text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
+const LABEL = "text-sm font-medium text-mute"
 
 const CONTROL =
-  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] outline-none transition-[border-color,box-shadow] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-200"
+  "h-11 w-full rounded-md border border-hair bg-paper px-3 text-[17px] text-ink tabular-nums outline-none transition-[border-color,box-shadow] focus-visible:border-cobalt focus-visible:ring-3 focus-visible:ring-cobalt/20"
 
 export type AppointmentEditorMode = "create" | "edit"
 
@@ -473,15 +473,13 @@ export function AppointmentEditDialog({
     onOpenChange(false)
   }
 
-  const typeChip = typeVisual[apptType].chip
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
         className={cn(
           // Do not use `relative` here — tailwind-merge would override Base `fixed` and break viewport centering.
-          "flex max-h-[min(90dvh,calc(100dvh-2rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-lg",
+          "flex max-h-[min(90dvh,calc(100dvh-2rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-md border border-hair bg-paper p-0 text-ink sm:max-w-lg",
         )}
       >
         <DialogDescription className="sr-only">
@@ -493,37 +491,30 @@ export function AppointmentEditDialog({
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
-              className="absolute top-5 right-5 z-20 rounded-xl text-white hover:bg-white/15"
+              size="icon"
+              className="absolute top-3 end-3 z-20 text-mute hover:text-ink"
               aria-label={t("appointment.close")}
             />
           }
         >
-          <XIcon />
+          <XIcon className="size-5" />
         </DialogClose>
 
-        <div className="relative shrink-0 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-4 pt-5 text-white">
-          <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
-          <DialogHeader className="relative gap-0 space-y-0">
-            <DialogTitle className="font-heading pr-12 text-xl font-semibold tracking-tight text-white">
+        <div className="shrink-0 border-b border-hair px-6 pt-5 pb-4">
+          <DialogHeader className="gap-0 space-y-0">
+            <DialogTitle className="pe-12 text-[22px] leading-tight font-bold text-ink">
               {mode === "create" ? t("appointment.scheduleSlot") : t("appointment.update")}
             </DialogTitle>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${typeChip}`}>
-                {typeVisual[apptType].label}
-              </span>
-              <div className="flex items-center gap-2 text-sm text-sky-100">
-                <CalendarDays className="size-4 shrink-0 text-sky-300" aria-hidden />
-                <span className="font-medium">{preview.dateLabel}</span>
-              </div>
-              <div className="flex items-center gap-2 font-mono text-sm tabular-nums text-sky-100">
-                <Clock3 className="size-4 shrink-0 text-sky-300" aria-hidden />
-                <span>{preview.line}</span>
-              </div>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-sky-50 ring-1 ring-white/15">
-                {preview.subtitle}
-              </span>
-            </div>
+            {/* What is being booked, in words: the type is said, never coloured. */}
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-mute">
+              <span className="font-medium text-ink">{typeVisual[apptType].label}</span>
+              <span aria-hidden>·</span>
+              <span>{preview.dateLabel}</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">{preview.line}</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">{preview.subtitle}</span>
+            </p>
           </DialogHeader>
         </div>
 
@@ -534,17 +525,17 @@ export function AppointmentEditDialog({
             handleSave()
           }}
         >
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-5">
             {error ? (
               <p
-                className="mb-3 rounded-xl border border-rose-200/90 bg-rose-50 px-3 py-2.5 text-sm text-rose-800"
+                className="mb-4 rounded-md border-[1.5px] border-signal bg-signal-tint px-3 py-2.5 text-sm text-ink"
                 role="alert"
               >
                 {error}
               </p>
             ) : null}
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5 sm:col-span-2">
                 <label className={LABEL} htmlFor="appt-patient">
                   {t("appointment.field.patient")}
@@ -565,29 +556,31 @@ export function AppointmentEditDialog({
                     onFocus={() => setPickerOpen(true)}
                     placeholder={t("appointment.field.fullName")}
                     autoComplete="off"
-                    className="h-11 rounded-xl border-slate-200 text-base"
+                    className="border-hair"
                   />
                   {chosen ? (
-                    <p className="mt-1 text-[11px] font-medium text-emerald-700">
+                    <p className="mt-1.5 flex items-center gap-1.5 text-sm text-olive">
+                      <StateMark state="done" className="size-2.5" />
                       {t("appointment.patient.linked", { name: chosen.fullName })}
                     </p>
                   ) : allowNewPatient ? (
-                    <p className="mt-1 text-[11px] font-medium text-amber-700">
+                    <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink">
+                      <StateMark state="unsure" className="size-2.5" />
                       {t("appointment.patient.willCreate")}
                     </p>
                   ) : null}
 
                   {pickerOpen && patientName.trim() && !chosen ? (
-                    <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                    <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-hair bg-paper">
                       {matches.map((p) => (
                         <button
                           key={p.id}
                           type="button"
                           onClick={() => choosePatient(p)}
-                          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-start text-sm hover:bg-sky-50"
+                          className="flex min-h-11 w-full items-center justify-between gap-3 border-b border-hair-soft px-3 text-start text-[17px] hover:bg-ground"
                         >
-                          <span className="truncate font-medium text-slate-800">{p.fullName}</span>
-                          <span className="shrink-0 font-mono text-[11px] text-slate-400">
+                          <span className="truncate font-medium text-ink">{p.fullName}</span>
+                          <span className="shrink-0 text-sm tabular-nums text-mute" dir="ltr">
                             {p.phone || ""}
                           </span>
                         </button>
@@ -600,7 +593,7 @@ export function AppointmentEditDialog({
                           setPickerOpen(false)
                           setError(null)
                         }}
-                        className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2.5 text-start text-sm text-slate-500 hover:bg-slate-50"
+                        className="flex min-h-11 w-full items-center gap-2 px-3 text-start text-sm text-cobalt hover:bg-ground"
                       >
                         {matches.length
                           ? t("appointment.patient.newInstead")
@@ -619,14 +612,14 @@ export function AppointmentEditDialog({
                   value={treatment}
                   onChange={(e) => setTreatment(e.target.value)}
                   placeholder={t("appointment.field.treatmentPlaceholder")}
-                  className="h-11 rounded-xl border-slate-200"
+                  className="border-hair"
                 />
               </div>
             </div>
 
-            <Separator className="my-3 shrink-0" />
+            <div className="my-5 h-px bg-hair" aria-hidden />
 
-            <div className="grid gap-3">
+            <div className="grid gap-5">
               <div className="grid gap-1.5">
                 <label className={LABEL} htmlFor="appt-date">
                   {t("appointment.field.date")}
@@ -638,16 +631,16 @@ export function AppointmentEditDialog({
                   onChange={(e) => setDate(e.target.value || toISODate(new Date()))}
                   className={CONTROL}
                 />
-                <p className="text-[11px] text-slate-400">
+                <p className="text-sm text-mute">
                   {mode === "edit" ? t("appointment.date.hint.edit") : t("appointment.date.hint.create")}
                 </p>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="grid gap-1.5">
                 <p className={LABEL}>{t("appointment.field.startTime")}</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1">
-                    <label className="text-xs font-medium text-slate-500" htmlFor="appt-hour">
+                    <label className="sr-only" htmlFor="appt-hour">
                       {t("appointment.field.hour")}
                     </label>
                     <select
@@ -671,7 +664,7 @@ export function AppointmentEditDialog({
                     </select>
                   </div>
                   <div className="grid gap-1">
-                    <label className="text-xs font-medium text-slate-500" htmlFor="appt-min">
+                    <label className="sr-only" htmlFor="appt-min">
                       {t("appointment.field.minutesCol")}
                     </label>
                     <select
@@ -704,7 +697,7 @@ export function AppointmentEditDialog({
                 <div className="grid gap-1.5">
                   <p className={LABEL}>{t("appointment.nextFree.title")}</p>
                   {suggestions.length ? (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-2">
                       {suggestions.map((slot) => {
                         const isChosen =
                           slot.date === date && minutesFromHHMM(slot.start) === preview.startMin
@@ -715,13 +708,14 @@ export function AppointmentEditDialog({
                             type="button"
                             onClick={() => applySuggestion(slot)}
                             title={backToBack ? t("appointment.nextFree.adjacent") : undefined}
+                            aria-pressed={isChosen}
                             className={cn(
-                              "flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-xs tabular-nums transition-colors",
+                              "flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm tabular-nums transition-colors",
                               isChosen
-                                ? "border-slate-900 bg-slate-900 text-white"
+                                ? "border-cobalt bg-cobalt font-bold text-white"
                                 : backToBack
-                                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                                  : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50",
+                                  ? "border-ink/45 bg-paper font-medium text-ink hover:bg-ground"
+                                  : "border-hair bg-paper text-ink hover:bg-ground",
                             )}
                           >
                             {/* A slot that touches another visit keeps the day
@@ -733,12 +727,12 @@ export function AppointmentEditDialog({
                       })}
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-400">{t("appointment.nextFree.none")}</p>
+                    <p className="text-sm text-mute">{t("appointment.nextFree.none")}</p>
                   )}
                   {/* Said in words on the page: the tooltip that used to
                       explain the mark never appears on a tablet. */}
                   {suggestions.some((slot) => adjacentSlots.has(`${slot.date}|${slot.start}`)) ? (
-                    <p className="flex items-center gap-1.5 text-[11px] text-emerald-700">
+                    <p className="flex items-center gap-1.5 text-sm text-mute">
                       <span aria-hidden>↔</span>
                       {t("appointment.nextFree.adjacentLegend")}
                     </p>
@@ -753,12 +747,9 @@ export function AppointmentEditDialog({
                     <Button
                       key={d}
                       type="button"
-                      size="sm"
-                      variant={durationMin === d ? "default" : "outline"}
-                      className={cn(
-                        "h-9 rounded-full px-4 text-xs font-semibold",
-                        durationMin === d && "bg-emerald-600 text-white hover:bg-emerald-600",
-                      )}
+                      variant="outline"
+                      aria-pressed={durationMin === d}
+                      className="h-11 min-w-14 px-3 text-sm tabular-nums"
                       onClick={() => {
                         const nextDur = clampDurationMinutes(d)
                         setDurationMin(nextDur)
@@ -776,20 +767,18 @@ export function AppointmentEditDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="h-10 rounded-xl border-slate-200"
+                    className="h-11 px-3 text-sm tabular-nums"
                     onClick={() => adjustDuration(-APPOINTMENT_SLOT_MINUTES)}
                   >
                     −{APPOINTMENT_SLOT_MINUTES}m
                   </Button>
-                  <span className="rounded-xl bg-slate-100 px-4 py-2 font-mono text-sm font-semibold text-slate-800 tabular-nums">
+                  <span className="flex h-11 items-center rounded-md bg-sunk px-4 text-[17px] font-bold tabular-nums text-ink">
                     {durationMin} min
                   </span>
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="h-10 rounded-xl border-slate-200"
+                    className="h-11 px-3 text-sm tabular-nums"
                     onClick={() => adjustDuration(APPOINTMENT_SLOT_MINUTES)}
                   >
                     +{APPOINTMENT_SLOT_MINUTES}m
@@ -798,7 +787,7 @@ export function AppointmentEditDialog({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-2">
+                <div className="grid gap-1.5">
                   <label className={LABEL} htmlFor="appt-type">
                     {t("appointment.field.visitType")}
                   </label>
@@ -815,7 +804,7 @@ export function AppointmentEditDialog({
                     ))}
                   </select>
                 </div>
-                <div className="grid gap-2">
+                <div className="grid gap-1.5">
                   <label className={LABEL} htmlFor="appt-status">
                     {t("appointment.field.status")}
                   </label>
@@ -836,21 +825,17 @@ export function AppointmentEditDialog({
             </div>
           </div>
 
-          <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-3 sm:flex-row sm:justify-end sm:gap-3">
+          <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-none border-t border-hair bg-paper px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
             {mode === "edit" && appointment && appointment.status !== "cancelled" ? (
-              <Button
-                type="button"
-                variant="destructive"
-                className="h-11 rounded-xl me-auto"
-                onClick={handleCancelTreatment}
-              >
+              <Button type="button" variant="outline" className="sm:me-auto" onClick={handleCancelTreatment}>
                 {t("appointment.footer.cancelTreatment")}
               </Button>
             ) : null}
-            <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t("appointment.footer.cancel")}
             </Button>
-            <Button type="submit" className="h-11 rounded-xl bg-emerald-700 px-6 font-semibold hover:bg-emerald-800">
+            {/* The one orange action in the dialog. */}
+            <Button type="submit" className="px-6">
               {t("appointment.footer.save")}
             </Button>
           </DialogFooter>

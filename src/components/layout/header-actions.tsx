@@ -88,8 +88,16 @@ function initials(name: string): string {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase()
 }
 
-/** Header patient search (two-step: find → act) plus the quick-add menu. */
-export function HeaderActions() {
+/**
+ * Patient search (two-step: find → act) plus the quick-add menu.
+ *
+ * `rail`: icon over label at the top of the cobalt rail, which is where these
+ * live from tablet width up — the plate across the top is left to the page's
+ * own facts. `plate`: the phone header, where there is no rail.
+ */
+export function HeaderActions({ variant = "plate" }: { variant?: "plate" | "rail" }) {
+  const trigger = variant === "rail" ? "flex min-h-[60px] w-[76px] flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[13px] leading-tight text-white/80 transition-colors hover:bg-white/10 hover:text-white" : "flex min-h-11 items-center gap-2 rounded-md border border-white/25 bg-transparent px-3 text-[17px] font-medium text-white transition-colors hover:bg-white/10 sm:px-4"
+  const label = variant === "rail" ? "" : "hidden sm:inline"
   const { t, locale } = useLocale()
   const { openAddTask } = useAddTask()
   const { openGlobalAddPatient } = useGlobalAddPatient()
@@ -137,27 +145,27 @@ export function HeaderActions() {
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className={variant === "rail" ? "flex flex-col items-center gap-1" : "flex shrink-0 items-center gap-2"}>
         <button
           type="button"
           onClick={() => setModal("search")}
-          className="flex min-h-11 items-center gap-2 rounded-md border border-white/25 bg-transparent px-3 text-[17px] font-medium text-white transition-colors hover:bg-white/10 sm:px-4"
+          className={trigger}
           aria-label={t("header.search")}
         >
-          <Search className="size-4 shrink-0" />
-          <span className="hidden sm:inline">{t("header.search")}</span>
+          <Search className={variant === "rail" ? "size-[22px] shrink-0 stroke-[1.75]" : "size-4 shrink-0"} aria-hidden />
+          <span className={label}>{t("header.search")}</span>
         </button>
 
         <button
           type="button"
           onClick={() => setModal("add")}
-          className="cursor-pointer flex min-h-11 items-center gap-2 rounded-md border border-white/25 bg-transparent px-3 text-[17px] font-medium text-white transition-colors hover:bg-white/10 sm:px-4"
+          className={cn("cursor-pointer", trigger)}
           aria-label={t("header.add")}
           aria-haspopup="dialog"
           aria-expanded={modal === "add"}
         >
-          <Plus className="size-4 shrink-0" />
-          <span className="hidden sm:inline">{t("header.add")}</span>
+          <Plus className={variant === "rail" ? "size-[22px] shrink-0 stroke-[1.75]" : "size-4 shrink-0"} aria-hidden />
+          <span className={label}>{t("header.add")}</span>
         </button>
       </div>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarPlus, ExternalLink, FileText, UserPlus, XIcon } from "lucide-react"
+import { AlertTriangle, ExternalLink, FileText, XIcon } from "lucide-react"
 import { useEffect, useState, type FormEvent } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
 import { useLocale } from "@/components/providers/locale-provider"
 import type { AddPatientPrefill, IntakeReview, PatientSummary } from "@/types/domain"
 import { cn } from "@/lib/utils"
@@ -25,10 +24,16 @@ export interface AddPatientSaveOptions {
   bookRequestedSlot: boolean
 }
 
-const LABEL = "text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500"
+const LABEL = "text-sm font-medium text-mute"
 
 const CONTROL =
-  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] outline-none transition-[border-color,box-shadow] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-200"
+  "h-11 w-full rounded-md border border-hair bg-paper px-3 text-[17px] text-ink outline-none transition-[border-color,box-shadow] focus-visible:border-cobalt focus-visible:ring-3 focus-visible:ring-cobalt/20"
+
+/** A choice among a few: 44px, hairline, cobalt when chosen. */
+const CHOICE =
+  "inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium transition-colors outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt"
+const CHOICE_ON = "border-cobalt bg-cobalt font-bold text-white"
+const CHOICE_OFF = "border-hair bg-paper text-ink hover:bg-ground"
 
 const TEXTAREA = cn(CONTROL, "min-h-[104px] resize-y py-3 leading-relaxed")
 
@@ -193,7 +198,7 @@ export function AddPatientDialog({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200/90 p-0 shadow-2xl sm:max-w-xl",
+          "flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 w-full flex-col gap-0 overflow-hidden rounded-md bg-paper p-0 sm:max-w-xl",
         )}
       >
         <DialogDescription className="sr-only">{t("addPatient.srOnly")}</DialogDescription>
@@ -203,8 +208,8 @@ export function AddPatientDialog({
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
-              className="absolute top-5 end-5 z-20 rounded-xl text-white hover:bg-white/15"
+              size="icon"
+              className="absolute top-3 end-3 z-20 text-ink"
               aria-label={t("common.close")}
             />
           }
@@ -212,29 +217,22 @@ export function AddPatientDialog({
           <XIcon />
         </DialogClose>
 
-        <div className="relative shrink-0 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 pb-4 pt-5 text-white">
-          <div className="pointer-events-none absolute inset-x-6 top-0 h-24 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
-          <DialogHeader className="relative gap-0 space-y-0">
-            <DialogTitle className="font-heading flex items-center gap-2 pe-12 text-xl font-semibold tracking-tight text-white">
-              <UserPlus className="size-5 shrink-0 text-sky-300" aria-hidden />
+        <div className="shrink-0 border-b border-hair px-6 pb-4 pt-5">
+          <DialogHeader className="gap-1 space-y-0">
+            <DialogTitle className="pe-12 text-[22px] leading-tight font-bold text-ink">
               {t("addPatient.title")}
             </DialogTitle>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-sky-50 ring-1 ring-white/15">
-                {t("addPatient.intakeBadge")}
-              </span>
-              <div className="flex items-center gap-2 font-mono text-xs tabular-nums text-sky-100">
-                <CalendarPlus className="size-4 shrink-0 text-sky-300" aria-hidden />
-                <span>{t("addPatient.optionalVisitHint")}</span>
-              </div>
-            </div>
+            <p className="text-sm text-mute">
+              {t("addPatient.intakeBadge")} · {t("addPatient.optionalVisitHint")}
+            </p>
           </DialogHeader>
         </div>
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
           <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-y-contain px-6 py-5">
             {error ? (
-              <p className="rounded-xl border border-rose-200/90 bg-rose-50 px-3 py-2.5 text-sm text-rose-800" role="alert">
+              <p className="flex items-start gap-2.5 rounded-md border border-ink/30 bg-sunk px-3 py-2.5 text-[17px] font-medium text-ink" role="alert">
+                <AlertTriangle className="mt-1 size-4 shrink-0 stroke-[2]" aria-hidden />
                 {error}
               </p>
             ) : null}
@@ -244,37 +242,37 @@ export function AddPatientDialog({
                 — this person becomes a patient, with this slot and these
                 files — and it should be made in one place. */}
             {intake ? (
-              <section className="space-y-3 rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
-                <h3 className="text-sm font-semibold tracking-tight text-slate-900">
+              <section className="space-y-3 rounded-md border border-hair p-4">
+                <h3 className="text-[17px] font-bold text-ink">
                   {t("addPatient.intake.title")}
                 </h3>
                 {hasRequestedSlot ? (
-                  <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
+                  <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[17px] text-ink">
                     <input
                       type="checkbox"
                       checked={bookSlot}
                       onChange={(e) => setBookSlot(e.target.checked)}
-                      className="mt-0.5 size-4 rounded border-slate-300 text-sky-600"
+                      className="mt-0.5 size-5 shrink-0 rounded-[4px] accent-cobalt"
                     />
                     <span>
                       <span className="block font-medium">{t("addPatient.intake.bookSlot")}</span>
-                      <span className="block text-xs text-slate-500">{requestedSlotLabel}</span>
+                      <span className="block text-sm text-mute">{requestedSlotLabel}</span>
                     </span>
                   </label>
                 ) : (
-                  <p className="text-xs text-slate-500">{t("addPatient.intake.noSlot")}</p>
+                  <p className="text-sm text-mute">{t("addPatient.intake.noSlot")}</p>
                 )}
                 <div>
                   <p className={LABEL}>{t("addPatient.intake.documents")}</p>
                   {intake.documents.length ? (
-                    <ul className="mt-1.5 space-y-1.5">
+                    <ul className="mt-1.5">
                       {intake.documents.map((doc) => (
                         <li
                           key={doc.path || doc.name}
-                          className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                          className="flex min-h-11 items-center justify-between gap-2 border-b border-hair-soft text-[17px] text-ink last:border-b-0"
                         >
                           <span className="flex min-w-0 items-center gap-2">
-                            <FileText className="size-4 shrink-0 text-slate-400" aria-hidden />
+                            <FileText className="size-4 shrink-0 text-mute" aria-hidden />
                             <span className="truncate">{doc.name}</span>
                           </span>
                           {doc.path ? (
@@ -282,7 +280,7 @@ export function AddPatientDialog({
                               type="button"
                               disabled={openingPath === doc.path}
                               onClick={() => void openIntakeFile(doc.path)}
-                              className="flex shrink-0 items-center gap-1 text-xs font-semibold text-sky-700 hover:underline disabled:opacity-50"
+                              className="flex min-h-11 shrink-0 items-center gap-1 px-1 text-sm font-medium text-cobalt underline decoration-1 underline-offset-3 disabled:opacity-50"
                             >
                               {t("addPatient.intake.open")}
                               <ExternalLink className="size-3" aria-hidden />
@@ -292,7 +290,7 @@ export function AddPatientDialog({
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-1 text-xs text-slate-500">{t("addPatient.intake.noDocuments")}</p>
+                    <p className="mt-1 text-sm text-mute">{t("addPatient.intake.noDocuments")}</p>
                   )}
                 </div>
               </section>
@@ -300,13 +298,13 @@ export function AddPatientDialog({
 
             <section className="space-y-4">
               <div>
-                <h3 className="text-sm font-semibold tracking-tight text-slate-900">{t("addPatient.section.personal")}</h3>
-                <p className="mt-1 text-xs text-slate-500">{t("addPatient.section.personalHint")}</p>
+                <h3 className="text-[17px] font-bold text-ink">{t("addPatient.section.personal")}</h3>
+                <p className="mt-0.5 text-sm text-mute">{t("addPatient.section.personalHint")}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label htmlFor="np-name" className={LABEL}>
-                    {t("addPatient.label.fullName")} <span className="text-rose-600">*</span>
+                    {t("addPatient.label.fullName")} <span className="text-ink">*</span>
                   </label>
                   <Input id="np-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" required />
                 </div>
@@ -344,12 +342,12 @@ export function AddPatientDialog({
               </div>
             </section>
 
-            <Separator />
+            <div className="border-t border-hair" aria-hidden />
 
             <section className="space-y-4">
               <div>
-                <h3 className="text-sm font-semibold tracking-tight text-slate-900">{t("addPatient.section.coverage")}</h3>
-                <p className="mt-1 text-xs text-slate-500">{t("addPatient.section.coverageHint")}</p>
+                <h3 className="text-[17px] font-bold text-ink">{t("addPatient.section.coverage")}</h3>
+                <p className="mt-0.5 text-sm text-mute">{t("addPatient.section.coverageHint")}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -368,7 +366,7 @@ export function AddPatientDialog({
                   <label htmlFor="np-ref" className={LABEL}>
                     {t("addPatient.label.referral")}
                   </label>
-                  <select id="np-ref" value={referralId} onChange={(e) => setReferralId(e.target.value as ReferralId)} className={cn(CONTROL, "mt-1.5 appearance-none")}>
+                  <select id="np-ref" value={referralId} onChange={(e) => setReferralId(e.target.value as ReferralId)} className={cn(CONTROL, "mt-1.5")}>
                     {REFERRAL_IDS.map((id) => (
                       <option key={id} value={id}>
                         {t(`addPatient.referral.${id}`)}
@@ -381,7 +379,7 @@ export function AddPatientDialog({
                     {t("addPatient.label.firstVisit")}
                   </label>
                   <Input id="np-first" type="date" value={firstVisit} onChange={(e) => setFirstVisit(e.target.value)} className="mt-1.5" />
-                  <p className="mt-1.5 text-[11px] text-slate-400">{t("addPatient.hint.scheduleMock")}</p>
+                  <p className="mt-1.5 text-sm text-mute">{t("addPatient.hint.scheduleMock")}</p>
                 </div>
               </div>
 
@@ -393,12 +391,8 @@ export function AddPatientDialog({
                       key={n}
                       type="button"
                       onClick={() => setPlanChoice(n)}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                        planChoice === n
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
-                      )}
+                      aria-pressed={planChoice === n}
+                      className={cn(CHOICE, planChoice === n ? CHOICE_ON : CHOICE_OFF)}
                     >
                       {t("addPatient.plan.sessions", { n })}
                     </button>
@@ -406,12 +400,8 @@ export function AddPatientDialog({
                   <button
                     type="button"
                     onClick={() => setPlanChoice("custom")}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                      planChoice === "custom"
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
-                    )}
+                    aria-pressed={planChoice === "custom"}
+                    className={cn(CHOICE, planChoice === "custom" ? CHOICE_ON : CHOICE_OFF)}
                   >
                     {t("addPatient.plan.custom")}
                   </button>
@@ -436,11 +426,11 @@ export function AddPatientDialog({
             </section>
           </div>
 
-          <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-3xl border-t border-slate-200/95 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
-            <Button type="button" variant="outline" className="h-11 rounded-xl min-w-[6.5rem]" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="relative z-[1] mx-0 mb-0 mt-0 shrink-0 rounded-b-md border-t border-hair bg-paper px-6 py-4 sm:flex-row sm:justify-end sm:gap-3">
+            <Button type="button" variant="outline" className="min-w-[6.5rem]" onClick={() => onOpenChange(false)}>
               {t("addPatient.footer.cancel")}
             </Button>
-            <Button type="submit" className="h-11 min-w-[7.5rem] rounded-xl bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800">
+            <Button type="submit" className="h-12 min-w-[7.5rem] px-6">
               {t("addPatient.footer.save")}
             </Button>
           </DialogFooter>

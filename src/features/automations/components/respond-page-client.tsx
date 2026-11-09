@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarClock, Check, Loader2, X } from "lucide-react"
+import { ArrowLeft, CalendarClock, Check, Loader2, X } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
@@ -163,8 +163,8 @@ export function RespondPageClient({ token }: { token: string }) {
   if (view === "loading") {
     return (
       <PublicShell clinicName={clinicName} title={t("public.respond.title")}>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="size-4 animate-spin text-sky-600" aria-hidden />
+        <div className="flex items-center gap-2 text-[17px] text-mute">
+          <Loader2 className="size-5 animate-spin text-cobalt" aria-hidden />
           {t("public.loading")}
         </div>
       </PublicShell>
@@ -225,7 +225,8 @@ export function RespondPageClient({ token }: { token: string }) {
       >
         <div className="grid gap-3">
           <Button
-            className="h-12 justify-start gap-3 text-base"
+            size="lg"
+            className="h-14 justify-start gap-3"
             disabled={busy}
             onClick={() => finish("payment_claimed")}
           >
@@ -233,7 +234,7 @@ export function RespondPageClient({ token }: { token: string }) {
             {t("public.payment.declare")}
           </Button>
         </div>
-        <p className="mt-4 text-xs leading-relaxed text-slate-500">
+        <p className="mt-4 text-sm leading-relaxed text-mute">
           {t("public.payment.footnote")}
         </p>
       </PublicShell>
@@ -268,7 +269,8 @@ export function RespondPageClient({ token }: { token: string }) {
           onPick={(slot) => finish("rescheduled", slot)}
           emptyLabel={t("public.slots.none")}
         />
-        <Button variant="ghost" className="mt-4 text-slate-600" onClick={() => setView("choose")}>
+        <Button variant="outline" className="mt-6 gap-2" onClick={() => setView("choose")}>
+          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
           {t("public.back")}
         </Button>
       </PublicShell>
@@ -283,7 +285,8 @@ export function RespondPageClient({ token }: { token: string }) {
     >
       <div className="grid gap-3">
         <Button
-          className="h-12 justify-start gap-3 text-base"
+          size="lg"
+          className="h-14 justify-start gap-3"
           disabled={busy}
           onClick={() => finish("confirmed")}
         >
@@ -292,7 +295,8 @@ export function RespondPageClient({ token }: { token: string }) {
         </Button>
         <Button
           variant="outline"
-          className="h-12 justify-start gap-3 border-slate-200 text-base text-slate-800"
+          size="lg"
+          className="h-14 justify-start gap-3"
           disabled={busy}
           onClick={() => setView("reschedule")}
         >
@@ -301,7 +305,8 @@ export function RespondPageClient({ token }: { token: string }) {
         </Button>
         <Button
           variant="outline"
-          className="h-12 justify-start gap-3 border-[rgb(248,228,214)] bg-[rgb(255,247,242)] text-base text-[rgb(140,92,68)]"
+          size="lg"
+          className="h-14 justify-start gap-3"
           disabled={busy}
           onClick={() => finish("cancelled")}
         >
@@ -309,7 +314,7 @@ export function RespondPageClient({ token }: { token: string }) {
           {t("public.respond.cancel")}
         </Button>
       </div>
-      <p className="mt-4 text-xs leading-relaxed text-slate-500">{t("public.respond.footnote")}</p>
+      <p className="mt-4 text-sm leading-relaxed text-mute">{t("public.respond.footnote")}</p>
     </PublicShell>
   )
 }

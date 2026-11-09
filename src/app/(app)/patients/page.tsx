@@ -1,34 +1,27 @@
 "use client"
 
 import Link from "next/link"
-import { Activity, Search, UserPlus } from "lucide-react"
+import { ChevronRight, Search, UserPlus } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
+import { PagePlate, PlateFact, PlateSpacer } from "@/components/layout/page-plate"
 import { useLocale } from "@/components/providers/locale-provider"
 import {
   useAddPatient,
   useMergedPatients,
   usePatientExtras,
 } from "@/components/providers/patient-extras-provider"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { StateMark } from "@/components/ui/state-mark"
+import { OwedTag } from "@/features/finances/components/pending-row"
 import { PaymentClaimBadge } from "@/features/finances/components/payment-claim-badge"
 import { usePaymentClaims } from "@/features/finances/lib/use-payment-claims"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { AddPatientDialog } from "@/features/patients/components/add-patient-dialog"
 import { ExportButton, ExportDialog } from "@/features/exports/components/export-dialog"
 import { patientColumns } from "@/features/exports/lib/build-exports"
 import { loadExportSource } from "@/features/exports/lib/export-source"
 import { datedFilename, downloadCsv } from "@/lib/file-export"
-import { darkCardHeaderClass, elevatedCardBodyClass, elevatedCardClass } from "@/lib/clinic-card-styles"
 import { localeToBcp47 } from "@/lib/format-locale"
 import { localizePatient } from "@/lib/i18n/localized-seed"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
@@ -75,31 +68,49 @@ function parseBalance(value: string): number {
  * active patient the badge now says which of the two things they are: booked
  * in, or merely still recent. A patient who is neither gets no badge, because
  * there is nothing true and short to say about them.
+ *
+ * These are statuses of a person, not states of a visit, so they are drawn as
+ * words — never orange. The one that is about a visit, "booked in", carries
+ * the ring the rest of the app uses for a booked visit.
  */
+type StatusTone = "booked" | "frozen" | "quiet"
+
 function statusBadge(
   status: PatientSummary["status"],
   hasFuture: boolean,
   isRelevant: boolean,
-): { key: string; className: string } | null {
-  if (status === "frozen") {
-    return { key: "status.patient.frozen", className: "border-sky-200 bg-sky-50 text-sky-700" }
-  }
-  if (status === "past") {
-    return { key: "status.patient.past", className: "border-slate-200 bg-slate-50 text-slate-500" }
-  }
-  if (hasFuture) {
-    return {
-      key: "status.patient.active",
-      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    }
-  }
-  if (isRelevant) {
-    return {
-      key: "patients.filter.relevant",
-      className: "border-slate-200 bg-slate-50 text-slate-600",
-    }
-  }
+): { key: string; tone: StatusTone } | null {
+  if (status === "frozen") return { key: "status.patient.frozen", tone: "frozen" }
+  if (status === "past") return { key: "status.patient.past", tone: "quiet" }
+  if (hasFuture) return { key: "status.patient.active", tone: "booked" }
+  if (isRelevant) return { key: "patients.filter.relevant", tone: "quiet" }
   return null
+}
+
+function StatusText({
+  badge,
+  t,
+}: {
+  badge: ReturnType<typeof statusBadge>
+  t: (key: string) => string
+}) {
+  if (!badge) return null
+  if (badge.tone === "booked") {
+    return (
+      <span className="inline-flex items-center gap-2 text-sm font-medium text-ink">
+        <StateMark state="plan" />
+        {t(badge.key)}
+      </span>
+    )
+  }
+  if (badge.tone === "frozen") {
+    return (
+      <span className="inline-flex min-h-6 items-center rounded-[4px] bg-sunk px-2 text-sm font-medium text-ink">
+        {t(badge.key)}
+      </span>
+    )
+  }
+  return <span className="text-sm text-mute">{t(badge.key)}</span>
 }
 
 function relativeVisitLabel(
@@ -265,242 +276,192 @@ export default function PatientsPage() {
     })
   }
 
-  function PatientMobileCardInline({
-    patient,
-    days,
-    balance,
-    badge,
-  }: {
-    patient: PatientSummary
-    badge: ReturnType<typeof statusBadge>
-    days: number | null
-    balance: number
-  }) {
-    const isSettled = balance === 0
-    const claimed = paymentClaims.patients.has(patient.id)
-    return (
-      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_28px_-14px_rgba(15,23,42,0.12)]">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <Link
-            href={`/patients/${patient.id}`}
-            className="min-w-0 flex-1 text-[15px] font-semibold tracking-tight text-slate-900 transition-colors hover:text-sky-700"
-          >
-            {patient.fullName}
-          </Link>
-          {badge && (
-            <Badge variant="outline" className={cn("shrink-0", badge.className)}>
-              {t(badge.key)}
-            </Badge>
-          )}
-        </div>
-        <p className="mt-3 font-mono text-xs tabular-nums text-slate-700">
-          {formatVisitDate(patient.lastVisit)}{" "}
-          {relativeVisitLabel(days, t) && (
-            <span className="font-sans text-slate-400">({relativeVisitLabel(days, t)})</span>
-          )}
-        </p>
-        <div className="mt-2">
-          {isSettled ? (
-            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
-              {t("finances.badge.settled")}
-            </Badge>
-          ) : claimed ? (
-            // Outranks the debt badge: this person is not to be chased.
-            <PaymentClaimBadge amount={formatBalanceDisplay(patient.balance)} />
-          ) : (
-            <Badge className="border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-rose-100">
-              {t("patients.debtBadge", { amount: formatBalanceDisplay(patient.balance) })}
-            </Badge>
-          )}
-        </div>
-        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-slate-500">{patient.medicalHistorySummary}</p>
-      </div>
-    )
-  }
+  const countFmt = useMemo(() => new Intl.NumberFormat(localeToBcp47(locale)), [locale])
+
+  /**
+   * One list for every width. The row is a link to the chart — the whole row,
+   * so the target is the row and not the few pixels of a name — and its
+   * columns fold into the line under the name as the screen narrows.
+   */
+  const ROW_GRID =
+    "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_8rem_7.5rem_7.5rem_1rem] lg:grid-cols-[minmax(0,1fr)_9rem_10rem_9rem_9rem_1rem] lg:gap-x-5"
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      <Card className={elevatedCardClass}>
-        <CardHeader
-          className={cn(darkCardHeaderClass, "flex flex-row flex-wrap items-center justify-between gap-3 py-3")}
+    <div className="space-y-6">
+      <PagePlate>
+        <PlateFact display label={t("patients.page.title")}>
+          {listPending ? "—" : countFmt.format(merged.length)}
+        </PlateFact>
+        <PlateSpacer />
+        <Button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="h-14 gap-2 px-6 text-[17px]"
         >
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Activity className="size-5 shrink-0 stroke-[1.6] text-sky-400" />
-            <CardTitle className="text-lg font-bold tracking-tight text-white sm:text-xl">{t("patients.page.title")}</CardTitle>
-          </div>
-          <span className="inline-flex shrink-0 items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tabular-nums text-white ring-1 ring-white/20">
-            {merged.length}&nbsp;
-            <span className="font-medium">
-              {merged.length === 1 ? t("patients.count.one") : t("patients.count.many")}
-            </span>
-          </span>
-        </CardHeader>
+          <UserPlus className="size-5" aria-hidden />
+          {t("patients.addPatient")}
+        </Button>
+      </PagePlate>
 
-        <CardContent className={`${elevatedCardBodyClass} space-y-5`}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-            <div className="relative w-full min-w-0 lg:max-w-md">
-              <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-sky-500" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t("patients.search.placeholder")}
-                className="ps-9"
-                aria-label={t("patients.search.placeholder")}
-              />
-            </div>
-            <div className="flex min-w-0 flex-wrap gap-2">
-              {filterButtons.map((f) => {
-                const on = activeFilters.has(f.id)
-                return (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => toggleFilter(f.id)}
-                    aria-pressed={on}
+      <h1 className="sr-only">{t("patients.page.title")}</h1>
+
+      <section className="min-w-0 rounded-md border border-hair bg-paper">
+        <div className="flex flex-col gap-3 border-b border-hair px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:gap-6">
+          <div className="relative w-full min-w-0 lg:max-w-md">
+            <Search
+              className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-faint"
+              aria-hidden
+            />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("patients.search.placeholder")}
+              className="ps-10"
+              aria-label={t("patients.search.placeholder")}
+            />
+          </div>
+          <div className="flex min-w-0 flex-wrap gap-2">
+            {filterButtons.map((f) => {
+              const on = activeFilters.has(f.id)
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => toggleFilter(f.id)}
+                  aria-pressed={on}
+                  className={cn(
+                    "inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium transition-colors outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt",
+                    on
+                      ? "border-cobalt bg-cobalt font-bold text-white"
+                      : "border-hair bg-paper text-ink hover:bg-ground",
+                  )}
+                >
+                  {f.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Column names, from tablet width up — below that each row says it in words. */}
+        <div
+          className={cn(
+            ROW_GRID,
+            "hidden min-h-11 border-b border-hair-soft text-sm font-medium text-mute md:grid",
+          )}
+          aria-hidden
+        >
+          <span>{t("patients.col.name")}</span>
+          <span className="hidden lg:block">{t("addPatient.label.phone")}</span>
+          <span>{t("patients.col.lastVisit")}</span>
+          <span>{t("patients.col.status")}</span>
+          <span className="text-end">{t("patients.col.balance")}</span>
+          <span />
+        </div>
+
+        {rows.length === 0 ? (
+          <p className="px-6 py-12 text-center text-[17px] text-mute">
+            {t(listPending ? "patients.loading" : "patients.empty.filters")}
+          </p>
+        ) : (
+          <ul>
+            {shown.map(({ patient, days, balance, hasFuture, isRelevant }) => {
+              const badge = statusBadge(patient.status, hasFuture, isRelevant)
+              const isSettled = balance === 0
+              const claimed = paymentClaims.patients.has(patient.id)
+              const relative = relativeVisitLabel(days, t)
+              return (
+                <li key={patient.id} className="border-b border-hair-soft last:border-b-0">
+                  <Link
+                    href={`/patients/${patient.id}`}
                     className={cn(
-                      "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                      on
-                        ? "border-slate-900 bg-slate-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
+                      ROW_GRID,
+                      "min-h-[72px] py-3 text-ink transition-colors outline-none hover:bg-ground focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-cobalt",
                     )}
                   >
-                    {f.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[17px] font-bold">{patient.fullName}</span>
+                      {/* Below tablet width the columns live here, as one line. */}
+                      <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-mute md:hidden">
+                        {patient.phone && (
+                          <span dir="ltr" className="tabular-nums">
+                            {patient.phone}
+                          </span>
+                        )}
+                        <span className="tabular-nums">{formatVisitDate(patient.lastVisit)}</span>
+                        <StatusText badge={badge} t={t} />
+                      </span>
+                      {/* On a tablet held upright the phone takes the line under
+                          the name; with room for its own column, the note does. */}
+                      {patient.phone && (
+                        <span className="mt-0.5 hidden text-sm tabular-nums text-mute md:block lg:hidden">
+                          <bdi dir="ltr">{patient.phone}</bdi>
+                        </span>
+                      )}
+                      <span className="mt-0.5 hidden truncate text-sm text-mute lg:block" title={patient.medicalHistorySummary}>
+                        {patient.medicalHistorySummary}
+                      </span>
+                    </span>
 
-          <div className="space-y-3 lg:hidden">
-            {rows.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
-                {t(listPending ? "patients.loading" : "patients.empty.filters")}
-              </p>
-            ) : (
-              shown.map(({ patient, days, balance, hasFuture, isRelevant }) => (
-                <PatientMobileCardInline
-                  key={patient.id}
-                  patient={patient}
-                  days={days}
-                  balance={balance}
-                  badge={statusBadge(patient.status, hasFuture, isRelevant)}
-                />
-              ))
-            )}
-          </div>
+                    <span className="hidden text-sm tabular-nums lg:block">
+                      {patient.phone ? <span dir="ltr">{patient.phone}</span> : <span className="text-faint">—</span>}
+                    </span>
 
-          <div className="hidden lg:block">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-slate-200 hover:bg-transparent">
-                  <TableHead className="min-w-[9rem]">{t("patients.col.name")}</TableHead>
-                  <TableHead className="min-w-[6rem]">{t("patients.col.status")}</TableHead>
-                  <TableHead className="min-w-[11rem]">{t("patients.col.lastVisit")}</TableHead>
-                  <TableHead className="min-w-[7rem]">{t("patients.col.balance")}</TableHead>
-                  <TableHead className="min-w-[14rem] max-w-[min(28rem,28vw)]">{t("patients.col.note")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 ? (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={5} className="py-12 text-center text-sm text-slate-400">
-                      {t(listPending ? "patients.loading" : "patients.empty.filters")}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  shown.map(({ patient, days, balance, hasFuture, isRelevant }) => {
-                    const badge = statusBadge(patient.status, hasFuture, isRelevant)
-                    const isSettled = balance === 0
-                    const claimed = paymentClaims.patients.has(patient.id)
-                    return (
-                      <TableRow
-                        key={patient.id}
-                        className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70"
-                      >
-                        <TableCell className="py-5 align-middle">
-                          <Link
-                            href={`/patients/${patient.id}`}
-                            className="block rounded-md text-start text-[15px] font-medium tracking-tight text-slate-900 transition-colors hover:text-sky-700"
-                          >
-                            {patient.fullName}
-                          </Link>
-                        </TableCell>
+                    <span className="hidden min-w-0 flex-col md:flex">
+                      <span className="text-sm tabular-nums">{formatVisitDate(patient.lastVisit)}</span>
+                      {relative && <span className="text-sm text-mute">{relative}</span>}
+                    </span>
 
-                        <TableCell className="py-5 align-middle">
-                          {badge && (
-                            <Badge variant="outline" className={badge.className}>
-                              {t(badge.key)}
-                            </Badge>
-                          )}
-                        </TableCell>
+                    <span className="hidden md:block">
+                      <StatusText badge={badge} t={t} />
+                    </span>
 
-                        <TableCell className="py-5 align-middle">
-                          <span className="font-mono text-sm tabular-nums text-slate-800">{formatVisitDate(patient.lastVisit)}</span>
-                          {relativeVisitLabel(days, t) && (
-                            <span className="mt-1 block text-xs text-slate-400 sm:mt-0 sm:ms-2 sm:inline">
-                              ({relativeVisitLabel(days, t)})
-                            </span>
-                          )}
-                        </TableCell>
+                    <span className="flex justify-end">
+                      {isSettled ? (
+                        <span className="text-sm text-mute">{t("finances.badge.settled")}</span>
+                      ) : claimed ? (
+                        // Outranks the debt: this person is not to be chased.
+                        <PaymentClaimBadge amount={formatBalanceDisplay(patient.balance)} />
+                      ) : (
+                        <OwedTag className="min-h-7 text-sm">
+                          {t("patients.debtBadge", { amount: formatBalanceDisplay(patient.balance) })}
+                        </OwedTag>
+                      )}
+                    </span>
 
-                        <TableCell className="py-5 align-middle">
-                          {isSettled ? (
-                            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
-                              {t("finances.badge.settled")}
-                            </Badge>
-                          ) : claimed ? (
-                            <PaymentClaimBadge amount={formatBalanceDisplay(patient.balance)} />
-                          ) : (
-                            <Badge className="border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-rose-100">
-                              {t("patients.debtBadge", { amount: formatBalanceDisplay(patient.balance) })}
-                            </Badge>
-                          )}
-                        </TableCell>
+                    <ChevronRight className="hidden size-4 text-faint md:block rtl:rotate-180" aria-hidden />
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        )}
 
-                        <TableCell className="max-w-[min(28rem,26vw)] py-5 align-middle whitespace-nowrap">
-                          <p className="truncate text-sm text-slate-500" title={patient.medicalHistorySummary}>
-                            {patient.medicalHistorySummary}
-                          </p>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Stated, never silent. A list that stops at sixty without saying so
-              is a list that has lost people. */}
+        {/* Stated, never silent. A list that stops at sixty without saying so
+            is a list that has lost people. */}
+        <div className="flex flex-wrap items-center gap-3 border-t border-hair px-4 py-3 sm:px-6">
           {remaining > 0 && (
-            <div className="flex flex-col items-center gap-2 border-t border-slate-100 pt-5">
-              <p className="text-xs text-slate-400">
+            <>
+              <p className="text-sm tabular-nums text-mute">
                 {t("patients.showing", { shown: shown.length, total: rows.length })}
               </p>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                className="h-11 px-3 text-sm"
                 onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
               >
                 {t("patients.showMore", { n: Math.min(PAGE_SIZE, remaining) })}
-              </button>
-            </div>
+              </Button>
+            </>
           )}
-
-          <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-100 pt-5 pb-1">
-            <ExportButton onClick={() => setExportOpen(true)} label={t("export.patients")} />
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="inline-flex items-center gap-1.5 px-0 py-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
-              aria-label={t("patients.addPatient")}
-            >
-              <span>{t("patients.addPatient")}</span>
-              <UserPlus className="size-4 shrink-0 stroke-[2] text-sky-600" aria-hidden />
-            </button>
-          </div>
-        </CardContent>
-      </Card>
+          <ExportButton
+            onClick={() => setExportOpen(true)}
+            label={t("export.patients")}
+            className="ms-auto h-11 border-hair px-3 text-sm text-ink [&_svg]:text-ink"
+          />
+        </div>
+      </section>
 
       <AddPatientDialog
         open={addOpen}

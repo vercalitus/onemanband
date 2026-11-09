@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { FolderOpen, Plus } from "lucide-react"
+import { ChevronRight, Plus } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { StateMark, type MarkState } from "@/components/ui/state-mark"
 import type { AppointmentStatus, AppointmentType, ScheduleItem } from "@/types/domain"
 import { AppointmentEditDialog } from "@/features/dashboard/components/appointment-edit-dialog"
 import { useAppointmentTypeVisual } from "@/lib/use-appointment-type-visual"
@@ -31,31 +32,46 @@ function sortByStart(list: ScheduleItem[]) {
   return [...list].sort((a, b) => minutesFromHHMM(a.start) - minutesFromHHMM(b.start))
 }
 
-function hourOf(hhmm: string): number {
-  return Math.floor(minutesFromHHMM(hhmm) / 60)
-}
-
+/** The present moment: one orange rule across the day, with the time on it. */
 function NowDivider({ label, aria }: { label: string; aria: string }) {
   return (
-    <div className="flex items-center gap-2 py-1.5" role="separator" aria-label={aria}>
-      <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-wider text-sky-600">
+    <div className="relative my-1 flex h-6 items-center" role="separator" aria-label={aria}>
+      <span className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-signal" aria-hidden />
+      <span className="relative ms-4 rounded-[4px] bg-signal px-2 text-sm leading-6 font-bold tabular-nums text-ink sm:ms-6">
         {label}
       </span>
-      <div className="h-px min-w-0 flex-1 bg-sky-400" />
-      <span className="size-2 shrink-0 rounded-full bg-sky-500" aria-hidden />
     </div>
   )
 }
 
-function HourDivider({ hour }: { hour: number }) {
-  const label = `${String(hour).padStart(2, "0")}:00`
+/** A gap worth filling: hatched, so it reads as open time rather than as a visit. */
+function FreeGap({
+  from,
+  label,
+  actionLabel,
+  onBook,
+}: {
+  from: string
+  label: string
+  actionLabel: string
+  onBook: () => void
+}) {
   return (
-    <div className="flex items-center gap-2 pb-1.5 pt-2" aria-hidden>
-      <span className="shrink-0 font-mono text-[10px] font-medium tracking-wider text-slate-400">{label}</span>
-      <div className="h-px min-w-0 flex-1 bg-slate-100" />
+    <div className="grid min-h-[52px] grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-3.5 border-b border-hair-soft bg-[repeating-linear-gradient(-45deg,transparent_0_7px,rgb(22_24_26/0.07)_7px_8px)] ps-4 pe-2 sm:ps-6">
+      <span className="text-sm tabular-nums text-mute">{from}</span>
+      <p className="truncate text-sm font-medium text-ink">{label}</p>
+      <Button type="button" variant="outline" size="sm" onClick={onBook}>
+        {actionLabel}
+      </Button>
     </div>
   )
 }
+
+/** Shorter gaps are the ordinary slack of a day, not something to fill. */
+const FREE_GAP_MIN = 30
+
+const hhmm = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
 
 export function DayCalendarView({
   appointments,
@@ -84,14 +100,15 @@ export function DayCalendarView({
     return out
   }, [typeVisualBase, t])
 
-  const statusTone = useMemo(
-    (): Record<AppointmentStatus, { dot: string; label: string; text: string }> => ({
-      confirmed: { dot: "bg-emerald-400", label: t("appt.status.confirmed"), text: "text-emerald-700" },
-      scheduled: { dot: "bg-sky-400", label: t("appt.status.scheduled"), text: "text-sky-700" },
-      uncertain: { dot: "bg-amber-400", label: t("appt.status.uncertain"), text: "text-amber-700" },
-      completed: { dot: "bg-slate-300", label: t("appt.status.completed"), text: "text-slate-500" },
-      cancelled: { dot: "bg-rose-300", label: t("appt.status.cancelled"), text: "text-rose-500" },
-      no_show: { dot: "bg-orange-300", label: t("appt.status.no_show"), text: "text-orange-600" },
+  /** Each status in the one vocabulary (DESIGN.md), with its own word beside it. */
+  const statusMark = useMemo(
+    (): Record<AppointmentStatus, { mark: MarkState; label: string; tone: string }> => ({
+      confirmed: { mark: "plan", label: t("appt.status.confirmed"), tone: "text-ink" },
+      scheduled: { mark: "plan", label: t("appt.status.scheduled"), tone: "text-mute" },
+      uncertain: { mark: "unsure", label: t("appt.status.uncertain"), tone: "text-mute" },
+      completed: { mark: "done", label: t("appt.status.completed"), tone: "text-olive" },
+      cancelled: { mark: "cancel", label: t("appt.status.cancelled"), tone: "text-mute" },
+      no_show: { mark: "cancel", label: t("appt.status.no_show"), tone: "text-ink" },
     }),
     [t],
   )
@@ -176,17 +193,36 @@ export function DayCalendarView({
     setDialogOpen(true)
   }
 
+  const openCreateAt = (minutes: number) => {
+    setDialogMode("create")
+    setActiveAppointment(null)
+    setDefaultStartMinutes(clampStartForDuration(snapMinutesToSlotNearest(minutes), 15))
+    setDefaultDate(effectiveISO)
+    setDialogOpen(true)
+  }
+
+  /** The next visit still to come today: drawn in cobalt so the eye lands on it. */
+  const nextId = useMemo(() => {
+    if (!isViewingToday || currentMinutes === null) return null
+    const next = visible.find(
+      (a) =>
+        minutesFromHHMM(a.start) >= currentMinutes &&
+        a.status !== "cancelled" &&
+        a.status !== "completed" &&
+        a.status !== "no_show",
+    )
+    return next?.id ?? null
+  }, [visible, isViewingToday, currentMinutes])
+
   const renderTiles = () => {
     let markerPlaced = false
     let prevEnd: number | null = null
-    let prevHour: number | null = null
     const nodes: ReactNode[] = []
     const nowLabel = t("dashboard.timeline.now")
 
     visible.forEach((apt, idx) => {
       const startMin = minutesFromHHMM(apt.start)
       const endMin = minutesFromHHMM(apt.end)
-      const startHour = hourOf(apt.start)
 
       if (showNowLine && !markerPlaced) {
         const gapStart = prevEnd ?? DAY_START_MIN
@@ -207,12 +243,24 @@ export function DayCalendarView({
         markerPlaced = true
       }
 
-      if (idx > 0 && prevHour !== null && startHour !== prevHour) {
-        nodes.push(<HourDivider key={`hour-${apt.id}`} hour={startHour} />)
+      // Open time between two visits, once it is long enough to book.
+      if (idx > 0 && prevEnd !== null && startMin - prevEnd >= FREE_GAP_MIN && apt.status !== "cancelled") {
+        const gapStart = prevEnd
+        nodes.push(
+          <FreeGap
+            key={`gap-${apt.id}`}
+            from={hhmm(gapStart)}
+            label={t("dashboard.day.free", { minutes: startMin - gapStart, time: apt.start })}
+            actionLabel={t("dashboard.day.book")}
+            onBook={() => openCreateAt(gapStart)}
+          />,
+        )
       }
 
-      const status = statusTone[apt.status]
+      const status = statusMark[apt.status]
       const typeStyle = typeVisual[apt.appointmentType]
+      const isPast = apt.status === "completed" || apt.status === "no_show"
+      const isNext = apt.id === nextId
       const isCancelled = apt.status === "cancelled"
       const debt = owing.has(apt.patientId)
       /*
@@ -233,12 +281,10 @@ export function DayCalendarView({
           key={apt.id}
           role="button"
           tabIndex={0}
+          aria-current={isNext ? "true" : undefined}
           className={cn(
-            "mb-2 flex min-h-[96px] cursor-pointer gap-3 overflow-hidden rounded-xl border px-3 py-3 pe-4 transition-shadow focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none",
-            typeStyle.surface,
-            typeStyle.stripe,
-            "shadow-sm hover:z-10 hover:shadow-md",
-            isCancelled && "opacity-60",
+            "grid min-h-[60px] cursor-pointer grid-cols-[64px_14px_minmax(0,1fr)_auto_44px] items-center gap-x-3.5 border-b border-hair-soft py-2 ps-4 pe-1 transition-colors hover:bg-ground focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-cobalt sm:ps-6",
+            isNext && "bg-cobalt-tint hover:bg-cobalt-tint",
           )}
           onClick={() => openEdit(apt)}
           onKeyDown={(e) => {
@@ -248,73 +294,65 @@ export function DayCalendarView({
             }
           }}
         >
-          <span
+          <time
+            dateTime={apt.start}
             className={cn(
-              "mt-1 size-2 shrink-0 self-start rounded-full ring-2 ring-white",
-              debt ? "bg-rose-500" : "bg-emerald-500",
+              "text-[22px] leading-none font-medium tabular-nums",
+              isPast || isCancelled ? "text-mute" : "text-ink",
+              isNext && "font-bold text-cobalt",
+              isCancelled && "line-through decoration-1",
             )}
-            aria-hidden
-            title={debt ? t("dashboard.patient.debtTitle") : t("dashboard.patient.settledTitle")}
-          />
-          <div className="flex min-w-0 flex-1 flex-col justify-between gap-1">
-            <div className="flex flex-wrap items-start justify-between gap-2 gap-y-1">
-              <p
-                className={cn(
-                  "font-mono text-sm font-semibold tracking-tight text-slate-900 tabular-nums",
-                  isCancelled && "line-through decoration-rose-400/70",
+          >
+            {apt.start}
+          </time>
+          <StateMark state={status.mark} />
+          <div className="min-w-0">
+            <p className="truncate">
+              <span className={cn("font-bold text-ink", isCancelled && "font-medium text-mute line-through decoration-1")}>
+                {apt.patientName}
+              </span>
+              <span className="text-sm text-mute">
+                {" · "}
+                {typeStyle.label}
+                {" · "}
+                <span className="tabular-nums">{t("dashboard.day.minutes", { n: endMin - startMin })}</span>
+                {planLabel && (
+                  <>
+                    {" · "}
+                    <span className="tabular-nums">{planLabel}</span>
+                  </>
                 )}
-              >
-                <time dateTime={`${apt.start}`}>{apt.start}</time>
-                {" — "}
-                <time dateTime={`${apt.end}`}>{apt.end}</time>
-              </p>
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider",
-                    status.text,
-                  )}
-                >
-                  <span className={cn("size-1.5 rounded-full", status.dot)} aria-hidden />
-                  {status.label}
-                </span>
-                {/* The kind of visit, at a size it can be read at arm's length
-                    on a tablet — it was 10px and the practitioner could not
-                    tell the three types apart without leaning in. */}
-                <span
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-xs font-semibold",
-                    typeStyle.chip,
-                  )}
-                >
-                  {typeStyle.label}
-                </span>
-              </div>
-            </div>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <p className="line-clamp-1 text-[15px] font-semibold text-slate-900">{apt.patientName}</p>
-              <Link
-                href={`/patients/${apt.patientId}?tab=records`}
-                className="shrink-0 text-slate-400 transition-colors hover:text-sky-600"
-                title={t("dashboard.patient.recordsLink")}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <FolderOpen className="size-4 stroke-[1.6]" aria-hidden />
-                <span className="sr-only">{t("dashboard.patient.openChart", { name: apt.patientName })}</span>
-              </Link>
-              {planLabel && (
-                <span className="ms-auto shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-slate-600">
-                  {planLabel}
-                </span>
-              )}
-            </div>
-            <p className="line-clamp-2 text-xs leading-snug text-slate-600">{apt.treatment}</p>
+              </span>
+            </p>
+            {apt.treatment && <p className="truncate text-sm text-mute">{apt.treatment}</p>}
           </div>
+          <div className="flex items-center justify-end gap-2">
+            {/* A balance owed, as the one orange outline in the row. A word
+                on every row of a busy day was louder than the visits. */}
+            {debt && !isCancelled && (
+              <span
+                className="flex size-6 items-center justify-center rounded-[4px] border-[1.5px] border-signal text-sm font-bold text-ink"
+                title={t("dashboard.patient.debtTitle")}
+              >
+                <span aria-hidden>₪</span>
+                <span className="sr-only">{t("dashboard.patient.debtTitle")}</span>
+              </span>
+            )}
+            <span className={cn("hidden text-sm font-medium whitespace-nowrap sm:inline", status.tone)}>{status.label}</span>
+          </div>
+          <Link
+            href={`/patients/${apt.patientId}?tab=records`}
+            className="flex size-11 items-center justify-center rounded-md text-faint transition-colors hover:bg-paper hover:text-cobalt"
+            title={t("dashboard.patient.recordsLink")}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ChevronRight className="size-5 rtl:-scale-x-100" aria-hidden />
+            <span className="sr-only">{t("dashboard.patient.openChart", { name: apt.patientName })}</span>
+          </Link>
         </div>,
       )
 
-      prevEnd = endMin
-      prevHour = startHour
+      prevEnd = Math.max(prevEnd ?? 0, endMin)
     })
 
     if (
@@ -329,10 +367,7 @@ export function DayCalendarView({
 
     if (nodes.length === 0) {
       nodes.push(
-        <p
-          key="empty"
-          className="my-6 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400"
-        >
+        <p key="empty" className="px-6 py-10 text-center text-[17px] text-mute">
           {t("dashboard.day.empty")}
         </p>,
       )
@@ -345,16 +380,16 @@ export function DayCalendarView({
     <>
       <ScrollArea className={heightClassName}>
         <div className="scroll-pb-24">
-          <div className="pr-3">{renderTiles()}</div>
+          <div>{renderTiles()}</div>
           {showAddButton ? (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="mt-1 mb-10 w-full border-dashed border-slate-200 text-sky-700 hover:bg-sky-50/60"
+              className="mx-4 mt-3 mb-6 w-[calc(100%-2rem)] sm:mx-6 sm:w-[calc(100%-3rem)]"
               onClick={openCreateDefault}
             >
-              <Plus className="me-2 size-4 shrink-0" aria-hidden />
+              <Plus className="size-4 shrink-0" aria-hidden />
               {t("dashboard.day.addAppointment")}
             </Button>
           ) : null}

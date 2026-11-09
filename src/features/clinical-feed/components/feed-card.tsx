@@ -8,7 +8,11 @@ import { localeToBcp47 } from "@/lib/format-locale"
 import { cn } from "@/lib/utils"
 import type { NewsArticle } from "@/types/domain"
 
-/** Feed tile — bookmark chrome + footer copy follow locale. */
+/**
+ * One article as a row of a reading list: where it is from and when, the
+ * headline, a few lines of summary. The whole row opens the article; the
+ * bookmark sits above that link so saving never navigates away.
+ */
 export function FeedCard({
   article,
   saved,
@@ -34,81 +38,60 @@ export function FeedCard({
   }, [locale, article.publishedAt])
 
   return (
-    <article
-      className={cn(
-        "group relative flex h-full min-h-[240px] flex-col gap-4 rounded-3xl bg-white p-6",
-        "shadow-[0_1px_3px_rgba(15,23,42,0.05),0_12px_36px_-18px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/40 transition-all duration-200",
-        "hover:-translate-y-0.5 hover:shadow-[0_8px_40px_-20px_rgba(15,23,42,0.15)] hover:ring-sky-200/60",
-      )}
-    >
-      <header className="flex items-start justify-between gap-3">
-        <span
-          className={cn(
-            "inline-flex max-w-[80%] items-center rounded-lg bg-slate-700/95 px-2.5 py-1",
-            "text-[10px] font-semibold uppercase tracking-[0.12em] text-white",
-          )}
-          title={article.source}
-        >
-          <span className="truncate">{article.source}</span>
-        </span>
-
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onToggleSaved()
-          }}
-          aria-label={saved ? t("clinical.card.saved") : t("clinical.card.save")}
-          aria-pressed={saved}
-          className={cn(
-            "relative z-10 -mr-1 -mt-1 shrink-0 rounded-xl p-2 transition-colors",
-            saved ? "text-sky-600 hover:bg-sky-50" : "text-slate-300 hover:bg-slate-50 hover:text-sky-600",
-          )}
-        >
-          {saved ? (
-            <BookmarkCheck className="size-4 stroke-[1.75]" aria-hidden />
-          ) : (
-            <Bookmark className="size-4 stroke-[1.75]" aria-hidden />
-          )}
-        </button>
-      </header>
-
-      <h3 className="font-heading text-[18px] font-semibold leading-snug tracking-tight text-slate-800 transition-colors group-hover:text-sky-800">
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="before:absolute before:inset-0 before:content-[''] focus-visible:rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
-        >
-          {article.title}
-        </a>
-      </h3>
-
-      <p className="line-clamp-4 text-sm font-normal leading-[1.65] text-slate-600">{article.summary}</p>
-
-      <footer
-        className={cn(
-          "mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-3",
-          "text-[11px] text-slate-400",
-        )}
-      >
-        <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
-          <time dateTime={article.publishedAt}>{formattedDate}</time>
+    <article className="group relative flex gap-3 px-4 py-5 transition-colors hover:bg-ground sm:px-6">
+      <div className="min-w-0 flex-1">
+        <p className="flex flex-wrap items-center gap-x-2 text-sm text-mute">
+          <span className="font-medium text-ink">{article.source}</span>
+          <span aria-hidden>·</span>
+          <time dateTime={article.publishedAt} className="tabular-nums">
+            {formattedDate}
+          </time>
           {typeof article.readingMinutes === "number" ? (
             <>
-              <span className="text-slate-300" aria-hidden>
-                ·
-              </span>
+              <span aria-hidden>·</span>
               <span>{t("clinical.card.minRead", { n: article.readingMinutes })}</span>
             </>
           ) : null}
-        </span>
-        <span className="relative z-10 inline-flex shrink-0 items-center gap-1 text-slate-400 transition-colors group-hover:text-sky-600">
-          {t("clinical.footer.readShort")}
-          <ExternalLink className="size-3.5 stroke-[1.75]" aria-hidden />
-        </span>
-      </footer>
+        </p>
+
+        <h3 className="mt-1.5 max-w-[60ch] text-[17px] leading-snug font-bold text-ink sm:text-[22px] sm:leading-tight">
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="decoration-1 underline-offset-4 outline-none group-hover:underline before:absolute before:inset-0 before:content-[''] focus-visible:before:outline-3 focus-visible:before:-outline-offset-3 focus-visible:before:outline-cobalt"
+          >
+            {article.title}
+            <ExternalLink
+              className="ms-1.5 inline-block size-4 -translate-y-0.5 align-middle text-mute rtl:-scale-x-100"
+              aria-hidden
+            />
+          </a>
+        </h3>
+
+        <p className="mt-2 line-clamp-3 max-w-[68ch] text-[17px] leading-relaxed text-mute">{article.summary}</p>
+      </div>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onToggleSaved()
+        }}
+        aria-label={saved ? t("clinical.card.saved") : t("clinical.card.save")}
+        aria-pressed={saved}
+        className={cn(
+          "relative z-10 -me-2 -mt-1 flex size-11 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-sunk",
+          saved ? "text-cobalt" : "text-mute hover:text-ink",
+        )}
+      >
+        {saved ? (
+          <BookmarkCheck className="size-5 fill-cobalt-tint stroke-[1.75]" aria-hidden />
+        ) : (
+          <Bookmark className="size-5 stroke-[1.75]" aria-hidden />
+        )}
+      </button>
     </article>
   )
 }

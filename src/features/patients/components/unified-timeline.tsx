@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { ChevronDown, ChevronUp, FileText, Mic, Pencil, Receipt, Trash2 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { Button } from "@/components/ui/button"
+import { StateMark } from "@/components/ui/state-mark"
 import { localizeCompletedSessionTitle } from "@/lib/i18n/localized-seed"
 import { signAttachment } from "@/features/patients/lib/treatment-repository"
 import { getAudio } from "@/lib/audio-store"
@@ -35,29 +37,30 @@ function PenNoteCollapsible({ src, path }: { src?: string | null; path?: string 
 
   const imageSrc = src ?? signed
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50/60">
+    <div className="flex flex-col items-start gap-2">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-slate-600 transition-colors hover:text-sky-700"
+        className={cn(
+          "inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-start text-sm font-medium transition-colors",
+          open ? "border-cobalt bg-cobalt-tint text-ink" : "border-hair bg-paper text-ink hover:bg-ground",
+        )}
         aria-expanded={open}
       >
-        <Pencil className="size-3.5 text-slate-400" aria-hidden />
+        <Pencil className="size-4 text-mute" aria-hidden />
         {t("patientChart.timeline.penNote")}
-        <span className="ms-auto flex items-center gap-1 text-[10px] font-normal text-slate-400">
-          {open ? t("patientChart.timeline.penNoteClose") : t("patientChart.timeline.penNoteOpen")}
-          {open ? <ChevronUp className="size-3.5" aria-hidden /> : <ChevronDown className="size-3.5" aria-hidden />}
+        <span className="flex items-center gap-1 font-normal text-mute">
+          · {open ? t("patientChart.timeline.penNoteClose") : t("patientChart.timeline.penNoteOpen")}
+          {open ? <ChevronUp className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
         </span>
       </button>
       {open && imageSrc && (
-        <div className="border-t border-slate-100 p-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageSrc}
-            alt={t("patientChart.timeline.snapshotAlt")}
-            className="w-full rounded-md border border-slate-100 object-contain"
-          />
-        </div>
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={imageSrc}
+          alt={t("patientChart.timeline.snapshotAlt")}
+          className="w-full rounded-md border border-hair bg-paper object-contain"
+        />
       )}
     </div>
   )
@@ -100,8 +103,8 @@ function TimelineAudio({ audioKey, audioPath }: { audioKey?: string | null; audi
   if (!url) return null
   return (
     <div>
-      <p className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-        <Mic className="size-3" aria-hidden />
+      <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-mute">
+        <Mic className="size-4" aria-hidden />
         {t("patientChart.timeline.voiceMemo")}
       </p>
       <audio controls src={url} className="h-9 w-full" aria-label={t("patientChart.audio.playbackAria")} />
@@ -157,13 +160,12 @@ interface SessionEntry {
   relatedFinances: FinanceRecord[]
 }
 
-const INVOICE_STATUS_COLORS: Record<string, string> = {
-  paid: "text-slate-500",
-  issued: "text-slate-600",
-  overdue: "text-rose-600",
-  draft: "text-slate-400",
-  void: "text-slate-400",
-}
+/** A charge still owed: not settled, not refunded, not voided. */
+const isUnpaid = (fin: FinanceRecord) =>
+  fin.invoiceStatus !== "void" &&
+  (fin.paymentStatus === "pending" ||
+    fin.paymentStatus === "partially_paid" ||
+    fin.paymentStatus === "failed")
 
 function formatDate(raw: string, localeTag: string) {
   try {
@@ -184,12 +186,12 @@ function ClinicalNoteLine({ note, expanded }: { note: string; expanded: boolean 
   const detail = hasTwoParts ? note.slice(dotIdx + 2).trim() : ""
 
   return (
-    <div className="mt-1 space-y-0.5">
-      <p dir="auto" className="text-[13px] font-medium leading-snug text-slate-700">
+    <div className="mt-0.5 space-y-1">
+      <p dir="auto" className="text-[17px] leading-snug text-ink">
         {summary}
       </p>
       {expanded && detail && (
-        <p dir="auto" className="text-[12px] leading-relaxed text-slate-400">
+        <p dir="auto" className="text-sm leading-relaxed text-mute">
           {detail}
         </p>
       )}
@@ -291,12 +293,10 @@ export function UnifiedTimeline({
 
   if (entries.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-dashed border-slate-200 py-14">
-        <div className="text-center">
-          <FileText className="mx-auto mb-3 size-7 text-slate-300" aria-hidden />
-          <p className="text-sm font-semibold text-slate-500">{t("patientChart.timeline.emptyTitle")}</p>
-          <p className="mt-1 text-xs text-slate-400">{t("patientChart.timeline.emptyHint")}</p>
-        </div>
+      <div className="px-5 py-12 text-center">
+        <FileText className="mx-auto mb-3 size-7 text-faint" aria-hidden />
+        <p className="text-[17px] font-bold text-ink">{t("patientChart.timeline.emptyTitle")}</p>
+        <p className="mt-1 text-sm text-mute">{t("patientChart.timeline.emptyHint")}</p>
       </div>
     )
   }
@@ -320,9 +320,8 @@ export function UnifiedTimeline({
 
   return (
     <>
-      <ol className="flex flex-col gap-0" aria-label={t("patientChart.timeline.aria")}>
-        {entries.map((entry, idx) => {
-          const isLast = idx === entries.length - 1
+      <ol className="divide-y divide-hair-soft" aria-label={t("patientChart.timeline.aria")}>
+        {entries.map((entry) => {
           const isCompleted = entry.kind === "completed-session"
           const expanded = expandedIds.has(entry.id)
           const sessionNumber = sessionNumberMap.get(entry.id) ?? 0
@@ -344,64 +343,63 @@ export function UnifiedTimeline({
           // marked as saved in error, once, and only while it is not already.
           const voidable = entry.kind === "treatment" && treatmentsAreLive && !!onVoidTreatment && !voided
           const deletable = !(entry.kind === "treatment" && treatmentsAreLive) || voidable
+          // What this visit still owes, read from the charges filed beside it.
+          const unpaid = entry.relatedFinances.filter(isUnpaid)
 
           return (
-            <li key={entry.id} className="group relative flex gap-4 pb-5">
-              {/* Thin connector line */}
-              {!isLast && (
-                <span
-                  aria-hidden
-                  className="absolute start-[15px] top-9 h-full w-px bg-sky-100"
-                />
-              )}
+            <li
+              key={entry.id}
+              className="group grid grid-cols-[12px_minmax(0,1fr)] gap-x-3 px-5 py-4"
+            >
+              <StateMark
+                state={voided ? "cancel" : "done"}
+                className="mt-1.5"
+                label={voided ? t("patientChart.timeline.voided") : undefined}
+              />
 
-              {/* Dot */}
-              <div
-                aria-hidden
-                className={cn(
-                  "relative z-10 mt-1 flex size-7 shrink-0 items-center justify-center rounded-full border",
-                  isCompleted ? "border-slate-200 bg-white" : "border-sky-200 bg-sky-50",
-                )}
-              >
-                <span
-                  className={cn(
-                    "size-2 rounded-full",
-                    isCompleted ? "bg-slate-400" : "bg-sky-500",
+              <div className="min-w-0">
+                {/* Date, session and what is owed — then the correction, apart. */}
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <h3
+                    className={cn(
+                      "text-[17px] leading-snug",
+                      voided ? "font-medium text-mute line-through decoration-1" : "font-bold text-ink",
+                    )}
+                  >
+                    <span className="tabular-nums">{formatDate(entry.date, localeTag)}</span>
+                    {!voided && (
+                      <>
+                        {" · "}
+                        {t("patientChart.timeline.sessionOf", { n: sessionNumber, total: planTarget })}
+                      </>
+                    )}
+                  </h3>
+                  {voided && (
+                    <span className="text-sm text-mute">{t("patientChart.timeline.voided")}</span>
                   )}
-                />
-              </div>
+                  {!voided &&
+                    unpaid.map((fin) => (
+                      <span
+                        key={fin.id}
+                        className="inline-flex min-h-6 items-center rounded-[4px] border-[1.5px] border-signal px-2 text-sm font-medium whitespace-nowrap tabular-nums text-ink"
+                      >
+                        {t("patientChart.timeline.unpaid", { amount: fin.amount })}
+                      </span>
+                    ))}
 
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                {/* Date + session badge + delete (top row, well-separated) */}
-                <div className="mb-1 flex items-center gap-2">
-                  <p className="font-mono text-[11px] tabular-nums text-slate-400">
-                    {formatDate(entry.date, localeTag)}
-                  </p>
-                  {voided ? (
-                    <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600 ring-1 ring-rose-100">
-                      {t("patientChart.timeline.voided")}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 font-mono text-[10px] tabular-nums text-slate-400 ring-1 ring-slate-100">
-                      {t("patientChart.timeline.sessionOf", { n: sessionNumber, total: planTarget })}
-                    </span>
-                  )}
-
-                  {/* Delete (demo) or mark-as-error (saved) — far right, apart
-                      from the expand chevron. Always visible for a saved
+                  {/* Delete (demo) or mark-as-error (saved) — far end, apart
+                      from the expand control. Always visible for a saved
                       session: on a tablet there is no hover to reveal it. */}
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
                     hidden={!deletable}
                     onClick={() => handleDelete(entry)}
                     className={cn(
-                      "ms-auto flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
-                      confirming
-                        ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200"
-                        : voidable
-                          ? "text-slate-400 hover:text-rose-500"
-                          : "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
+                      "ms-auto text-sm text-mute",
+                      confirming && "border-2 border-signal text-ink",
+                      !confirming &&
+                        !voidable &&
+                        "border-transparent opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
                     )}
                     aria-label={
                       voidable
@@ -413,123 +411,101 @@ export function UnifiedTimeline({
                           : t("patientChart.timeline.deleteAria")
                     }
                   >
-                    <Trash2 className="size-3.5" aria-hidden />
+                    <Trash2 className="size-4" aria-hidden />
                     {confirming ? (
-                      <span>{voidable ? t("patientChart.timeline.voidConfirm") : t("patientChart.timeline.confirm")}</span>
+                      <span className="whitespace-normal">
+                        {voidable ? t("patientChart.timeline.voidConfirm") : t("patientChart.timeline.confirm")}
+                      </span>
                     ) : voidable ? (
                       <span>{t("patientChart.timeline.voidAria")}</span>
                     ) : null}
-                  </button>
+                  </Button>
                 </div>
 
-                {/* Expandable card */}
-                <div
+                {/* Title and note — the whole block opens the detail. */}
+                <button
+                  type="button"
+                  onClick={() => hasMore && toggle(entry.id)}
                   className={cn(
-                    "rounded-xl border bg-white transition-[border-color,box-shadow]",
-                    hasMore
-                      ? "cursor-pointer border-slate-100 hover:border-sky-100 hover:shadow-[0_2px_12px_-4px_rgba(14,165,233,0.10)]"
-                      : "cursor-default border-slate-100",
+                    "-mx-2 mt-0.5 flex w-[calc(100%+1rem)] items-start gap-3 rounded-md px-2 py-1 text-start",
+                    hasMore ? "min-h-11 cursor-pointer hover:bg-ground" : "cursor-default",
                     voided && "opacity-60 [&_p]:line-through",
                   )}
+                  aria-expanded={hasMore ? expanded : undefined}
                 >
-                  {/* Card header row — clickable */}
-                  <button
-                    type="button"
-                    onClick={() => hasMore && toggle(entry.id)}
-                    className="flex w-full items-start gap-3 px-4 py-3 text-start"
-                    aria-expanded={expanded}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-800">{titleShown}</p>
-                      {entry.note && (
-                        <ClinicalNoteLine note={entry.note} expanded={expanded} />
-                      )}
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-mute">{titleShown}</p>
+                    {entry.note && <ClinicalNoteLine note={entry.note} expanded={expanded} />}
+                  </div>
+                  {hasMore &&
+                    (expanded ? (
+                      <ChevronUp className="mt-0.5 size-5 shrink-0 text-mute" aria-hidden />
+                    ) : (
+                      <ChevronDown className="mt-0.5 size-5 shrink-0 text-mute" aria-hidden />
+                    ))}
+                </button>
 
-                    {/* Prominent expand chevron — clearly separated, larger hit area */}
-                    {hasMore && (
-                      <span
-                        className={cn(
-                          "ms-2 flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors",
-                          expanded
-                            ? "border-sky-200 bg-sky-50 text-sky-600"
-                            : "border-slate-200 bg-white text-slate-500 group-hover:border-sky-200 group-hover:bg-sky-50 group-hover:text-sky-600",
-                        )}
-                        aria-hidden
-                      >
-                        {expanded ? (
-                          <ChevronUp className="size-4" />
-                        ) : (
-                          <ChevronDown className="size-4" />
-                        )}
-                      </span>
+                {/* Pen note — always at the entry level, one press to open the
+                    drawing (it's the primary artifact from the session). */}
+                {(entry.canvasDataUrl || entry.canvasPath) && (
+                  <div className="mt-2">
+                    <PenNoteCollapsible src={entry.canvasDataUrl} path={entry.canvasPath} />
+                  </div>
+                )}
+
+                {/* Expanded area — secondary detail only */}
+                {expanded && (
+                  <div className="mt-3 space-y-3">
+                    {/* Voice memo */}
+                    {(entry.audioKey || entry.audioPath) && (
+                      <TimelineAudio audioKey={entry.audioKey} audioPath={entry.audioPath} />
                     )}
-                  </button>
 
-                  {/* Pen note — always at the entry level, one press to open the
-                      drawing (it's the primary artifact from the session). */}
-                  {(entry.canvasDataUrl || entry.canvasPath) && (
-                    <div
-                      className="border-t border-slate-50 px-4 py-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <PenNoteCollapsible src={entry.canvasDataUrl} path={entry.canvasPath} />
-                    </div>
-                  )}
-
-                  {/* Expanded area — secondary detail only */}
-                  {expanded && (
-                    <div
-                      className="border-t border-slate-50 px-4 pb-3 pt-3 space-y-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* Voice memo */}
-                      {(entry.audioKey || entry.audioPath) && (
-                        <TimelineAudio audioKey={entry.audioKey} audioPath={entry.audioPath} />
-                      )}
-
-                      {/* Related docs + invoices */}
-                      {(entry.relatedDocs.length > 0 || entry.relatedFinances.length > 0) && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {entry.relatedDocs.map((doc) => (
-                            <button
-                              key={doc.id}
-                              type="button"
-                              onClick={() => setPreviewDoc(doc)}
-                              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
-                            >
-                              <FileText className="size-3 text-slate-400" aria-hidden />
-                              {(() => {
-                                const key = `doc.type.${doc.type}` as const
-                                const label = t(key)
-                                const display = label === key ? t("doc.type.other") : label
-                                return `${display} — ${doc.name}`
-                              })()}
-                            </button>
-                          ))}
-                          {entry.relatedFinances.map((fin) => (
-                            <span
-                              key={fin.id}
-                              className={cn(
-                                "inline-flex items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5 text-[11px] font-medium",
-                                INVOICE_STATUS_COLORS[fin.invoiceStatus] ?? "text-slate-500",
-                              )}
-                            >
-                              <Receipt className="size-3 text-slate-400" aria-hidden />
-                              {(() => {
-                                const st = fin.invoiceStatus
-                                const sk = `invoice.status.${st}`
-                                const label = t(sk)
-                                const display = label === sk ? st : label
-                                return `${fin.amount} · ${display}`
-                              })()}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    {/* Related docs + invoices */}
+                    {(entry.relatedDocs.length > 0 || entry.relatedFinances.length > 0) && (
+                      <div className="flex flex-wrap gap-2">
+                        {entry.relatedDocs.map((doc) => (
+                          <button
+                            key={doc.id}
+                            type="button"
+                            onClick={() => setPreviewDoc(doc)}
+                            className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-hair bg-paper px-3 text-sm font-medium text-ink transition-colors hover:bg-ground"
+                          >
+                            <FileText className="size-4 text-mute" aria-hidden />
+                            {(() => {
+                              const key = `doc.type.${doc.type}` as const
+                              const label = t(key)
+                              const display = label === key ? t("doc.type.other") : label
+                              return `${display} — ${doc.name}`
+                            })()}
+                          </button>
+                        ))}
+                        {entry.relatedFinances.map((fin) => (
+                          <span
+                            key={fin.id}
+                            className={cn(
+                              "inline-flex min-h-8 items-center gap-1.5 rounded-[4px] px-2 text-sm font-medium tabular-nums",
+                              fin.paymentStatus === "paid"
+                                ? "bg-olive-tint text-olive"
+                                : isUnpaid(fin)
+                                  ? "border-[1.5px] border-signal text-ink"
+                                  : "border border-hair text-mute",
+                            )}
+                          >
+                            <Receipt className="size-4" aria-hidden />
+                            {(() => {
+                              const st = fin.invoiceStatus
+                              const sk = `invoice.status.${st}`
+                              const label = t(sk)
+                              const display = label === sk ? st : label
+                              return `${fin.amount} · ${display}`
+                            })()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </li>
           )

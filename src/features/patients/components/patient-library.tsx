@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
+import { Button } from "@/components/ui/button"
 import { MAX_DOCUMENT_BYTES } from "@/features/patients/lib/document-repository"
 import { cn } from "@/lib/utils"
 import type { DocumentRecord, DocumentType } from "@/types/domain"
@@ -113,53 +114,46 @@ export function PatientLibrary({ documentRecords, onDeleteDocument, onUploadDocu
 
   return (
     <>
-      <div className="rounded-2xl border border-slate-100 bg-white shadow-[0_2px_12px_-4px_rgba(15,23,42,0.07)]">
-        <div className="flex items-center gap-2 border-b border-slate-50 px-4 py-3">
-          <FolderOpen className="size-3.5 text-slate-400" aria-hidden />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-            {t("patientChart.library.title")}
-          </p>
-          <span className="ms-auto inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-slate-100 px-1.5 font-mono text-[10px] font-semibold tabular-nums text-slate-500">
-            {documentRecords.length}
-          </span>
+      <div className="rounded-md border border-hair bg-paper">
+        <div className="flex min-h-12 items-center gap-2 border-b border-hair px-4">
+          <FolderOpen className="size-4 text-mute" aria-hidden />
+          <p className="text-[17px] font-bold text-ink">{t("patientChart.library.title")}</p>
+          <span className="text-sm font-medium tabular-nums text-mute">{documentRecords.length}</span>
         </div>
 
         {documentRecords.length === 0 ? (
-          <p className="px-4 py-4 text-xs text-slate-400">{t("patientChart.library.empty")}</p>
+          <p className="px-4 py-4 text-sm text-mute">{t("patientChart.library.empty")}</p>
         ) : (
-          <ul className="divide-y divide-slate-50">
+          <ul>
             {documentRecords.map((doc) => {
               const Icon = DOC_ICONS[doc.type] ?? FileImage
               const label = docTypeLabel(t, doc.type)
               return (
-                <li key={doc.id} className="group flex items-center">
+                <li key={doc.id} className="flex items-center border-b border-hair-soft last:border-b-0">
                   <button
                     type="button"
                     onClick={() => setPreviewDoc(doc)}
-                    className="flex flex-1 items-center gap-3 px-4 py-2.5 text-start transition-colors hover:bg-slate-50"
+                    className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2 text-start transition-colors outline-none hover:bg-ground focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-cobalt"
                   >
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-100 bg-slate-50">
-                      <Icon className="size-3.5 text-slate-400" aria-hidden />
-                    </div>
+                    <Icon className="size-5 shrink-0 text-mute" aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-medium leading-snug text-slate-700">
-                        {doc.name}
-                      </p>
-                      <p className="mt-0.5 font-mono text-[10px] tabular-nums text-slate-400">
+                      <p className="truncate text-[17px] leading-snug text-ink">{doc.name}</p>
+                      <p className="mt-0.5 text-sm tabular-nums text-mute">
                         {label} · {formatDate(doc.uploadedAt, localeTag)}
                       </p>
                     </div>
                   </button>
+                  {/* Always visible: an iPad has no hover to reveal it with. */}
                   <button
                     type="button"
                     onClick={() => setPendingDelete(doc)}
                     className={cn(
-                      "me-3 flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium transition-colors",
-                      "text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500",
+                      "me-1 flex size-11 shrink-0 items-center justify-center rounded-md text-faint transition-colors outline-none",
+                      "hover:bg-sunk hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt",
                     )}
                     aria-label={t("patientChart.library.deleteDocAria")}
                   >
-                    <Trash2 className="size-3" aria-hidden />
+                    <Trash2 className="size-4" aria-hidden />
                   </button>
                 </li>
               )
@@ -168,14 +162,14 @@ export function PatientLibrary({ documentRecords, onDeleteDocument, onUploadDocu
         )}
 
         {onUploadDocument && (
-          <div className="border-t border-slate-50 px-4 py-3">
+          <div className="border-t border-hair px-4 py-3">
             <div className="flex items-center gap-2">
               <select
                 value={uploadType}
                 onChange={(e) => setUploadType(e.target.value as DocumentType)}
                 disabled={uploading}
                 aria-label={t("patientChart.library.add")}
-                className="h-8 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 text-[12px] text-slate-700 outline-none focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50"
+                className="h-11 min-w-0 flex-1 rounded-md border border-hair bg-paper px-2 text-sm text-ink outline-none focus-visible:border-cobalt focus-visible:ring-3 focus-visible:ring-cobalt/20 disabled:opacity-50"
               >
                 {DOC_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -190,11 +184,12 @@ export function PatientLibrary({ documentRecords, onDeleteDocument, onUploadDocu
                 className="hidden"
                 onChange={(e) => void handleFile(e.target.files?.[0])}
               />
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 disabled={uploading}
                 onClick={() => fileInput.current?.click()}
-                className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-[12px] font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+                className="h-11 gap-1.5 px-3 text-sm"
               >
                 {uploading ? (
                   <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -202,10 +197,13 @@ export function PatientLibrary({ documentRecords, onDeleteDocument, onUploadDocu
                   <Upload className="size-3.5" aria-hidden />
                 )}
                 {uploading ? t("patientChart.library.uploading") : t("patientChart.library.add")}
-              </button>
+              </Button>
             </div>
             {uploadError && (
-              <p className="mt-2 text-[11px] font-medium text-rose-600">{uploadError}</p>
+              <p className="mt-2 flex items-start gap-2 text-sm font-medium text-ink" role="alert">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                {uploadError}
+              </p>
             )}
           </div>
         )}
@@ -221,45 +219,46 @@ export function PatientLibrary({ documentRecords, onDeleteDocument, onUploadDocu
           aria-label={t("patientChart.library.deleteTitle")}
         >
           <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-[rgb(14_22_42/0.52)]"
             onClick={() => !deleting && setPendingDelete(null)}
             aria-hidden
           />
-          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-16px_rgba(15,23,42,0.30)]">
-            <div className="flex items-start gap-3 px-5 py-5">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rose-50">
-                <AlertTriangle className="size-4.5 text-rose-600" aria-hidden />
-              </div>
+          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-md bg-paper shadow-[0_24px_56px_-16px_rgba(14,22,42,0.45)]">
+            <div className="flex items-start gap-3 px-6 py-5">
+              <AlertTriangle className="mt-1 size-5 shrink-0 text-ink" aria-hidden />
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-[22px] leading-tight font-bold text-ink">
                   {t("patientChart.library.deleteTitle")}
                 </p>
-                <p className="mt-1 break-all font-mono text-[12px] text-slate-600">
+                <p className="mt-2 break-all text-[17px] font-medium text-ink">
                   {pendingDelete.name}
                 </p>
-                <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
+                <p className="mt-2 text-[17px] leading-relaxed text-mute">
                   {t("patientChart.library.deleteBody")}
                 </p>
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
-              <button
+            {/* No orange here: orange means "act", and removing a record for
+                good is the one act this dialog should not hurry anyone into. */}
+            <div className="flex justify-end gap-2 border-t border-hair px-6 py-4">
+              <Button
                 type="button"
+                variant="outline"
                 disabled={deleting}
                 onClick={() => setPendingDelete(null)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
               >
                 {t("common.cancel")}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 disabled={deleting}
                 onClick={confirmDelete}
-                className="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-60"
+                className="gap-2 border-ink bg-ink font-bold text-white hover:bg-ink/85"
               >
                 {deleting && <Loader2 className="size-4 animate-spin" aria-hidden />}
                 {t("patientChart.library.deleteConfirm")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

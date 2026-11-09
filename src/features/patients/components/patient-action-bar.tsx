@@ -4,10 +4,9 @@ import { Calendar, CheckCircle2, Receipt } from "lucide-react"
 
 import { useLocale } from "@/components/providers/locale-provider"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { toISODate } from "@/lib/date-helpers"
-import type { AppointmentType, DocumentRecord, DocumentType } from "@/types/domain"
-import { PatientLibrary } from "./patient-library"
+import type { AppointmentType } from "@/types/domain"
 
 interface Props {
   outstandingDebt: number
@@ -15,15 +14,9 @@ interface Props {
   onIssueInvoice: () => void
   patientId: string
   patientName: string
-  documentRecords?: DocumentRecord[]
-  onDeleteDocument?: (id: string) => void | Promise<boolean>
-  onUploadDocument?: (file: File, type: DocumentType) => Promise<boolean>
   lastAppointmentType?: AppointmentType
   nextSessionNumber?: number
 }
-
-const BTN_BASE =
-  "flex w-full items-center justify-center gap-2.5 rounded-2xl px-5 py-4 text-base font-semibold shadow-[0_4px_14px_-4px_rgba(15,23,42,0.2)] transition-all active:scale-[0.97] sm:py-5 md:flex-1 md:py-4"
 
 export function PatientActionBar({
   outstandingDebt,
@@ -31,9 +24,6 @@ export function PatientActionBar({
   onIssueInvoice,
   patientId,
   patientName,
-  documentRecords = [],
-  onDeleteDocument,
-  onUploadDocument,
   lastAppointmentType = "adjustments",
   nextSessionNumber,
 }: Props) {
@@ -84,128 +74,77 @@ export function PatientActionBar({
       })
     : undefined
 
+  /** The amount still owed, as the one orange outline the state vocabulary allows a debt. */
+  const debtTag = hasDebt && (
+    <span className="inline-flex min-h-6 items-center rounded-[4px] border-[1.5px] border-signal px-2 text-sm font-medium tabular-nums">
+      ₪{outstandingDebt.toLocaleString(localeTag)}
+    </span>
+  )
+
   return (
     <>
-      {/* ── Mobile / tablet: sticky bottom bar ──
+      {/* ── Tablet and up: two quiet buttons beside the page's other tools.
+          Closing the session is on the plate, the one orange action. ── */}
+      <div className="hidden items-center gap-2 md:flex">
+        <Button
+          variant="outline"
+          onClick={onIssueInvoice}
+          aria-label={
+            hasDebt ? t("patientChart.issueInvoiceDebtAria", { detail: debtLabel ?? "" }) : t("patientChart.issueInvoiceAria")
+          }
+        >
+          <Receipt className="size-5" aria-hidden />
+          {t("patientChart.issueInvoice")}
+          {debtTag}
+        </Button>
+        <Button variant="outline" onClick={openScheduleNext} aria-label={t("patientChart.scheduleNextAria")}>
+          <Calendar className="size-5" aria-hidden />
+          {t("patientChart.scheduleNext")}
+        </Button>
+      </div>
+
+      {/* ── Phone: sticky bottom bar ──
           It sits exactly where a writing hand rests on a tablet held upright,
           so like the session card it carries no selectable text and no
           long-press menu: a palm on "Complete Session" must not raise
           "Look Up / Translate" over the page being written. */}
       <div
-        className={cn(
-          "fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2.5 border-t border-slate-200/80 bg-white/95 p-4 backdrop-blur-md select-none [-webkit-touch-callout:none] sm:flex-row xl:hidden",
-          "shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.14)]",
-        )}
+        className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2 border-t border-hair bg-paper p-3 select-none [-webkit-touch-callout:none] md:hidden"
         aria-label={t("patientChart.quickActionsAria")}
       >
-        {/* Complete Session */}
-        <button
-          type="button"
+        <Button
+          size="lg"
           onClick={handleComplete}
-          className={cn(BTN_BASE, "bg-slate-900 text-white hover:bg-slate-800")}
+          className="h-13 w-full"
           aria-label={t("patientChart.completeSessionAria")}
         >
-          <CheckCircle2 className="size-5 shrink-0" aria-hidden />
+          <CheckCircle2 className="size-5" aria-hidden />
           {completeLabel}
-        </button>
-
-        {/* Issue Invoice */}
-        <button
-          type="button"
-          onClick={onIssueInvoice}
-          className={cn(
-            BTN_BASE,
-            hasDebt
-              ? "border border-amber-200 bg-white text-slate-800 hover:bg-amber-50 shadow-none"
-              : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-none",
-          )}
-          aria-label={
-            hasDebt ? t("patientChart.issueInvoiceDebtAria", { detail: debtLabel ?? "" }) : t("patientChart.issueInvoiceAria")
-          }
-        >
-          <Receipt
-            className={cn("size-5 shrink-0", hasDebt ? "text-amber-500" : "text-slate-500")}
-            aria-hidden
-          />
-          <span className="flex flex-col items-start leading-none">
-            <span>{t("patientChart.issueInvoice")}</span>
-            {hasDebt && (
-              <span className="mt-0.5 text-[11px] font-normal opacity-90">{debtLabel}</span>
-            )}
-          </span>
-        </button>
-
-        {/* Schedule Next */}
-        <button
-          type="button"
-          onClick={openScheduleNext}
-          className={cn(BTN_BASE, "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-none")}
-          aria-label={t("patientChart.scheduleNextAria")}
-        >
-          <Calendar className="size-5 shrink-0" aria-hidden />
-          {t("patientChart.scheduleNext")}
-        </button>
-      </div>
-
-      {/* ── Desktop sidebar card ── */}
-      <aside className="hidden xl:flex xl:w-[220px] xl:shrink-0 xl:flex-col xl:gap-3">
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.10)]">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-            {t("patientChart.quickActions")}
-          </p>
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={handleComplete}
-              className="flex w-full items-center gap-2 rounded-xl bg-slate-900 px-3 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 active:scale-[0.98]"
-            >
-              <CheckCircle2 className="size-4 shrink-0" aria-hidden />
-              {completeLabel}
-            </button>
-
-            <button
-              type="button"
-              onClick={onIssueInvoice}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition-colors active:scale-[0.98]",
-                hasDebt
-                  ? "border-amber-200 bg-white text-slate-800 hover:bg-amber-50"
-                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
-              )}
-            >
-              <Receipt
-                className={cn("size-4 shrink-0", hasDebt ? "text-amber-500" : "text-slate-400")}
-                aria-hidden
-              />
-              <span className="flex flex-col items-start leading-none">
-                <span>{t("patientChart.issueInvoice")}</span>
-                {hasDebt && (
-                  <span className="mt-0.5 text-[10px] font-normal text-amber-600">{debtLabel}</span>
-                )}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={openScheduleNext}
-              className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 active:scale-[0.98]"
-            >
-              <Calendar className="size-4 shrink-0" aria-hidden />
-              {t("patientChart.scheduleNext")}
-            </button>
-          </div>
+        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            onClick={onIssueInvoice}
+            className="h-12"
+            aria-label={
+              hasDebt ? t("patientChart.issueInvoiceDebtAria", { detail: debtLabel ?? "" }) : t("patientChart.issueInvoiceAria")
+            }
+          >
+            <Receipt className="size-5" aria-hidden />
+            {t("patientChart.issueInvoice")}
+            {debtTag}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={openScheduleNext}
+            className="h-12"
+            aria-label={t("patientChart.scheduleNextAria")}
+          >
+            <Calendar className="size-5" aria-hidden />
+            {t("patientChart.scheduleNext")}
+          </Button>
         </div>
-
-        {/* Patient Library — below Quick Actions. On narrower screens it is
-            rendered in the main column instead: this aside does not exist
-            there, and a tablet in the treatment room could not see a single
-            document. */}
-        <PatientLibrary
-          documentRecords={documentRecords}
-          onDeleteDocument={onDeleteDocument ?? (() => {})}
-          onUploadDocument={onUploadDocument}
-        />
-      </aside>
+      </div>
     </>
   )
 }
