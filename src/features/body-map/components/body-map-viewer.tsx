@@ -72,11 +72,12 @@ type Stage = "figures" | "spine"
 const TONE_COLOR: Record<BodyMarkTone, string> = {
   pain: "#dc2626",
   nerve: "#eab308",
+  dysfunction: "#64748b",
 }
-/** A spot that is both gets its own colour rather than one of the two. */
+/** Older marks that were both pain and nerve. Nothing is marked both any more. */
 const BOTH_COLOR = "#ea580c"
-/** Marks made before a finding had a kind. Shown as itself, never guessed at. */
-const UNCLASSIFIED_COLOR = "#94a3b8"
+/** Marks made before a finding had a kind. Paler than dysfunction's grey, so the two never read alike. */
+const UNCLASSIFIED_COLOR = "#cbd5e1"
 const HOVER_COLOR = "#0ea5e9"
 const OPEN_COLOR = "#0369a1"
 const INK = "#111827"
@@ -87,7 +88,7 @@ const toneColor = (tones: BodyMarkTone[]) => {
   return UNCLASSIFIED_COLOR
 }
 
-const TONES: BodyMarkTone[] = ["pain", "nerve"]
+const TONES: BodyMarkTone[] = ["pain", "nerve", "dysfunction"]
 const VIEWS: BodyMapView[] = ["front", "back"]
 const STAGES: Stage[] = ["figures", "spine"]
 /** The help, in the order a first mark is made. */
@@ -97,15 +98,34 @@ const HELP = ["open", "whole", "sides", "soles", "pen", "spine", "disc", "kind",
 interface Draft {
   regions: string[]
   vertebrae: string[]
+  /** The kind each place was marked with: the kind chosen when it was tapped. */
+  kinds: Record<string, BodyMarkTone>
   strokes: FigureStroke[]
   note: string
 }
-const EMPTY: Draft = { regions: [], vertebrae: [], strokes: [], note: "" }
+const EMPTY: Draft = { regions: [], vertebrae: [], kinds: {}, strokes: [], note: "" }
+
+/** The colour of one place in a saved mark: its own kind, or the whole mark's on older marks. */
+const placeColor = (m: BodyMark, id: string) => {
+  const own = m.kinds?.[id]
+  return own ? TONE_COLOR[own] : toneColor(markTones(m))
+}
+
+/**
+ * A tap with the kind in hand. On something not marked, marks it in that
+ * kind; on something marked in another kind, changes it; on something marked
+ * in this kind, unmarks it — the gesture that chose it undoes it.
+ */
+function tapPlace(list: string[], kinds: Record<string, BodyMarkTone>, id: string, kind: BodyMarkTone) {
+  if (!list.includes(id)) return { list: [...list, id], kinds: { ...kinds, [id]: kind } }
+  if (kinds[id] && kinds[id] !== kind) return { list, kinds: { ...kinds, [id]: kind } }
+  const rest = { ...kinds }
+  delete rest[id]
+  return { list: list.filter((x) => x !== id), kinds: rest }
+}
 
 type Pending = { kind: "clear" } | { kind: "delete"; id: string } | null
 
-/** Every place in the mark in hand, in that mark's colour. */
-const colourMap = (ids: string[], color: string) => new Map(ids.map((id) => [id, color] as const))
 
 export function BodyMapViewer({
   marks,
@@ -126,7 +146,8 @@ export function BodyMapViewer({
   const { t, localeTag } = useLocale()
   const [stage, setStage] = useState<Stage>("figures")
   const [mode, setMode] = useState<Mode>("point")
-  const [tones, setTones] = useState<BodyMarkTone[]>(["pain"])
+  /** The kind in hand: every tap marks with it, like a brush. */
+  const [kind, setKind] = useState<BodyMarkTone>("pain")
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [history, setHistory] = useState<Draft[]>([])
   const [liveStroke, setLiveStroke] = useState<FigureStroke | null>(null)
@@ -145,7 +166,6 @@ export function BodyMapViewer({
   const penSeen = useRef(false)
 
   const openMark = marks.find((m) => m.id === openId) ?? null
-  const highlight = openMark ? toneColor(markTones(openMark)) : toneColor(tones)
   const open = openArea ? areaById(openArea) : null
 
   // On a tablet held upright the parts list sits under the figures, past the
@@ -158,8 +178,6 @@ export function BodyMapViewer({
     partsRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" })
   }, [openArea])
 
-  const toggleTone = (value: BodyMarkTone) =>
-    setTones((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]))
 
   const remember = () => setHistory((h) => [...h.slice(-49), draft])
   const undo = () => {
@@ -171,8 +189,10 @@ export function BodyMapViewer({
   /** The mark in hand: the saved one opened from the list, or the one being made. */
   const focusRegions = openMark ? openMark.regions : draft.regions
   const focusSpine = openMark ? openMark.vertebrae : draft.vertebrae
-  const regionColors = useMemo(() => colourMap(focusRegions, highlight), [focusRegions, highlight])
-  const spineColors = useMemo(() => colourMap(focusSpine, highlight), [focusSpine, highlight])
+  const colorOf = (id: string) =>
+    openMark ? placeColor(openMark, id) : TONE_COLOR[draft.kinds[id] ?? kind]
+  const regionColors = new Map(focusRegions.map((id) => [id, colorOf(id)] as const))
+  const spineColors = new Map(focusSpine.map((id) => [id, colorOf(id)] as const))
   const emphasis = useMemo(() => new Set([...focusRegions, ...focusSpine]), [focusRegions, focusSpine])
 
   /* ── Pointer: open, mark, draw ────────────────────────────────────────── */
@@ -200,10 +220,10 @@ export function BodyMapViewer({
     // A tap on something chosen unchooses it: the gesture that chose it is the
     // obvious one for changing your mind.
     remember()
-    setDraft((d) => ({
-      ...d,
-      regions: d.regions.includes(id) ? d.regions.filter((r) => r !== id) : [...d.regions, id],
-    }))
+    setDraft((d) => {
+      const next = tapPlace(d.regions, d.kinds, id, kind)
+      return { ...d, regions: next.list, kinds: next.kinds }
+    })
   }
 
   const isDrawPress = (e: React.PointerEvent) => {
@@ -269,6 +289,7 @@ export function BodyMapViewer({
           ]),
           from: first?.id,
           to: last?.id,
+          kind,
         }
         setDraft((d) => ({ ...d, strokes: [...d.strokes, finished] }))
       }
@@ -300,21 +321,24 @@ export function BodyMapViewer({
 
   const toggleSpine = (item: string) => {
     remember()
-    setDraft((d) => ({
-      ...d,
-      vertebrae: d.vertebrae.includes(item)
-        ? d.vertebrae.filter((v) => v !== item)
-        : sortSpine([...d.vertebrae, item]),
-    }))
+    setDraft((d) => {
+      const next = tapPlace(d.vertebrae, d.kinds, item, kind)
+      return { ...d, vertebrae: sortSpine(next.list), kinds: next.kinds }
+    })
   }
 
   const removeItem = (item: string) => {
     remember()
-    setDraft((d) => ({
-      ...d,
-      regions: d.regions.filter((r) => r !== item),
-      vertebrae: d.vertebrae.filter((v) => v !== item),
-    }))
+    setDraft((d) => {
+      const kinds = { ...d.kinds }
+      delete kinds[item]
+      return {
+        ...d,
+        regions: d.regions.filter((r) => r !== item),
+        vertebrae: d.vertebrae.filter((v) => v !== item),
+        kinds,
+      }
+    })
   }
 
   const removeStroke = (index: number) => {
@@ -328,11 +352,13 @@ export function BodyMapViewer({
 
   const save = () => {
     if (!hasDraft) return
+    const used = [...Object.values(draft.kinds), ...draft.strokes.flatMap((s) => (s.kind ? [s.kind] : []))]
     onSave({
       regions: draft.regions,
       vertebrae: draft.vertebrae,
       strokes: draft.strokes,
-      tones: tones.length ? tones : undefined,
+      kinds: draft.kinds,
+      tones: TONES.filter((v) => used.includes(v)),
       note: draft.note.trim() || undefined,
     })
     setDraft(EMPTY)
@@ -371,23 +397,60 @@ export function BodyMapViewer({
     return t("bodyMap.path", { from: regionLabel(t, s.from), to: regionLabel(t, s.to) })
   }
 
-  /** One line for a saved mark: grouped, each name once. */
-  const summary = (m: { regions: string[]; vertebrae: string[]; strokes: FigureStroke[] }) => {
+  /**
+   * One line for a saved mark: grouped, each name once, and — on marks whose
+   * places have their own kind — a dot of that kind before each name.
+   */
+  const summary = (m: BodyMark) => {
     const g = groupBySide(m.regions)
-    const parts: string[] = []
+    const dot = (id: string) => (m.kinds ? placeColor(m, id) : undefined)
+    const groups: { key: string; label: string; items: { key: string; text: string; color?: string }[] }[] = []
     for (const side of ["r", "l", "mid"] as const) {
       if (g[side].length) {
-        parts.push(`${t(`bodyMap.group.${side}`)}: ${g[side].map((id) => itemName(t, id)).join(", ")}`)
+        groups.push({
+          key: side,
+          label: t(`bodyMap.group.${side}`),
+          items: g[side].map((id) => ({ key: id, text: itemName(t, id), color: dot(id) })),
+        })
       }
     }
     if (m.vertebrae.length) {
-      parts.push(`${t("bodyMap.group.spine")}: ${m.vertebrae.map((v) => spineLabel(t, v)).join(", ")}`)
+      groups.push({
+        key: "spine",
+        label: t("bodyMap.group.spine"),
+        items: m.vertebrae.map((v) => ({ key: v, text: spineLabel(t, v), color: dot(v) })),
+      })
     }
-    for (const s of m.strokes) {
+    m.strokes.forEach((s, i) => {
       const text = pathText(s)
-      if (text) parts.push(`${t("bodyMap.group.path")}: ${text}`)
-    }
-    return parts.join(" · ") || t("bodyMap.drawingOnly")
+      if (text) {
+        groups.push({
+          key: `path-${i}`,
+          label: t("bodyMap.group.path"),
+          items: [{ key: "line", text, color: s.kind ? TONE_COLOR[s.kind] : undefined }],
+        })
+      }
+    })
+    if (!groups.length) return t("bodyMap.drawingOnly")
+    return groups.map((group, gi) => (
+      <span key={group.key}>
+        {gi > 0 && " · "}
+        {group.label}:{" "}
+        {group.items.map((item, i) => (
+          <span key={item.key}>
+            {i > 0 && ", "}
+            {item.color && (
+              <span
+                className="me-1 inline-block size-2 rounded-full align-middle"
+                style={{ backgroundColor: item.color }}
+                aria-hidden
+              />
+            )}
+            {item.text}
+          </span>
+        ))}
+      </span>
+    ))
   }
 
   /** A part's own name, with its side when the area itself has none (T4 ימין). */
@@ -433,16 +496,22 @@ export function BodyMapViewer({
   const strokesFor = (view: BodyMapView) => {
     const { width, height } = FIGURES[view]
     const scale = (s: FigureStroke) => s.points.map(([x, y]) => `${x * width},${y * height}`).join(" ")
-    const out: { key: string; points: string; strong: boolean }[] = []
-    // Like the colour: the opened saved mark, otherwise the one being made.
+    const out: { key: string; points: string; color: string }[] = []
+    // Like the colour: the opened saved mark, otherwise the one being made. A
+    // line takes its kind's colour; one drawn before lines had a kind is ink.
+    const ink = (s: FigureStroke) => (s.kind ? TONE_COLOR[s.kind] : INK)
     openMark?.strokes.forEach((s, i) => {
-      if (s.view === view) out.push({ key: `${openMark.id}-${i}`, points: scale(s), strong: true })
+      if (s.view === view) out.push({ key: `${openMark.id}-${i}`, points: scale(s), color: ink(s) })
     })
     if (!openMark) draft.strokes.forEach((s, i) => {
-      if (s.view === view) out.push({ key: `draft-${i}`, points: scale(s), strong: true })
+      if (s.view === view) out.push({ key: `draft-${i}`, points: scale(s), color: ink(s) })
     })
     if (liveStroke?.view === view) {
-      out.push({ key: "live", points: liveStroke.points.map(([x, y]) => `${x},${y}`).join(" "), strong: true })
+      out.push({
+        key: "live",
+        points: liveStroke.points.map(([x, y]) => `${x},${y}`).join(" "),
+        color: TONE_COLOR[kind],
+      })
     }
     return out
   }
@@ -566,8 +635,8 @@ export function BodyMapViewer({
               key={s.key}
               points={s.points}
               fill="none"
-              stroke={INK}
-              strokeWidth={s.strong ? 5 : 3.5}
+              stroke={s.color}
+              strokeWidth={5}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -579,11 +648,12 @@ export function BodyMapViewer({
 
   const draftGroups = groupBySide(draft.regions)
 
-  const chip = (key: string, label: string, onRemove: () => void, onOpen?: () => void) => (
+  const chip = (key: string, label: string, onRemove: () => void, onOpen?: () => void, color?: string) => (
     <span
       key={key}
       className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 pointer-coarse:py-1.5 pointer-coarse:text-sm"
     >
+      {color && <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden />}
       {onOpen ? (
         <button type="button" onClick={onOpen} className="hover:text-sky-700">
           {label}
@@ -779,7 +849,7 @@ export function BodyMapViewer({
                           ? "border-sky-300 bg-white text-sky-900 hover:bg-sky-50"
                           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                     }`}
-                    style={on ? { backgroundColor: toneColor(tones) } : undefined}
+                    style={on ? { backgroundColor: TONE_COLOR[draft.kinds[id] ?? kind] } : undefined}
                   >
                     {whole ? t("bodyMap.parts.whole") : partButtonLabel(id)}
                   </button>
@@ -789,24 +859,32 @@ export function BodyMapViewer({
           </div>
         )}
 
-        {/* Either, both or neither: two things that can be true of one spot. */}
-        <div className="grid grid-cols-2 gap-2">
-          {TONES.map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => toggleTone(value)}
-              aria-pressed={tones.includes(value)}
-              className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
-                tones.includes(value)
-                  ? "border-slate-900 bg-white text-slate-900"
-                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: TONE_COLOR[value] }} aria-hidden />
-              {t(`bodyMap.tone.${value}`)}
-            </button>
-          ))}
+        {/* The kind in hand. Each tap marks with it, so one mark can hold a
+            painful spot, a nerve path and a stiff level, each in its colour. */}
+        <div>
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {t("bodyMap.kind.title")}
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {TONES.map((value) => {
+              const on = kind === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setKind(value)}
+                  aria-pressed={on}
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 px-2 py-2 text-sm font-medium leading-tight transition-colors pointer-coarse:py-3 ${
+                    on ? "bg-white text-slate-900" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                  }`}
+                  style={on ? { borderColor: TONE_COLOR[value] } : undefined}
+                >
+                  <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: TONE_COLOR[value] }} aria-hidden />
+                  {t(`bodyMap.tone.${value}`)}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {hasDraft && (
@@ -825,6 +903,7 @@ export function BodyMapViewer({
                             setStage("figures")
                             setOpenArea(id.split("/")[0])
                           },
+                          TONE_COLOR[draft.kinds[id] ?? kind],
                         ),
                       ),
                     )
@@ -834,7 +913,7 @@ export function BodyMapViewer({
                 row(
                   t("bodyMap.group.spine"),
                   draft.vertebrae.map((v) =>
-                    chip(v, spineLabel(t, v), () => removeItem(v), () => setStage("spine")),
+                    chip(v, spineLabel(t, v), () => removeItem(v), () => setStage("spine"), TONE_COLOR[draft.kinds[v] ?? kind]),
                   ),
                 )}
               {draft.strokes.some((s) => pathText(s)) &&
@@ -842,7 +921,9 @@ export function BodyMapViewer({
                   t("bodyMap.group.path"),
                   draft.strokes.map((s, i) => {
                     const text = pathText(s)
-                    return text ? chip(`path-${i}`, text, () => removeStroke(i)) : null
+                    return text
+                      ? chip(`path-${i}`, text, () => removeStroke(i), undefined, s.kind ? TONE_COLOR[s.kind] : INK)
+                      : null
                   }),
                 )}
             </div>
@@ -898,11 +979,11 @@ export function BodyMapViewer({
                       onClick={() => toggleOpen(m)}
                       className="flex w-full items-start gap-2 px-3 py-2 text-start"
                     >
-                      <span
-                        className="mt-1.5 size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: toneColor(kinds) }}
-                        aria-hidden
-                      />
+                      <span className="mt-1.5 flex shrink-0 gap-0.5" aria-hidden>
+                        {(m.kinds && kinds.length ? kinds.map((v) => TONE_COLOR[v]) : [toneColor(kinds)]).map((c) => (
+                          <span key={c} className="size-2.5 rounded-full" style={{ backgroundColor: c }} />
+                        ))}
+                      </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold leading-snug text-slate-800">{summary(m)}</span>
                         {!isOpen && m.note && (
@@ -924,6 +1005,9 @@ export function BodyMapViewer({
 
                     {isOpen && (
                       <div className="border-t border-slate-200 px-3 py-3">
+                        {/* Older marks have one kind for all of it, and it can be
+                            changed here. Newer ones carry a kind per place. */}
+                        {!m.kinds && (
                         <div className="mb-3 flex flex-wrap gap-1.5">
                           {TONES.map((value) => {
                             const on = kinds.includes(value)
@@ -945,6 +1029,7 @@ export function BodyMapViewer({
                             )
                           })}
                         </div>
+                        )}
                         <label
                           htmlFor={`body-note-${m.id}`}
                           className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"

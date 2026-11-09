@@ -250,6 +250,8 @@ export interface FigureStroke {
    */
   from?: string
   to?: string
+  /** What the line records. Absent on lines drawn before each place had its own kind. */
+  kind?: BodyMarkTone
 }
 
 /**
@@ -265,6 +267,15 @@ export interface BodyMark {
   regions: string[]
   vertebrae: string[]
   strokes: FigureStroke[]
+  /**
+   * What each place is, by its id (`buttock:r/piriformis`, `L4 R`). One mark
+   * often holds a painful spot, a nerve path and a level that is stiff without
+   * hurting, and the practitioner marks them in one go: the kind belongs to
+   * the place, not to the mark. Absent on marks made before that — those read
+   * `tones` for every place.
+   */
+  kinds?: Record<string, BodyMarkTone>
+  /** Every kind in the mark; on older marks, the kind of all of it. */
   tones?: BodyMarkTone[]
   note?: string
   createdAt: string
@@ -280,9 +291,10 @@ export type BoneStroke = [number, number, number][]
  * yellow are how this looks today; `nerve` is what a practitioner meant, and it
  * still reads that way after a redesign, in an export, or to whoever inherits
  * these records. Absent on marks made before this existed — those are shown as
- * unclassified rather than guessed at.
+ * unclassified rather than guessed at. `dysfunction` is a level or a joint
+ * that does not move as it should and does not hurt.
  */
-export type BodyMarkTone = "pain" | "nerve"
+export type BodyMarkTone = "pain" | "nerve" | "dysfunction"
 
 /**
  * A mark on the rotatable skeleton — the body map before the figures.

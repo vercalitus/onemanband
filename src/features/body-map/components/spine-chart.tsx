@@ -247,6 +247,7 @@ export function SpineChart({
                 key={item}
                 className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-sm font-semibold text-slate-800 ring-1 ring-slate-200"
               >
+                <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors.get(item) }} aria-hidden />
                 {label(item)}
                 <button
                   type="button"
