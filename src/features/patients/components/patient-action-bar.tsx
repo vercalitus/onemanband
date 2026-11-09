@@ -83,26 +83,6 @@ export function PatientActionBar({
 
   return (
     <>
-      {/* ── Tablet and up: two quiet buttons beside the page's other tools.
-          Closing the session is on the plate, the one orange action. ── */}
-      <div className="hidden items-center gap-2 md:flex">
-        <Button
-          variant="outline"
-          onClick={onIssueInvoice}
-          aria-label={
-            hasDebt ? t("patientChart.issueInvoiceDebtAria", { detail: debtLabel ?? "" }) : t("patientChart.issueInvoiceAria")
-          }
-        >
-          <Receipt className="size-5" aria-hidden />
-          {t("patientChart.issueInvoice")}
-          {debtTag}
-        </Button>
-        <Button variant="outline" onClick={openScheduleNext} aria-label={t("patientChart.scheduleNextAria")}>
-          <Calendar className="size-5" aria-hidden />
-          {t("patientChart.scheduleNext")}
-        </Button>
-      </div>
-
       {/* ── Phone: sticky bottom bar ──
           It sits exactly where a writing hand rests on a tablet held upright,
           so like the session card it carries no selectable text and no

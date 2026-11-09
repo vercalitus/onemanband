@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, ChevronDown, ChevronUp, Mail, MapPin, Pencil, Phone, X } from "lucide-react"
+import { Check, ChevronDown, Mail, MapPin, Pencil, Phone, X } from "lucide-react"
 import { useState } from "react"
 
 import { useLocale } from "@/components/providers/locale-provider"
@@ -123,10 +123,18 @@ export function PatientSmartHeader({
   onUpdateBodyMarkNote,
   onUpdateBodyMarkTones,
   onRemoveBodyMark,
-}: Props) {
+  part,
+}: Props & {
+  /**
+   * Which piece of the patient's file to draw. The chart puts the briefing
+   * across the top, the details in a tab beside the writing surface, and the
+   * body map in a sheet of its own — it was tuned at full width on a tablet,
+   * and a 400px column would undo that.
+   */
+  part: "brief" | "details" | "map"
+}) {
   const { t, localeTag } = useLocale()
   const paymentClaimed = usePaymentClaims().patients.has(patient.id)
-  const [mapOpen, setMapOpen] = useState(false)
   const clampedDone = Math.min(totalSessionsDone, planTarget)
   const markLines = useMarkLines(bodyMarks)
   const placeCount = bodyMarks.reduce((n, m) => n + m.regions.length + m.vertebrae.length, 0)
@@ -194,7 +202,20 @@ export function PatientSmartHeader({
 
   const statusDate = clinicalStatus.at ? dateOf(clinicalStatus.at) : null
 
-  return (
+  if (part === "map") {
+    return (
+      <BodyMapViewer
+        marks={bodyMarks}
+        legacyMarks={bodyMarks3d}
+        onSave={onAddBodyMark}
+        onDelete={onRemoveBodyMark}
+        onUpdateNote={onUpdateBodyMarkNote}
+        onUpdateTones={onUpdateBodyMarkTones}
+      />
+    )
+  }
+
+  if (part === "brief") return (
     <section className="overflow-hidden rounded-md border border-hair bg-paper">
       {/* ── Briefing: four facts read before the patient walks in ── */}
       <div className="grid gap-x-6 gap-y-5 px-5 py-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-x-0">
@@ -271,21 +292,9 @@ export function PatientSmartHeader({
         </BriefCell>
 
         <BriefCell label={t("patientChart.brief.history")}>
-          {editing ? (
-            <textarea
-              value={draft.medicalHistorySummary}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, medicalHistorySummary: e.target.value }))
-              }
-              rows={3}
-              className={cn(FIELD_CLASS, "resize-none")}
-              placeholder={t("patientChart.medicalSummaryPh")}
-            />
-          ) : (
-            <p dir="auto" className="line-clamp-4 text-[17px] leading-snug text-ink">
-              {display.medicalHistorySummary}
-            </p>
-          )}
+          <p dir="auto" className="line-clamp-4 text-[17px] leading-snug text-ink">
+            {display.medicalHistorySummary}
+          </p>
         </BriefCell>
 
         <BriefCell
@@ -317,9 +326,12 @@ export function PatientSmartHeader({
           )}
         </BriefCell>
       </div>
+    </section>
+  )
 
-      {/* ── Details: who they are on paper, the plan, how to reach them ── */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-hair-soft px-5 py-2.5 text-sm text-ink">
+  return (
+    /* ── Details: who they are on paper, the plan, how to reach them ── */
+    <div className="grid gap-4 px-5 py-4 text-sm text-ink">
         <div className="flex flex-wrap items-center gap-2">
           {onStatusChange ? (
             /* The badge is the control. A separate "edit status" affordance
@@ -405,11 +417,11 @@ export function PatientSmartHeader({
           )}
         </div>
 
-        {/* Contact card */}
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 lg:justify-end">
-          <span className="sr-only">{t("patientChart.contact")}</span>
+        {/* Contact card, and the history written beside it */}
+        <div className="grid min-w-0 gap-2 border-t border-hair-soft pt-4">
+          <span className="text-sm font-bold text-mute">{t("patientChart.contact")}</span>
           {editing ? (
-            <div className="grid w-full gap-2 sm:grid-cols-3">
+            <div className="grid w-full gap-2">
               <input
                 value={draft.phone}
                 onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))}
@@ -428,6 +440,16 @@ export function PatientSmartHeader({
                 className={FIELD_CLASS}
                 placeholder={t("patientChart.addressPh")}
               />
+              <textarea
+                value={draft.medicalHistorySummary}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, medicalHistorySummary: e.target.value }))
+                }
+                rows={4}
+                aria-label={t("patientChart.brief.history")}
+                className={cn(FIELD_CLASS, "resize-none")}
+                placeholder={t("patientChart.medicalSummaryPh")}
+              />
             </div>
           ) : (
             <>
@@ -437,25 +459,31 @@ export function PatientSmartHeader({
               </span>
               <span className="inline-flex min-w-0 items-center gap-1.5">
                 <Mail className="size-4 shrink-0 text-mute" aria-hidden />
-                <bdi className="max-w-64 truncate">{display.email}</bdi>
+                <bdi className="truncate">{display.email}</bdi>
               </span>
               {display.address && (
                 <span className="inline-flex min-w-0 items-center gap-1.5">
                   <MapPin className="size-4 shrink-0 text-mute" aria-hidden />
-                  <span className="max-w-64 truncate">{display.address}</span>
+                  <span className="truncate">{display.address}</span>
                 </span>
               )}
+              <div className="mt-2">
+                <span className="text-sm font-bold text-mute">{t("patientChart.brief.history")}</span>
+                <p dir="auto" className="mt-0.5 text-[17px] leading-snug whitespace-pre-line text-ink">
+                  {display.medicalHistorySummary}
+                </p>
+              </div>
             </>
           )}
           {!editing ? (
             <Button
               variant="outline"
-              size="icon"
               onClick={enterEdit}
-              title={t("patientChart.editContactAria")}
+              className="justify-self-start text-sm"
               aria-label={t("patientChart.editContactAria")}
             >
               <Pencil className="size-4" aria-hidden />
+              {t("patientChart.editContactAria")}
             </Button>
           ) : (
             <div className="flex items-center gap-2">
@@ -471,48 +499,5 @@ export function PatientSmartHeader({
           )}
         </div>
       </div>
-
-      {/* Treatment map — collapsed by default */}
-      <div className="border-t border-hair-soft">
-        <button
-          type="button"
-          onClick={() => setMapOpen((v) => !v)}
-          className="flex min-h-13 w-full items-center gap-2 px-5 text-start text-[17px] font-bold text-ink transition-colors hover:bg-ground"
-          aria-expanded={mapOpen}
-          aria-controls="bodymap-panel"
-        >
-          <MapPin className="size-5 text-mute" aria-hidden />
-          {t("patientChart.bodyMapTitle")}
-          {mapOpen ? (
-            <ChevronUp className="ms-auto size-5 text-mute" aria-hidden />
-          ) : (
-            <ChevronDown className="ms-auto size-5 text-mute" aria-hidden />
-          )}
-        </button>
-
-        <div
-          id="bodymap-panel"
-          className={cn(
-            "overflow-hidden transition-all duration-300",
-            mapOpen ? "max-h-[4000px]" : "max-h-0",
-          )}
-        >
-          <div className="border-t border-hair-soft px-5 pt-4 pb-5">
-            {/* Mounted only once opened: the panel is collapsed by default, and
-                a mounted map keeps an unsaved draft it would flush on leaving. */}
-            {mapOpen && (
-              <BodyMapViewer
-                marks={bodyMarks}
-                legacyMarks={bodyMarks3d}
-                onSave={onAddBodyMark}
-                onDelete={onRemoveBodyMark}
-                onUpdateNote={onUpdateBodyMarkNote}
-                onUpdateTones={onUpdateBodyMarkTones}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    </section>
   )
 }

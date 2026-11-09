@@ -9,7 +9,7 @@ import { spineLabel } from "@/features/body-map/lib/regions"
 import { cn } from "@/lib/utils"
 
 /** One colour: everything marked here is the same thing, "worked on today". */
-const MARKED = "#38bdf8"
+const MARKED = "#9FB4E3"
 
 /**
  * Where on the spine this session's work was done.
@@ -36,32 +36,32 @@ export function SessionSpine({
   const summary = selected.map((item) => spineLabel(t, item)).join(" · ")
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50">
+    <div className="rounded-md border border-hair">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-start text-sm font-semibold text-slate-700 transition-colors hover:text-sky-700"
+        className="flex min-h-12 w-full items-center gap-3 px-4 text-start text-[17px] transition-colors hover:bg-ground"
         aria-expanded={open}
         aria-controls="session-spine-panel"
       >
-        <span className="shrink-0">{t("patientChart.spine.title")}</span>
+        <span className="shrink-0 font-bold text-ink">{t("patientChart.spine.title")}</span>
         <span
           className={cn(
             "min-w-0 truncate font-medium",
-            selected.length ? "text-sky-800" : "text-slate-400",
+            selected.length ? "font-bold text-cobalt" : "text-faint",
           )}
         >
           {summary || t("patientChart.spine.none")}
         </span>
         {open ? (
-          <ChevronUp className="ms-auto size-4 shrink-0 text-slate-400" aria-hidden />
+          <ChevronUp className="ms-auto size-5 shrink-0 text-mute" aria-hidden />
         ) : (
-          <ChevronDown className="ms-auto size-4 shrink-0 text-slate-400" aria-hidden />
+          <ChevronDown className="ms-auto size-5 shrink-0 text-mute" aria-hidden />
         )}
       </button>
 
       {open && (
-        <div id="session-spine-panel" className="border-t border-slate-100 p-4">
+        <div id="session-spine-panel" className="border-t border-hair-soft p-4">
           <SpineChart colors={colors} selected={selected} onToggle={onToggle} />
         </div>
       )}

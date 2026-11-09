@@ -1,13 +1,33 @@
 "use client"
 
-import Link from "next/link"
 import { notFound, useParams, useRouter, useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo } from "react"
-import { AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronUp, Pencil, StickyNote, X } from "lucide-react"
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Ellipsis,
+  Pencil,
+  Receipt,
+  StickyNote,
+  X,
+} from "lucide-react"
 
 import { PagePlate, PlateDebt, PlateDivider, PlateFact, PlateSpacer } from "@/components/layout/page-plate"
 import { useLocale } from "@/components/providers/locale-provider"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { StateLegend } from "@/components/ui/state-mark"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StateMark } from "@/components/ui/state-mark"
 import { useScheduleDay } from "@/components/providers/schedule-day-provider"
 import { getTreatmentPriceIls } from "@/lib/clinic-settings-storage"
@@ -21,7 +41,7 @@ import { localizeCompletedSessionTitle, localizePatient } from "@/lib/i18n/local
 import { cn } from "@/lib/utils"
 import { BillingToast } from "@/features/finances/components/billing-toast"
 import { PatientSmartHeader } from "@/features/patients/components/patient-smart-header"
-import { ExportButton, ExportDialog } from "@/features/exports/components/export-dialog"
+import { ExportDialog } from "@/features/exports/components/export-dialog"
 import { buildPatientBundle, patientColumns } from "@/features/exports/lib/build-exports"
 import { loadPatientExportSource } from "@/features/exports/lib/export-source"
 import { datedFilename, downloadCsv, downloadJson } from "@/lib/file-export"
@@ -130,6 +150,7 @@ export function PatientDetailClient() {
   const [notesOpen, setNotesOpen] = useState(true)
   const [exportOpen, setExportOpen] = useState(false)
   const [closeOpen, setCloseOpen] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
   const [toast, setToast] = useState<{ open: boolean; message: string }>({
     open: false,
     message: "",
@@ -344,6 +365,32 @@ export function PatientDetailClient() {
             <PlateDebt amount={formatMoney(debt)} label={t("patientChart.plate.debt")} />
           </button>
         )}
+        {/* Everything that is not part of the session: one quiet button. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              "size-14 border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white focus-visible:outline-white",
+            )}
+            aria-label={t("patientChart.moreActions")}
+          >
+            <Ellipsis className="size-6" aria-hidden />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={6} className="min-w-56 p-2">
+            <DropdownMenuItem onClick={handleIssueInvoice} className="min-h-11 gap-2.5 text-[17px]">
+              <Receipt className="size-5" aria-hidden />
+              {t("patientChart.issueInvoice")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={openScheduleNext} className="min-h-11 gap-2.5 text-[17px]">
+              <Calendar className="size-5" aria-hidden />
+              {t("patientChart.scheduleNext")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setExportOpen(true)} className="min-h-11 gap-2.5 text-[17px]">
+              <Download className="size-5" aria-hidden />
+              {t("export.patientRecord")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           size="lg"
           onClick={() => setCloseOpen(true)}
@@ -355,31 +402,17 @@ export function PatientDetailClient() {
       </PagePlate>
 
       <div className="space-y-5 pb-40 md:pb-8">
-        {/* Back to the list, and the page's quieter actions. */}
-        <div id="patient-actions" className="flex scroll-mt-24 flex-wrap items-center gap-2">
-          <Link
-            href="/patients"
-            className="-ms-2 inline-flex h-11 items-center gap-2 rounded-md px-2 text-sm font-medium text-mute transition-colors hover:bg-sunk hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt"
-          >
-            <ArrowLeft className="size-4 rtl:rotate-180" aria-hidden />
-            {t("patientChart.breadcrumb")}
-          </Link>
-          <span className="flex-1" aria-hidden />
-          <PatientActionBar
-            outstandingDebt={debt}
-            onCompleteSession={() => setCloseOpen(true)}
-            onIssueInvoice={handleIssueInvoice}
-            patientId={id}
-            patientName={displayPatient.fullName}
-            lastAppointmentType={patientLastAppointmentType}
-            nextSessionNumber={currentSession}
-          />
-          <ExportButton
-            onClick={() => setExportOpen(true)}
-            label={t("export.patientRecord")}
-            className="border-hair text-ink [&_svg]:text-mute"
-          />
-        </div>
+        {/* Phone only: the bottom bar with Close session. From tablet up the
+            plate carries both the close and the "…" menu. */}
+        <PatientActionBar
+          outstandingDebt={debt}
+          onCompleteSession={() => setCloseOpen(true)}
+          onIssueInvoice={handleIssueInvoice}
+          patientId={id}
+          patientName={displayPatient.fullName}
+          lastAppointmentType={patientLastAppointmentType}
+          nextSessionNumber={currentSession}
+        />
 
         <PatientSmartHeader
           patient={displayPatient}
@@ -399,11 +432,13 @@ export function PatientDetailClient() {
           onUpdateBodyMarkNote={updateBodyMarkNote}
           onUpdateBodyMarkTones={updateBodyMarkTones}
           onRemoveBodyMark={removeBodyMark}
+          part="brief"
         />
 
-        {/* The sheet, then the file. Side by side only on a wide screen: on a
-            tablet the writing surface keeps the full width it was tuned at. */}
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
+        {/* The sheet and the file, side by side from a tablet held sideways:
+            what is being written beside what was written before. Upright, the
+            file goes under the sheet. */}
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
           {/*
             Written on with a pen, on a tablet, with a hand resting on the card.
             The canvas blocks the tablet's long-press menu itself, but a palm
@@ -497,47 +532,147 @@ export function PatientDetailClient() {
             </div>
           </section>
 
-          <div className="min-w-0 space-y-5">
-            <section
-              aria-labelledby="timeline-heading"
-              className="overflow-hidden rounded-md border border-hair bg-paper"
-            >
-              <div className="flex min-h-14 items-center border-b border-hair px-5">
-                <h2 id="timeline-heading" className="text-[17px] font-bold text-ink">
-                  {t("patientChart.timelineTitle")}
-                </h2>
+          <section
+            aria-label={t("patientChart.timelineTitle")}
+            className="min-w-0 overflow-hidden rounded-md border border-hair bg-paper lg:sticky lg:top-4"
+          >
+            <Tabs defaultValue="history" className="gap-0">
+              <div className="border-b border-hair px-3">
+                <TabsList variant="line" className="h-auto w-full flex-wrap justify-start gap-x-3 pb-0">
+                  <TabsTrigger value="history" className="min-h-14 px-1">
+                    {t("patientChart.tab.history")}
+                  </TabsTrigger>
+                  <TabsTrigger value="documents" className="min-h-14 px-1">
+                    {t("patientChart.tab.documents")}
+                    {documentRecords.length > 0 && (
+                      <span className="text-sm font-medium tabular-nums text-mute">
+                        {documentRecords.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="map" className="min-h-14 px-1">
+                    {t("patientChart.tab.bodyMap")}
+                  </TabsTrigger>
+                  <TabsTrigger value="details" className="min-h-14 px-1">
+                    {t("patientChart.tab.details")}
+                  </TabsTrigger>
+                </TabsList>
               </div>
-              <UnifiedTimeline
-                treatmentRecords={treatmentRecords}
-                documentRecords={documentRecords}
-                financeRecords={financeRecords}
-                completedSessions={completedSessions}
-                planTarget={planTarget}
-                treatmentsAreLive={treatmentsAreLive}
-                onDeleteTreatment={deleteTreatmentRecord}
-                onDeleteCompletedSession={deleteCompletedSession}
-                onVoidTreatment={live ? voidTreatmentRecord : undefined}
-              />
-            </section>
 
-            <GeneralNotesCard
-              initialValue={contactOverrides.generalNotes ?? displayPatient.generalNotes ?? ""}
-              onSave={(v) =>
-                saveContactOverrides({ ...contactOverrides, generalNotes: v })
-              }
-            />
+              <TabsContent value="history">
+                <UnifiedTimeline
+                  treatmentRecords={treatmentRecords}
+                  documentRecords={documentRecords}
+                  financeRecords={financeRecords}
+                  completedSessions={completedSessions}
+                  planTarget={planTarget}
+                  treatmentsAreLive={treatmentsAreLive}
+                  onDeleteTreatment={deleteTreatmentRecord}
+                  onDeleteCompletedSession={deleteCompletedSession}
+                  onVoidTreatment={live ? voidTreatmentRecord : undefined}
+                />
+                <div className="border-t border-hair-soft px-5 py-3">
+                  <StateLegend
+                    items={[
+                      { state: "done", label: t("appt.status.completed") },
+                      { state: "plan", label: t("appt.status.scheduled") },
+                      { state: "cancel", label: t("appt.status.cancelled") },
+                    ]}
+                  />
+                </div>
+              </TabsContent>
 
-            {/* One library, in the file column on every width. It used to sit
-                in a sidebar that only existed on a desktop, so a tablet in the
-                treatment room could not see a single document. */}
-            <PatientLibrary
-              documentRecords={documentRecords}
-              onDeleteDocument={deleteDocumentRecord}
-              onUploadDocument={live ? uploadDocumentRecord : undefined}
-            />
-          </div>
+              <TabsContent value="documents">
+                {/* One library, in the file column on every width. It used to
+                    sit in a sidebar that only existed on a desktop, so a tablet
+                    in the treatment room could not see a single document. */}
+                <PatientLibrary
+                  documentRecords={documentRecords}
+                  onDeleteDocument={deleteDocumentRecord}
+                  onUploadDocument={live ? uploadDocumentRecord : undefined}
+                />
+              </TabsContent>
+
+              <TabsContent value="map">
+                {/* The marks in words here; the map itself opens full size. It
+                    was tuned at a tablet's full width, and in this column the
+                    figures would be too small to aim at. */}
+                <div className="grid gap-3 px-5 py-4">
+                  <p className="text-[17px] leading-snug text-mute">
+                    {bodyMarks.length === 0
+                      ? t("patientChart.brief.noMarks")
+                      : t("bodyMap.count", {
+                          n: bodyMarks.reduce((n, m) => n + m.regions.length + m.vertebrae.length, 0),
+                        })}
+                  </p>
+                  <Button variant="outline" onClick={() => setMapOpen(true)} className="justify-self-start">
+                    {t("patientChart.bodyMapOpen")}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="details">
+                <PatientSmartHeader
+                  patient={displayPatient}
+                  overrides={contactOverrides}
+                  totalSessionsDone={totalSessionsDone}
+                  planTarget={planTarget}
+                  planIsPersonal={planIsPersonal}
+                  onPlanTargetChange={setPlanTarget}
+                  clinicalStatus={clinicalStatus}
+                  onClinicalStatusChange={setClinicalStatus}
+                  onStatusChange={live ? setPatientStatus : undefined}
+                  onSaveOverrides={saveContactOverrides}
+                  lastVisit={lastVisit}
+                  bodyMarks={bodyMarks}
+                  bodyMarks3d={bodyMarks3d}
+                  onAddBodyMark={addBodyMark}
+                  onUpdateBodyMarkNote={updateBodyMarkNote}
+                  onUpdateBodyMarkTones={updateBodyMarkTones}
+                  onRemoveBodyMark={removeBodyMark}
+                  part="details"
+                />
+                <div className="border-t border-hair-soft p-4">
+                  <GeneralNotesCard
+                    initialValue={contactOverrides.generalNotes ?? displayPatient.generalNotes ?? ""}
+                    onSave={(v) => saveContactOverrides({ ...contactOverrides, generalNotes: v })}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </section>
         </div>
       </div>
+
+      {/* The body map, full size. Closing the sheet unmounts the map, which
+          saves a mark still being drawn — as collapsing its panel always did. */}
+      <Dialog open={mapOpen} onOpenChange={setMapOpen}>
+        <DialogContent className="max-h-[94dvh] w-[min(1200px,96vw)] overflow-y-auto sm:max-w-none">
+          <DialogTitle>{t("patientChart.bodyMapTitle")}</DialogTitle>
+          {mapOpen && (
+            <PatientSmartHeader
+              patient={displayPatient}
+              overrides={contactOverrides}
+              totalSessionsDone={totalSessionsDone}
+              planTarget={planTarget}
+              planIsPersonal={planIsPersonal}
+              onPlanTargetChange={setPlanTarget}
+              clinicalStatus={clinicalStatus}
+              onClinicalStatusChange={setClinicalStatus}
+              onStatusChange={live ? setPatientStatus : undefined}
+              onSaveOverrides={saveContactOverrides}
+              lastVisit={lastVisit}
+              bodyMarks={bodyMarks}
+              bodyMarks3d={bodyMarks3d}
+              onAddBodyMark={addBodyMark}
+              onUpdateBodyMarkNote={updateBodyMarkNote}
+              onUpdateBodyMarkTones={updateBodyMarkTones}
+              onRemoveBodyMark={removeBodyMark}
+              part="map"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <SessionCloseDialog
         open={closeOpen}
