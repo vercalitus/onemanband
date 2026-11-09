@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { ChevronDown, ChevronUp, FileText, Mic, Pencil, Receipt, Trash2 } from "lucide-react"
 
+import { spineLabel } from "@/features/body-map/lib/regions"
 import { useLocale } from "@/components/providers/locale-provider"
 import { Button } from "@/components/ui/button"
 import { StateMark } from "@/components/ui/state-mark"
@@ -153,6 +154,8 @@ interface SessionEntry {
   /** Private-bucket paths, for a session that was saved to the database. */
   canvasPath?: string
   audioPath?: string
+  /** Where on the spine the work was done, in the model's own names. */
+  spineLevels?: string[]
   /** Marked as saved in error: kept, struck through, counted for nothing. */
   voidedAt?: string
   voidReason?: string
@@ -261,6 +264,7 @@ export function UnifiedTimeline({
       audioKey: null,
       canvasPath: t.canvasPath,
       audioPath: t.audioPath,
+      spineLevels: t.spineLevels,
       voidedAt: t.voidedAt,
       voidReason: t.voidReason,
       relatedDocs: [] as DocumentRecord[],
@@ -274,6 +278,7 @@ export function UnifiedTimeline({
       note: cs.sessionNotes || "",
       canvasDataUrl: cs.canvasDataUrl,
       audioKey: cs.audioKey ?? null,
+      spineLevels: cs.spineLevels,
       relatedDocs: [] as DocumentRecord[],
       relatedFinances: [] as FinanceRecord[],
     })),
@@ -435,6 +440,16 @@ export function UnifiedTimeline({
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-mute">{titleShown}</p>
+                    {/* What was tapped on the spine, read back as words: the
+                        line that used to be written by hand. */}
+                    {!!entry.spineLevels?.length && (
+                      <p className="mt-0.5 text-[17px] leading-snug text-ink">
+                        <span className="text-mute">{t("patientChart.spine.recorded")}: </span>
+                        <span dir="ltr" className="font-bold">
+                          {entry.spineLevels.map((item) => spineLabel(t, item)).join(" · ")}
+                        </span>
+                      </p>
+                    )}
                     {entry.note && <ClinicalNoteLine note={entry.note} expanded={expanded} />}
                   </div>
                   {hasMore &&

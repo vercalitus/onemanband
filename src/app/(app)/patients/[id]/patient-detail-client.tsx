@@ -29,6 +29,7 @@ import { SessionCanvas } from "@/features/patients/components/session-canvas"
 import { SessionCloseDialog } from "@/features/patients/components/session-close-dialog"
 import { BODY_MAP_FLUSH_EVENT } from "@/features/body-map/lib/flush-event"
 import { SessionAudio } from "@/features/patients/components/session-audio"
+import { SessionSpine } from "@/features/patients/components/session-spine"
 import { useSessionClosing } from "@/features/patients/lib/use-close-session"
 import { UnifiedTimeline } from "@/features/patients/components/unified-timeline"
 import { PatientActionBar } from "@/features/patients/components/patient-action-bar"
@@ -96,6 +97,8 @@ export function PatientDetailClient() {
     setSessionNotes,
     canvasStrokes,
     setCanvasStrokes,
+    sessionSpine,
+    toggleSessionSpine,
     sessionAudioUrl,
     saveSessionAudio,
     clearSessionAudio,
@@ -453,6 +456,8 @@ export function PatientDetailClient() {
                   onStrokesChange={setCanvasStrokes}
                 />
 
+                <SessionSpine selected={sessionSpine} onToggle={toggleSessionSpine} />
+
                 <div className="rounded-md border border-hair">
                   <button
                     type="button"
@@ -559,7 +564,12 @@ export function PatientDetailClient() {
           openScheduleNext()
         }}
         onConfirm={handleCloseSession}
-        sessionIsEmpty={!sessionNotes.trim() && canvasStrokes.length === 0 && !sessionAudioUrl}
+        sessionIsEmpty={
+          !sessionNotes.trim() &&
+          canvasStrokes.length === 0 &&
+          !sessionAudioUrl &&
+          sessionSpine.length === 0
+        }
         lastRecordedAt={
           treatmentRecords
             .filter((r) => !r.voidedAt)

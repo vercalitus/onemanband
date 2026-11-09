@@ -32,6 +32,7 @@ interface TreatmentRow {
   title: string
   note: string
   metadata: { canvas_path?: string; audio_path?: string } | null
+  spine_levels: string[] | null
   voided_at: string | null
   void_reason: string | null
   profiles?: { full_name: string | null } | null
@@ -42,8 +43,11 @@ interface TreatmentRow {
 // bare `profiles(...)` was ambiguous: PostgREST refused every read and every
 // insert that asked for the row back, so no chart showed its history and no
 // session could be closed — for twelve days, on every patient.
+//
+// The same lesson for `spine_levels`: a column named here that the database
+// does not have fails every read. Its migration goes out before this does.
 const SELECT =
-  "id, recorded_at, title, note, metadata, voided_at, void_reason, profiles!treatments_provider_id_fkey(full_name)"
+  "id, recorded_at, title, note, metadata, spine_levels, voided_at, void_reason, profiles!treatments_provider_id_fkey(full_name)"
 
 function toRecord(row: TreatmentRow): TreatmentRecord {
   return {
@@ -54,6 +58,7 @@ function toRecord(row: TreatmentRow): TreatmentRecord {
     note: row.note,
     canvasPath: row.metadata?.canvas_path,
     audioPath: row.metadata?.audio_path,
+    spineLevels: row.spine_levels ?? [],
     voidedAt: row.voided_at ?? undefined,
     voidReason: row.void_reason ?? undefined,
   }
@@ -212,6 +217,8 @@ export interface TreatmentDraft {
   canvas?: Blob | null
   /** The session's voice memo, if one was recorded. */
   audio?: Blob | null
+  /** Where on the spine the work was done, from the spine model, top to bottom. */
+  spineLevels?: string[]
 }
 
 export type TreatmentWrite =
@@ -264,6 +271,7 @@ export async function createTreatment(
       treatment_type: draft.treatmentType,
       note: draft.note,
       metadata,
+      spine_levels: draft.spineLevels ?? [],
     })
     .select(SELECT)
     .single()

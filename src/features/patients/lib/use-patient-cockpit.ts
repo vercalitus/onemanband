@@ -51,6 +51,7 @@ import {
   writeField,
 } from "@/features/patients/lib/patient-extras-store"
 import { deleteAudio, getAudio, moveAudio, putAudio } from "@/lib/audio-store"
+import { sortSpine } from "@/features/body-map/lib/regions"
 
 /**
  * The patient chart's state.
@@ -82,6 +83,8 @@ export interface CompletedSession {
   canvasDataUrl: string | null
   /** IndexedDB key of the attached voice memo, if any. */
   audioKey?: string | null
+  /** Where on the spine the work was done, top to bottom. */
+  spineLevels?: string[]
 }
 
 const activeAudioKey = (patientId: string) => `audio-active:${patientId}`
@@ -199,6 +202,7 @@ export function usePatientCockpit(patientId: string) {
   })
   const [sessionNotes, setSessionNotesRaw] = useState("")
   const [canvasStrokes, setCanvasStrokesRaw] = useState<Stroke[]>([])
+  const [sessionSpine, setSessionSpineRaw] = useState<string[]>([])
   const [sessionAudioUrl, setSessionAudioUrl] = useState<string | null>(null)
   const [completedSessions, setCompletedSessionsRaw] = useState<CompletedSession[]>([])
   const [deletedTreatmentIds, setDeletedTreatmentIds] = useState<string[]>([])
@@ -256,6 +260,7 @@ export function usePatientCockpit(patientId: string) {
     // Session drafts and legacy local sessions are browser-local in both modes.
     setSessionNotesRaw(readField(patientId, "sessionNotes", ""))
     setCanvasStrokesRaw(readField<Stroke[]>(patientId, "canvasStrokes", []))
+    setSessionSpineRaw(readField<string[]>(patientId, "sessionSpine", []))
     setCompletedSessionsRaw(readField(patientId, "completedSessions", []))
     setDeletedTreatmentIds(readField(patientId, "deletedTreatmentIds", []))
     setDeletedDocumentIds(readField(patientId, "deletedDocumentIds", []))
@@ -342,6 +347,28 @@ export function usePatientCockpit(patientId: string) {
     },
     [patientId],
   )
+
+  /**
+   * Where on the spine this session's work was done — the practitioner's
+   * "C2 left", tapped instead of written. Part of the draft like the ink: it
+   * stays on this machine until the session closes, then goes into the
+   * treatment row with everything else and can no longer change.
+   */
+  const toggleSessionSpine = useCallback(
+    (item: string) => {
+      setSessionSpineRaw((prev) => {
+        const next = sortSpine(prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item])
+        writeField(patientId, "sessionSpine", next, { notify: false })
+        return next
+      })
+    },
+    [patientId],
+  )
+
+  const clearSessionSpine = useCallback(() => {
+    setSessionSpineRaw([])
+    writeField(patientId, "sessionSpine", [], { notify: false })
+  }, [patientId])
 
   const saveSessionAudio = useCallback(
     async (blob: Blob) => {
@@ -676,6 +703,7 @@ export function usePatientCockpit(patientId: string) {
           treatmentType: appointmentType,
           canvas,
           audio,
+          spineLevels: sessionSpine,
         })
         if (!written.ok) {
           setSaveError(written.reason)
@@ -686,6 +714,7 @@ export function usePatientCockpit(patientId: string) {
         setLastAppointmentType(appointmentType)
         setSessionNotes("")
         setCanvasStrokes([])
+        clearSessionSpine()
         applyAudioUrl(null)
         return true
       }
@@ -710,6 +739,7 @@ export function usePatientCockpit(patientId: string) {
         sessionNotes,
         canvasDataUrl,
         audioKey,
+        spineLevels: sessionSpine,
       }
       setCompletedSessionsRaw((prev) => {
         const next = [entry, ...prev]
@@ -719,6 +749,7 @@ export function usePatientCockpit(patientId: string) {
       setLastAppointmentType(appointmentType)
       setSessionNotes("")
       setCanvasStrokes([])
+      clearSessionSpine()
       applyAudioUrl(null)
       return true
     },
@@ -729,6 +760,8 @@ export function usePatientCockpit(patientId: string) {
       planTarget,
       sessionNotes,
       canvasStrokes,
+      sessionSpine,
+      clearSessionSpine,
       setLastAppointmentType,
       setSessionNotes,
       setCanvasStrokes,
@@ -823,6 +856,8 @@ export function usePatientCockpit(patientId: string) {
     setSessionNotes,
     canvasStrokes,
     setCanvasStrokes,
+    sessionSpine,
+    toggleSessionSpine,
     sessionAudioUrl,
     saveSessionAudio,
     clearSessionAudio,
