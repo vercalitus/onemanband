@@ -62,7 +62,7 @@ export function SessionSpine({
 
       {open && (
         <div id="session-spine-panel" className="border-t border-hair-soft p-4">
-          <SpineChart colors={colors} selected={selected} onToggle={onToggle} />
+          <SpineChart colors={colors} selected={selected} onToggle={onToggle} arrangement="side" />
         </div>
       )}
     </div>

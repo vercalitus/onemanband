@@ -3,6 +3,8 @@
 import { X } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import { cn } from "@/lib/utils"
+
 import { Rich } from "./rich"
 import { spineLabel } from "../lib/regions"
 import { useLocale } from "@/components/providers/locale-provider"
@@ -183,14 +185,18 @@ export function SpineChart({
   colors,
   selected,
   onToggle,
+  arrangement = "stack",
 }: {
   /** The mark in hand: each of its items in that mark's colour. */
   colors: Map<string, string>
   /** The mark being made, top to bottom. */
   selected: string[]
   onToggle: (item: string) => void
+  /** "side": drawing beside the controls, for a wide card. Default stacked. */
+  arrangement?: "stack" | "side"
 }) {
   const { t } = useLocale()
+  const side = arrangement === "side"
   const { targets, view } = useMemo(layout, [])
   const [zoom, setZoom] = useState<Zoom>("all")
   const [hovered, setHovered] = useState<string | null>(null)
@@ -231,21 +237,21 @@ export function SpineChart({
     onToggle(target.item)
   }
 
-  return (
-    <div className="grid gap-3">
+  const chosenBox = (
+    <>
       {/* What is chosen, in words, top to bottom — never counted off the drawing. */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+      <div className="rounded-md border border-hair bg-ground px-3 py-2">
+        <p className="text-sm font-bold text-mute">
           {hovered ? t("bodyMap.underCursor") : t("bodyMap.spine.chosen")}
         </p>
         {hovered ? (
-          <p className="mt-0.5 text-lg font-bold text-sky-800">{label(hovered)}</p>
+          <p className="mt-0.5 text-[17px] font-bold text-cobalt">{label(hovered)}</p>
         ) : selected.length ? (
           <div className="mt-1 flex flex-wrap gap-1.5">
             {selected.map((item) => (
               <span
                 key={item}
-                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-sm font-semibold text-slate-800 ring-1 ring-slate-200"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-paper ps-2.5 pe-1 text-[15px] font-bold text-ink ring-1 ring-hair"
               >
                 <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors.get(item) }} aria-hidden />
                 {label(item)}
@@ -253,18 +259,21 @@ export function SpineChart({
                   type="button"
                   onClick={() => onToggle(item)}
                   aria-label={t("bodyMap.remove", { name: label(item) })}
-                  className="-my-1 -me-1 p-1 text-slate-400 hover:text-rose-600"
+                  className="flex size-8 items-center justify-center rounded-md text-mute hover:bg-ground hover:text-ink"
                 >
-                  <X className="size-3.5" aria-hidden />
+                  <X className="size-4" aria-hidden />
                 </button>
               </span>
             ))}
           </div>
         ) : (
-          <p className="mt-0.5 text-sm text-slate-500">{t("bodyMap.spine.none")}</p>
+          <p className="mt-0.5 text-sm text-mute">{t("bodyMap.spine.none")}</p>
         )}
       </div>
-
+    </>
+  )
+  const zoomChips = (
+    <>
       <div className="flex flex-wrap gap-1.5">
         {ZOOMS.map((value) => (
           <button
@@ -272,21 +281,33 @@ export function SpineChart({
             type="button"
             onClick={() => setZoom(value)}
             aria-pressed={zoom === value}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors pointer-coarse:px-4 pointer-coarse:py-2.5 pointer-coarse:text-sm ${
+            className={`min-h-11 rounded-md border px-3 text-[15px] font-medium transition-colors ${
               zoom === value
-                ? "border-sky-700 bg-sky-700 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                ? "border-cobalt bg-cobalt font-bold text-white"
+                : "border-hair bg-paper text-ink hover:bg-ground"
             }`}
           >
             {t(`bodyMap.spine.seg.${value}`)}
           </button>
         ))}
       </div>
-
-      <div className="relative h-[560px] max-h-[65dvh] touch-manipulation rounded-xl bg-gradient-to-b from-slate-50 to-white">
+    </>
+  )
+  const drawingBox = (
+    <>
+      <div
+        className={cn(
+          "relative touch-manipulation rounded-md border border-hair-soft bg-paper",
+          side ? "h-[520px] max-h-[70dvh]" : "h-[560px] max-h-[65dvh]",
+        )}
+      >
         <svg
           viewBox={`0 ${y0} ${W} ${y1 - y0}`}
           preserveAspectRatio="xMidYMid meet"
+          // Coordinates are laid out left to right. In a right-to-left page the
+          // text inherited that direction and "end" flipped sides, so a marked
+          // side's name was drawn over the vertebra instead of beside it.
+          direction="ltr"
           className="h-full w-full"
           role="img"
           aria-label={t("bodyMap.stage.spine")}
@@ -378,8 +399,11 @@ export function SpineChart({
           )}
         </svg>
       </div>
-
-      <ul className="grid gap-1 text-[12px] leading-snug text-slate-600 pointer-coarse:text-[13px]">
+    </>
+  )
+  const helpList = (
+    <>
+      <ul className="grid gap-1 text-sm leading-snug text-mute">
         <li>
           <Rich text={t("bodyMap.spine.help.zoom")} />
         </li>
@@ -393,6 +417,31 @@ export function SpineChart({
           <Rich text={t("bodyMap.spine.help.disc")} />
         </li>
       </ul>
+    </>
+  )
+
+  // Beside: the drawing in a column of its own, the words and controls next to
+  // it. In a wide card the stacked version left a narrow spine lost in a box
+  // the width of the screen.
+  if (side) {
+    return (
+      <div className="grid items-start gap-4 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
+        {drawingBox}
+        <div className="grid content-start gap-3">
+          {chosenBox}
+          {zoomChips}
+          {helpList}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-3">
+      {chosenBox}
+      {zoomChips}
+      {drawingBox}
+      {helpList}
     </div>
   )
 }
