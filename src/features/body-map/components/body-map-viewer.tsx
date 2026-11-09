@@ -3,6 +3,7 @@
 import { ChevronDown, CircleHelp, Undo2, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
+import { Rich } from "./rich"
 import { SpineChart } from "./spine-chart"
 import { BODY_MAP_FLUSH_EVENT } from "../lib/flush-event"
 import {
@@ -720,7 +721,9 @@ export function BodyMapViewer({
         {helpOpen && (
           <ul className="mt-1 grid list-disc gap-1.5 rounded-xl bg-slate-50 py-3 pe-3 ps-7 text-[13px] leading-snug text-slate-700">
             {HELP.map((key) => (
-              <li key={key}>{t(`bodyMap.help.${key}`)}</li>
+              <li key={key}>
+                <Rich text={t(`bodyMap.help.${key}`)} />
+              </li>
             ))}
           </ul>
         )}

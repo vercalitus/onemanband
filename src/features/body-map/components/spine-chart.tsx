@@ -3,6 +3,7 @@
 import { X } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import { Rich } from "./rich"
 import { spineLabel } from "../lib/regions"
 import { useLocale } from "@/components/providers/locale-provider"
 
@@ -378,10 +379,18 @@ export function SpineChart({
       </div>
 
       <ul className="grid gap-1 text-[12px] leading-snug text-slate-600 pointer-coarse:text-[13px]">
-        <li>{t("bodyMap.spine.help.zoom")}</li>
-        <li>{t("bodyMap.spine.help.level")}</li>
-        <li>{t("bodyMap.spine.help.side")}</li>
-        <li>{t("bodyMap.spine.help.disc")}</li>
+        <li>
+          <Rich text={t("bodyMap.spine.help.zoom")} />
+        </li>
+        <li>
+          <Rich text={t("bodyMap.spine.help.level")} />
+        </li>
+        <li>
+          <Rich text={t("bodyMap.spine.help.side")} />
+        </li>
+        <li>
+          <Rich text={t("bodyMap.spine.help.disc")} />
+        </li>
       </ul>
     </div>
   )
