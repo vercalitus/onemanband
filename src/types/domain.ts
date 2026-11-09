@@ -230,7 +230,7 @@ export interface TreatmentRecord {
 }
 
 /** The two figures a mark can be drawn on. */
-export type BodyMapView = "front" | "back" | "soles"
+export type BodyMapView = "front" | "back"
 
 /**
  * A line drawn over one of the figures, as fractions of its width and height.

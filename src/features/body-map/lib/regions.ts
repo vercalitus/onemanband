@@ -23,17 +23,20 @@ import type { BodyMapView } from "@/types/domain"
  *
  * **Right and left are the patient's.** From the front the patient faces us,
  * so their right is on our left; from behind it is the other way round, and
- * the soles are seen as from behind.
+ * the soles beside the back figure's feet are seen the same way.
  *
  * What a mark stores is the id, never a position: `buttock:r`,
  * `buttock:r/piriformis`, `betweenShoulderBlades/T4-l`.
  */
 
-export const FIGURES: Record<BodyMapView, { src: string; width: number; height: number }> = {
+export const FIGURES: Record<
+  BodyMapView,
+  { src: string; width: number; height: number; /** Drawn over the figure, same size. */ overlay?: string }
+> = {
   front: { src: "/body-map/front.webp", width: 516, height: 1356 },
-  back: { src: "/body-map/back.webp", width: 516, height: 1329 },
-  // Drawn here, not Servier: neither figure shows the underside of the foot.
-  soles: { src: "/body-map/soles.svg", width: 516, height: 330 },
+  // The soles are not Servier's: neither figure shows the underside of the
+  // foot, so they are drawn beside the feet in `back-soles.svg`.
+  back: { src: "/body-map/back.webp", width: 516, height: 1329, overlay: "/body-map/back-soles.svg" },
 }
 
 type Pt = [number, number]
@@ -62,7 +65,6 @@ const parse = (points: string): Pt[] =>
 export const AREAS: Record<BodyMapView, Area[]> = {
   front: build("front"),
   back: build("back"),
-  soles: build("soles"),
 }
 
 function build(view: BodyMapView): Area[] {
@@ -84,7 +86,7 @@ function build(view: BodyMapView): Area[] {
 }
 
 const AREA_BY_ID = new Map<string, Area>(
-  [...AREAS.front, ...AREAS.back, ...AREAS.soles].map((a) => [a.id, a] as const),
+  [...AREAS.front, ...AREAS.back].map((a) => [a.id, a] as const),
 )
 
 export const areaById = (id: string) => AREA_BY_ID.get(id.split("/")[0]) ?? null

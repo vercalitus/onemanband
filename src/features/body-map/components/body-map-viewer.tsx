@@ -40,8 +40,12 @@ import type {
 } from "@/types/domain"
 
 /**
- * The body map: two figures, front and back, the soles under them, and the
- * spine on its own, flat and labelled level by level.
+ * The body map: two figures, front and back, with the soles beside the back
+ * figure's feet, and the spine on its own, flat.
+ *
+ * **Only what is in hand is coloured:** the mark being made, or the saved one
+ * opened from the list. Every saved finding used to be coloured at once, and a
+ * practitioner making a new mark could not tell it from yesterday's.
  *
  * **The figures never change.** An area opens where it is:
  *
@@ -86,7 +90,7 @@ const TONES: BodyMarkTone[] = ["pain", "nerve"]
 const VIEWS: BodyMapView[] = ["front", "back"]
 const STAGES: Stage[] = ["figures", "spine"]
 /** The help, in the order a first mark is made. */
-const HELP = ["open", "whole", "sides", "soles", "pen", "spine", "disc", "kind", "where"] as const
+const HELP = ["open", "whole", "sides", "soles", "pen", "spine", "disc", "kind", "where", "saved"] as const
 
 /** What Undo restores: a snapshot, so "put it back exactly" cannot drift. */
 interface Draft {
@@ -99,26 +103,8 @@ const EMPTY: Draft = { regions: [], vertebrae: [], strokes: [], note: "" }
 
 type Pending = { kind: "clear" } | { kind: "delete"; id: string } | null
 
-/** The colour every named thing takes: saved findings, then the one in focus on top. */
-function colourMap(
-  marks: BodyMark[],
-  pick: (m: BodyMark) => string[],
-  focus: string[],
-  focusColor: string,
-) {
-  const tonesBy = new Map<string, Set<BodyMarkTone>>()
-  for (const m of marks) {
-    for (const id of pick(m)) {
-      const set = tonesBy.get(id) ?? new Set<BodyMarkTone>()
-      for (const v of markTones(m)) set.add(v)
-      tonesBy.set(id, set)
-    }
-  }
-  const map = new Map<string, string>()
-  for (const [id, set] of tonesBy) map.set(id, toneColor([...set]))
-  for (const id of focus) map.set(id, focusColor)
-  return map
-}
+/** Every place in the mark in hand, in that mark's colour. */
+const colourMap = (ids: string[], color: string) => new Map(ids.map((id) => [id, color] as const))
 
 export function BodyMapViewer({
   marks,
@@ -151,7 +137,7 @@ export function BodyMapViewer({
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [pending, setPending] = useState<Pending>(null)
 
-  const figureRefs = useRef<Record<BodyMapView, SVGSVGElement | null>>({ front: null, back: null, soles: null })
+  const figureRefs = useRef<Record<BodyMapView, SVGSVGElement | null>>({ front: null, back: null })
   const [helpOpen, setHelpOpen] = useState(false)
   const drawing = useRef<{ pointer: number; stroke: FigureStroke } | null>(null)
   const pressAt = useRef<{ x: number; y: number } | null>(null)
@@ -181,21 +167,11 @@ export function BodyMapViewer({
     setHistory(history.slice(0, -1))
   }
 
-  /**
-   * Every saved finding coloured the moment the chart opens, and the one being
-   * made or read on top. Something marked pain in one finding and nerve in
-   * another takes the colour of both.
-   */
+  /** The mark in hand: the saved one opened from the list, or the one being made. */
   const focusRegions = openMark ? openMark.regions : draft.regions
   const focusSpine = openMark ? openMark.vertebrae : draft.vertebrae
-  const regionColors = useMemo(
-    () => colourMap(marks, (m) => m.regions, focusRegions, highlight),
-    [marks, focusRegions, highlight],
-  )
-  const spineColors = useMemo(
-    () => colourMap(marks, (m) => m.vertebrae, focusSpine, highlight),
-    [marks, focusSpine, highlight],
-  )
+  const regionColors = useMemo(() => colourMap(focusRegions, highlight), [focusRegions, highlight])
+  const spineColors = useMemo(() => colourMap(focusSpine, highlight), [focusSpine, highlight])
   const emphasis = useMemo(() => new Set([...focusRegions, ...focusSpine]), [focusRegions, focusSpine])
 
   /* ── Pointer: open, mark, draw ────────────────────────────────────────── */
@@ -457,12 +433,11 @@ export function BodyMapViewer({
     const { width, height } = FIGURES[view]
     const scale = (s: FigureStroke) => s.points.map(([x, y]) => `${x * width},${y * height}`).join(" ")
     const out: { key: string; points: string; strong: boolean }[] = []
-    for (const m of marks) {
-      m.strokes.forEach((s, i) => {
-        if (s.view === view) out.push({ key: `${m.id}-${i}`, points: scale(s), strong: m.id === openId })
-      })
-    }
-    draft.strokes.forEach((s, i) => {
+    // Like the colour: the opened saved mark, otherwise the one being made.
+    openMark?.strokes.forEach((s, i) => {
+      if (s.view === view) out.push({ key: `${openMark.id}-${i}`, points: scale(s), strong: true })
+    })
+    if (!openMark) draft.strokes.forEach((s, i) => {
       if (s.view === view) out.push({ key: `draft-${i}`, points: scale(s), strong: true })
     })
     if (liveStroke?.view === view) {
@@ -490,6 +465,8 @@ export function BodyMapViewer({
   const figure = (view: BodyMapView) => {
     const fig = FIGURES[view]
     const viewBox = `0 0 ${fig.width} ${fig.height}`
+    // Two layers are added together: the colour shows on either drawing.
+    const masks = [fig.src, fig.overlay].filter(Boolean).map((src) => `url(${src})`).join(", ")
     return (
       <>
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed local figure, drawn over at its own pixel size */}
@@ -501,15 +478,26 @@ export function BodyMapViewer({
           draggable={false}
           className="pointer-events-none block h-auto w-full"
         />
-        {/* The colour, clipped to the figure's own outline. */}
+        {fig.overlay && (
+          // eslint-disable-next-line @next/next/no-img-element -- drawn over the figure at the same size
+          <img
+            src={fig.overlay}
+            alt=""
+            draggable={false}
+            className="pointer-events-none absolute inset-0 h-full w-full"
+          />
+        )}
+        {/* The colour, clipped to the figure's own outline (and its overlay's). */}
         <svg
           viewBox={viewBox}
           className="pointer-events-none absolute inset-0 h-full w-full mix-blend-multiply"
           style={{
-            WebkitMaskImage: `url(${fig.src})`,
-            maskImage: `url(${fig.src})`,
+            WebkitMaskImage: masks,
+            maskImage: masks,
             WebkitMaskSize: "100% 100%",
             maskSize: "100% 100%",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
           }}
           aria-hidden
         >
@@ -707,24 +695,9 @@ export function BodyMapViewer({
                 </div>
               </figure>
             ))}
-            {/* The soles: neither figure shows the underside of the foot. */}
-            <figure className="col-span-2 m-0 flex min-w-0 flex-col items-center gap-1">
-              <figcaption className="text-xs font-semibold text-slate-500">{t("bodyMap.view.soles")}</figcaption>
-              <div className="relative w-full max-w-[300px] select-none">{figure("soles")}</div>
-              {/* Seen as from behind: the patient's left foot is on our left. */}
-              <div dir="ltr" className="grid w-full max-w-[300px] grid-cols-2 text-center text-[11px] font-semibold text-slate-500">
-                <span>{t("bodyMap.side.l")}</span>
-                <span>{t("bodyMap.side.r")}</span>
-              </div>
-            </figure>
           </div>
         ) : (
-          <SpineChart
-            colors={spineColors}
-            emphasis={emphasis}
-            selected={draft.vertebrae}
-            onToggle={toggleSpine}
-          />
+          <SpineChart colors={spineColors} selected={draft.vertebrae} onToggle={toggleSpine} />
         )}
 
         {stage === "figures" && (
