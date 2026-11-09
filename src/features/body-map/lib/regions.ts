@@ -22,7 +22,8 @@ import type { BodyMapView } from "@/types/domain"
  * olecranon. A mark made from behind never colours the front.
  *
  * **Right and left are the patient's.** From the front the patient faces us,
- * so their right is on our left; from behind it is the other way round.
+ * so their right is on our left; from behind it is the other way round, and
+ * the soles are seen as from behind.
  *
  * What a mark stores is the id, never a position: `buttock:r`,
  * `buttock:r/piriformis`, `betweenShoulderBlades/T4-l`.
@@ -31,6 +32,8 @@ import type { BodyMapView } from "@/types/domain"
 export const FIGURES: Record<BodyMapView, { src: string; width: number; height: number }> = {
   front: { src: "/body-map/front.webp", width: 516, height: 1356 },
   back: { src: "/body-map/back.webp", width: 516, height: 1329 },
+  // Drawn here, not Servier: neither figure shows the underside of the foot.
+  soles: { src: "/body-map/soles.svg", width: 516, height: 330 },
 }
 
 type Pt = [number, number]
@@ -59,6 +62,7 @@ const parse = (points: string): Pt[] =>
 export const AREAS: Record<BodyMapView, Area[]> = {
   front: build("front"),
   back: build("back"),
+  soles: build("soles"),
 }
 
 function build(view: BodyMapView): Area[] {
@@ -80,7 +84,7 @@ function build(view: BodyMapView): Area[] {
 }
 
 const AREA_BY_ID = new Map<string, Area>(
-  [...AREAS.front, ...AREAS.back].map((a) => [a.id, a] as const),
+  [...AREAS.front, ...AREAS.back, ...AREAS.soles].map((a) => [a.id, a] as const),
 )
 
 export const areaById = (id: string) => AREA_BY_ID.get(id.split("/")[0]) ?? null
@@ -204,6 +208,7 @@ export function regionLabel(t: Translate, id: string) {
 
 /** The spine model's items, with the side in the app's language: "L4 ימין", "L4/L5". */
 export function spineLabel(t: Translate, item: string) {
+  if (item === "Sacrum" || item === "Coccyx") return t(`bodyMap.region.${item.toLowerCase()}`)
   const [level, side] = item.split(" ")
   if (side === "R" || side === "L") return `${level} ${t(`bodyMap.side.${side.toLowerCase()}`)}`
   return item

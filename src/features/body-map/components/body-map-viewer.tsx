@@ -1,9 +1,9 @@
 "use client"
 
-import dynamic from "next/dynamic"
-import { ChevronDown, Undo2, X } from "lucide-react"
+import { ChevronDown, CircleHelp, Undo2, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
+import { SpineChart } from "./spine-chart"
 import { BODY_MAP_FLUSH_EVENT } from "../lib/flush-event"
 import {
   AREAS,
@@ -39,14 +39,9 @@ import type {
   FigureStroke,
 } from "@/types/domain"
 
-/** three.js arrives when the spine is opened, not with every chart. */
-const SpineViewer = dynamic(() => import("./spine-viewer").then((m) => m.SpineViewer), {
-  ssr: false,
-  loading: () => <div className="h-[620px] rounded-xl bg-slate-50" aria-hidden />,
-})
-
 /**
- * The body map: two figures, front and back, and the spine as a model.
+ * The body map: two figures, front and back, the soles under them, and the
+ * spine on its own, flat and labelled level by level.
  *
  * **The figures never change.** An area opens where it is:
  *
@@ -90,6 +85,8 @@ const toneColor = (tones: BodyMarkTone[]) => {
 const TONES: BodyMarkTone[] = ["pain", "nerve"]
 const VIEWS: BodyMapView[] = ["front", "back"]
 const STAGES: Stage[] = ["figures", "spine"]
+/** The help, in the order a first mark is made. */
+const HELP = ["open", "whole", "sides", "soles", "pen", "spine", "disc", "kind", "where"] as const
 
 /** What Undo restores: a snapshot, so "put it back exactly" cannot drift. */
 interface Draft {
@@ -154,7 +151,8 @@ export function BodyMapViewer({
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [pending, setPending] = useState<Pending>(null)
 
-  const figureRefs = useRef<Record<BodyMapView, SVGSVGElement | null>>({ front: null, back: null })
+  const figureRefs = useRef<Record<BodyMapView, SVGSVGElement | null>>({ front: null, back: null, soles: null })
+  const [helpOpen, setHelpOpen] = useState(false)
   const drawing = useRef<{ pointer: number; stroke: FigureStroke } | null>(null)
   const pressAt = useRef<{ x: number; y: number } | null>(null)
   const penSeen = useRef(false)
@@ -709,15 +707,49 @@ export function BodyMapViewer({
                 </div>
               </figure>
             ))}
+            {/* The soles: neither figure shows the underside of the foot. */}
+            <figure className="col-span-2 m-0 flex min-w-0 flex-col items-center gap-1">
+              <figcaption className="text-xs font-semibold text-slate-500">{t("bodyMap.view.soles")}</figcaption>
+              <div className="relative w-full max-w-[300px] select-none">{figure("soles")}</div>
+              {/* Seen as from behind: the patient's left foot is on our left. */}
+              <div dir="ltr" className="grid w-full max-w-[300px] grid-cols-2 text-center text-[11px] font-semibold text-slate-500">
+                <span>{t("bodyMap.side.l")}</span>
+                <span>{t("bodyMap.side.r")}</span>
+              </div>
+            </figure>
           </div>
         ) : (
-          <SpineViewer colors={spineColors} emphasis={emphasis} onToggle={toggleSpine} />
+          <SpineChart
+            colors={spineColors}
+            emphasis={emphasis}
+            selected={draft.vertebrae}
+            onToggle={toggleSpine}
+          />
         )}
 
         {stage === "figures" && (
           <p className="mt-2 text-center text-[11px] font-medium text-slate-500">
             {t(mode === "pen" ? "bodyMap.hint.pen" : "bodyMap.hint.point")}
           </p>
+        )}
+        {/* For the practitioner who cannot find something: where each thing is. */}
+        <div className="mt-2 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setHelpOpen((v) => !v)}
+            aria-expanded={helpOpen}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-50 pointer-coarse:py-2.5 pointer-coarse:text-sm"
+          >
+            <CircleHelp className="size-4" aria-hidden />
+            {t("bodyMap.help.title")}
+          </button>
+        </div>
+        {helpOpen && (
+          <ul className="mt-1 grid list-disc gap-1.5 rounded-xl bg-slate-50 py-3 pe-3 ps-7 text-[13px] leading-snug text-slate-700">
+            {HELP.map((key) => (
+              <li key={key}>{t(`bodyMap.help.${key}`)}</li>
+            ))}
+          </ul>
         )}
         {/* CC BY 4.0 requires the credit wherever the figures are shown. */}
         <p className="mt-1 text-center text-[10px] text-slate-400">
@@ -825,7 +857,9 @@ export function BodyMapViewer({
               {draft.vertebrae.length > 0 &&
                 row(
                   t("bodyMap.group.spine"),
-                  draft.vertebrae.map((v) => chip(v, spineLabel(t, v), () => removeItem(v))),
+                  draft.vertebrae.map((v) =>
+                    chip(v, spineLabel(t, v), () => removeItem(v), () => setStage("spine")),
+                  ),
                 )}
               {draft.strokes.some((s) => pathText(s)) &&
                 row(
