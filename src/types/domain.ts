@@ -221,6 +221,12 @@ export interface TreatmentRecord {
   /** Private-bucket path of the session's voice memo. */
   audioPath?: string
   /**
+   * Where on the spine the work was done, tapped on the spine model while the
+   * session was open: `C2 L`, `L4/L5`, `Sacrum`. Top to bottom, in the model's
+   * own English vocabulary so it can be counted; shown in the reader's language.
+   */
+  spineLevels?: string[]
+  /**
    * Set when a clinician marked the record as saved in error. The record is
    * kept in full — it is still what was written — but it is not a session:
    * it counts for nothing and reads as struck through.
